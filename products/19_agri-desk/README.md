@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 **Measured on all 898 near-complete Cotton leaf curl virus genomes in NCBI GenBank** —
 every DNA-A genome of the cotton leaf curl complex between 2,600 and 2,820 nt, across
@@ -151,17 +151,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not prescribe a pesticide dose.** It reports what surveillance shows and escalates.
 - **It does not call a variant.** It links to a collapsed cluster produced by `clcuv-surveillance`.
 - **It does not answer without evidence.** No dated source, no advisory — it escalates instead.
 - **It does not need a connection.** Reports queue locally and reconcile on reconnect.
-
-## Problems hit while building this
-
-- Counting distinct sequences is not counting distinct variants, and the difference is an outbreak warning. This is `clcuv-surveillance`'s finding, reused rather than rediscovered.
-- Collapsing on sequence alone was too aggressive across sites — the same sequence at two distant sites is two observations. Site is part of the key.
 
 ## Input / Output
 

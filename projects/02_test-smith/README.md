@@ -10,7 +10,7 @@
 
 ---
 
-## The finding
+## Results
 
 **Across 8 repositories and 320 mutants, 62 deliberate bugs survived on lines the test
 suite had just executed.** Those lines are green in any coverage report. The test ran
@@ -129,30 +129,6 @@ scoring them as wins would have added several points to both for nothing.
 did not slip through silently, and the suite did notice. This is the conservative
 direction: it makes the tool look *less* impressive, not more.
 
-## Problems hit while building this
-
-**The first version would have reported 100% survival, silently.** The repository under
-test is copied to a scratch workspace, but the repo's own virtualenv contains an editable
-install pointing at the *original* source tree. Without forcing the workspace to the front
-of `PYTHONPATH`, every test imports unmutated code, every mutant survives, and the output
-looks like a catastrophic test suite rather than a broken tool. The only reason this was
-caught is that the first real run killed 3 of 10 mutants - a total false negative would
-have shown zero kills, so a non-zero kill count is itself the smoke test.
-
-**`demo.py` survivors were noise until coverage arrived.** Early runs reported survivors in
-demonstration scripts no test imports. Technically true and completely uninteresting.
-Splitting survivors by whether their line executed turned the report from a list of
-complaints into a list of two actionable kinds.
-
-**Mutating the tree during the walk invalidated the next mutation's target.** Sites are now
-collected in one pass and applied one at a time to a fresh deep copy, located by source
-position rather than object identity, because the node collected earlier is not the node
-in the copied tree.
-
-**String and docstring mutation was removed.** Swapping a message produces an equivalent
-mutant that no reasonable test asserts on, and it flooded the report. Only numbers and
-booleans are mutated.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`.
@@ -162,7 +138,7 @@ applies the mutations, `subprocess` runs the suite, and `sys.settrace` records w
 executed. `nicegui` is an optional extra used only by the UI - the measurement never
 imports it.
 
-## What it does NOT do
+## Scope
 
 - **Never writes to the repository under test.** The tree is copied to a scratch workspace
   and the original is never opened for writing. A test asserts the source file's mtime is

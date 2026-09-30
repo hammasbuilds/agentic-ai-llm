@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** the queued `clinical-triage-crew`, and `BUILD-PLAN.md` 02 voice-desk as the phone intake channel.
 
-## The finding
+## Results
 
 **Measured on Synthea's published patient sample** — 3,850 medication records across 105
 patients and 5,571 encounters, openly available and needing no credentialing.
@@ -118,17 +118,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not diagnose.** Not a clinical decision tool; an operations tool. That is both the ethical position and the commercially real one.
 - **It does not sign anything.** Every clinical artefact stops at draft.
 - **It does not assign a bed with a model.** Assignment is a constraint solver; the model explains the result.
 - **It does not read a medication list.** It reads the event stream, which is the entire point.
-
-## Problems hit while building this
-
-- The first version took the current medication list because it was one query. It produced a summary naming a drug stopped on day two — the finding this product now exists to measure.
-- 'Active' needed defining. A drug ordered, discontinued, then ordered again is active; a naive set difference says it is not.
 
 ## Input / Output
 

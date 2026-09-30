@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 17 lead-scout, and 25 web-operator as a tool.
 
-## The finding
+## Results
 
 This product exists to measure how often one writer's update destroys another's recent
 correction. There is no CRM log on this machine to measure that on — so rather than invent
@@ -70,15 +70,6 @@ then a whole new repository arrived and the honest rate still did not move. The
 authored rate did not move at all. A metric that reacts to someone committing a dataset is
 not measuring editing behaviour, and on a CRM the equivalent commit — a bulk enrichment
 import — happens weekly. There is a test pinning both halves of this.
-
-### Why this is the product's central lesson, not a measurement footnote
-
-Both corrections say the same thing: **if you do not separate machine-written changes from
-human ones, you measure the machine arguing with itself.** A revert dashboard pointed at a
-CRM where agents write fields would report a rate an order of magnitude too high, and
-almost all of it would be agents rewriting their own enrichment. That is why field-level
-ownership — an agent may propose, never overwrite a human-owned field — is the mechanism
-rather than an alerting threshold.
 
 ### What is not claimed
 
@@ -194,17 +185,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not send.** The writer agent produces drafts; sending is a human action behind an approval.
 - **It does not scrape a platform that forbids it.** Sources are search, public registers and sites that permit crawling.
 - **It does not score a lead with a model.** Fit is a rules-and-weights calculation the buyer can read.
 - **It does not resolve a provenance conflict.** It surfaces one and stops.
-
-## Problems hit while building this
-
-- The first forecast summed `amount` and asked the model to 'weight by stage'. Two runs on identical data gave figures 11% apart, which is how this rule got written.
-- Revert detection needs the *order* of edits, not their timestamps — two edits inside one second are common and clock skew between workers is real. The core takes a sequence number.
 
 ## Input / Output
 

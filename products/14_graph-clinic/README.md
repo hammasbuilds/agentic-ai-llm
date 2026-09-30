@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** the priority-68 Medical Graph RAG item from the SWE queue. Brings Neo4j, a database nothing else in the portfolio uses.
 
-## The finding
+## Results
 
 **Measured on all 7,405 HotpotQA validation questions**, read from the local HuggingFace
 cache. Each has two gold paragraphs hidden among ten, and each is labelled `bridge` (hop
@@ -147,17 +147,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not diagnose or advise on treatment.** It retrieves and cites.
 - **It does not infer an edge.** An edge exists because a document stated it, and the edge names the document.
 - **It does not walk unbounded.** Hop limits are arguments, not conventions.
 - **It does not reproduce the paper.** Two of three data tiers are reachable; the middle one is not, and the README says so.
-
-## Problems hit while building this
-
-- The first traversal followed cycles forever on a graph where two conditions each 'relate to' the other. Visited-set plus a hop cap, both tested.
-- Provenance had to live on the edge, not on the node. An answer that names its entities but not the documents that connected them is not checkable.
 
 ## Input / Output
 

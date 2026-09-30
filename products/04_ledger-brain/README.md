@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** the 'never let a model do arithmetic on money' lever from `BUILD-PLAN.md` 12 cloud-janitor.
 
-## The finding
+## Results
 
 **Measured on 54,716 real invoices** from UCI's Online Retail II, reduced once to invoice
 totals by `scripts/make_invoices.py`.
@@ -128,17 +128,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not post a journal entry on its own.** Every posting is a human action.
 - **It does not let a model do arithmetic.** Numbers are computed in Python and quoted verbatim; a response containing a numeral absent from the tool output is rejected.
 - **It does not guess between equal amounts.** It refuses and asks, which is the whole design.
 - **It is not accounting software.** It reconciles and explains; it does not file anything.
-
-## Problems hit while building this
-
-- The first matcher scored 94% and looked finished. Splitting the metric by equal-amount versus distinct-amount is what showed where the errors actually were.
-- Tolerance had to be absolute, not proportional. A 0.5% tolerance on a large invoice is wide enough to swallow a small one entirely.
 
 ## Input / Output
 

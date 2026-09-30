@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 The claim under test is that per-platform "voice adaptation" produces four genuinely
 different texts. Testing it needs two things: a yardstick for how different real renderings
@@ -176,17 +176,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not auto-reply in public.** Drafts only, always.
 - **It does not buy engagement, follow, or mass-DM.** Nothing here touches a growth-hacking pattern.
 - **It does not claim a metric it did not fetch.** Every figure carries its fetch time.
 - **It does not use a model to pick a posting time.** That is a count over your own history.
-
-## Problems hit while building this
-
-- Overlap was first measured with a plain token set, which called two posts identical because they shared stop words. Containment against the baseline variant, over content words, is the version that says anything.
-- Hashtags inflated apparent difference while changing nothing about the text, so they are stripped before comparison and reported separately.
 
 ## Input / Output
 

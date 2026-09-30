@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 **Measured over OSV's published PyPI export** — 30,098 real PyPI advisories across 13,327
 packages, each carrying the version ranges it applies to. Every advisory was judged at
@@ -35,7 +35,7 @@ The false negative is the mirror image and matters more per instance: a package 
 maintained branches, broken again at `2.0` after being fixed at `1.2`, sits *above* the
 highest fixed version and gets cleared.
 
-### The sharper finding: two fifths of OSV has no fix to be below
+### Two fifths of OSV has no fix to be below
 
 **39% of this database — 11,734 records — are not vulnerability reports at all.** `MAL-`
 entries are malicious packages: typosquats and backdoored releases. The remedy is removal,
@@ -165,18 +165,13 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not scan anything outside its scope file.** Out-of-scope targets are refused, not warned about.
 - **It does not exploit.** No payload, no proof-of-concept execution. It reports what is present and reachable.
 - **It does not patch.** Remediations are drafted; a person applies them.
 - **It does not trust a version string alone.** That is the finding.
 - **It is not a pentest tool.** It is an inventory-and-advisory reconciler for estates you own.
-
-## Problems hit while building this
-
-- The first matcher compared version strings lexically, which put `1.10.0` below `1.9.0`. Parsing into integer components is not optional.
-- Distribution suffixes (`-4ubuntu1.2`) are the whole backport signal, and stripping them — which is what makes the upstream comparison clean — is exactly what destroys the information needed to avoid a false positive.
 
 ## Input / Output
 

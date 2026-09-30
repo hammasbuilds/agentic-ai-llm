@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 **Measured on real versioned regulation across six regulators** — eCFR version indexes for
 Titles 12, 21, 26, 29, 40 and 45: 6,000 real section versions across 3,204 sections, each
@@ -158,17 +158,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not decline a claim.** It reports coverage and the clause; a person declines.
 - **It does not pay.** Settlement packs are drafts.
 - **It does not score fraud with a model.** Rules that name themselves when they fire.
 - **It does not read an unpinned wording.** A claim with no version in force is an error, not a default to the latest.
-
-## Problems hit while building this
-
-- Defaulting to the current wording when no version covered the loss date was the first behaviour and is exactly the bug. It raises now.
-- Overlapping version ranges are common in real policy books after an endorsement, and silently picking the first match hides them. Overlaps raise too.
 
 ## Input / Output
 

@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 11, plus the four queued `incident-copilot` upgrades. Built on the `incident-copilot` core; distinct from it because that is a library and a CLI and this is the product.
 
-## The finding
+## Results
 
 **Measured on 32,000 real production log lines** — all sixteen of Loghub's published
 samples, 2,000 lines each, one templater, no tuning per system.
@@ -147,17 +147,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not execute a remediation.** It proposes; a person runs it.
 - **It does not show a hypothesis without its evidence.** No evidence link, no row.
 - **It does not page on its own** unless a rule a human wrote says to.
 - **It does not rank blast radius by opinion.** Diff statistics, reusing `release-captain`'s work.
-
-## Problems hit while building this
-
-- `incident-copilot` already found this the hard way: correlation inside a time window is transitive, so an evenly-spaced drip collapses unrelated services into one critical incident. The core caps total span and defaults to requiring service affinity.
-- Deduplication by message text was wrong — the same fault produces a message with a different host in it each time. Fingerprints come from the template, not the line.
 
 ## Input / Output
 

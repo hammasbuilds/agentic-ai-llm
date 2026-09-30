@@ -9,7 +9,7 @@
 
 ---
 
-## The finding
+## Results
 
 **One lapse costs SM-2 the card's entire history. It costs FSRS about a third of one
 interval.**
@@ -74,29 +74,12 @@ recall reaches the target retention. There is a test that schedules a card and t
 checks the predicted recall at that interval is 0.9 - the scheduler and the memory model
 have to agree or both are wrong.
 
-## Problems hit while building this
-
-**The simulated learner is not evidence about people.** It is a forgetting curve, and
-FSRS was designed against that same curve, so the comparison is not neutral. What it can
-honestly measure is whether each scheduler does what it claims under its own assumptions,
-and what that costs in reviews. The README says this rather than presenting the table as
-a study.
-
-**The aggregate result undercuts the headline, and is reported anyway.** Four percent
-fewer reviews over a year is not the dramatic win the lapse table implies. Reporting only
-the lapse intervals would have been a better story and a worse result.
-
-**Ease and difficulty needed floors.** Thirty consecutive lapses drove SM-2's ease
-multiplier toward zero and FSRS's difficulty out of its 1-10 range, producing intervals
-that were arithmetically fine and meaningless. Both are clamped, with tests that hammer
-thirty lapses to prove it.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`. Both schedulers, the forgetting curve and
 the simulation are arithmetic. `reflex` is an optional extra used only by the UI.
 
-## What it does NOT do
+## Scope
 
 - **No question generation.** The part a model would do is the part that is not here; the
   deck is a JSON file you write.

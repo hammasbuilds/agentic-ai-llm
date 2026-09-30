@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 01. The flagship, and the repo where `../platform` actually lives.
 
-## The finding
+## Results
 
 **Measured on LoCoMo** — ten real long conversations, a median of **29 sessions and 646
 turns** each, with 1,986 questions whose answers point at the specific turns that support
@@ -134,17 +134,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not write semantic memory from the reply path.** Memory writes run off `home.events`, so they never add latency to an answer.
 - **It does not activate a skill it wrote.** Drafts only.
 - **It does not call a tool outside the allow-list**, whatever the conversation says.
 - **It does not resolve a hard-constraint contradiction.** It asks.
-
-## Problems hit while building this
-
-- `langgraph-lab 05` found that passing only the latest message to a handed-off specialist dropped safety from 100% to 20% — recommending eggs to a vegan, a hotel with no accessibility note to someone who required one. The core makes that a refusal rather than a prompt instruction.
-- The naive summariser in `langchain-lab 03` kept 100% of soft preferences and 0% of hard constraints. Hard and soft are therefore separate types here, not a confidence score.
 
 ## Input / Output
 

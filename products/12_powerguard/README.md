@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The findings
+## Results
 
 Measured against this machine's real process table, not a fixture.
 
@@ -166,17 +166,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It never signals a process it did not start.** Other chat sessions train on this box. Unowned jobs at risk are reported to you and left alone. This is enforced in the planner, not in a comment.
 - **It does not decide policy with a model.** Thresholds are numbers in a config file.
 - **It does not force-kill.** Checkpoint, then request a stop, then wait. A `TaskStop` that does not kill a process tree is a known behaviour here, not a surprise.
 - **It does not resume a job you disabled**, however idle the machine gets.
-
-## Problems hit while building this
-
-- The obvious first version shut things down in whatever order it found them, which put the display to sleep before the training checkpoint had flushed. The plan is ordered by how much work each step saves, cheapest to lose last.
-- Hibernate needs a threshold with hysteresis. A supply that flaps either side of the line otherwise produces an action per flap.
 
 ## Input / Output
 

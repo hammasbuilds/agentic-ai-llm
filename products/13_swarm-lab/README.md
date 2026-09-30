@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** the priority-80 item from the SWE queue, where it is described as the strongest unbuilt idea.
 
-## The finding
+## Results
 
 **Measured by running N workers against the real Redis**, 40 entities, three repeats per
 cell. No model is involved, deliberately: duplicate calls and conflicting writes are
@@ -53,7 +53,7 @@ times the work itself.** That asymmetry is why the lock is worth its latency.
 A supervisor that partitions the list achieves the same with no lock at all: topology
 substitutes for coordination. Both are in the tests.
 
-### What this does not claim
+### Scope
 
 These are agents with no shared state, which is the upper bound on waste rather than a
 typical system — real agents coordinate partially. The `1 - 1/N` law and the lock result are
@@ -141,17 +141,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not claim a framework is better.** The model and the task are held constant; N is the variable.
 - **It does not report a single run.** At least three repeats per cell, and the spread is reported.
 - **It does not estimate a token count.** Counted from the trace.
 - **It does not build a swarm as a product.** Building it is not the valuable part; measuring it is.
-
-## Problems hit while building this
-
-- Duplicate detection needs the *arguments* normalised, not the call text. Two agents fetching the same URL with the parameters in a different order are one duplicate, and a string comparison says they are two distinct calls.
-- A conflicting write is not simply two writes to one field. Two agents writing the same value is contention, not conflict, and counting it as conflict inflates the headline exactly where the study is most interesting.
 
 ## Input / Output
 

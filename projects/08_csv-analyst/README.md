@@ -10,7 +10,7 @@
 
 ---
 
-## The finding
+## Results
 
 **In the UCI Online Retail II dataset, 19,500 rows have an invoice number that is not a
 number. 100.0% of them have a negative quantity: they are the cancellations. Loading that
@@ -106,31 +106,6 @@ physically do:
    narrator has no free-text step and no model, so there is nothing that can invent a
    figure.
 
-## Problems hit while building this
-
-**Date detection made the profiler unusable.** Trying eleven date formats against every
-value costs eleven exceptions per row; on the 1M-row file the run did not finish inside
-two minutes. A column uses one format, so the format is established from a 200-value
-sample and the rest of the column is parsed with that alone. 36 seconds for all 13 files.
-
-**`-1` was flagged as a missing-value sentinel in a quantity column.** In retail data
-`-1` means one item returned, and the column is full of other negatives. A negative
-sentinel is only a sentinel when it is the *only* negative value present, which is now
-the rule.
-
-**`CustomerID` was not detected as an identifier at all.** The name check was a regex
-requiring a non-letter before `id`, which matches `customer_id` and misses `CustomerID`
-entirely. Names are now tokenised on camelCase boundaries.
-
-**Then identifier detection over-fired and broke two tests.** "Nearly all values are
-unique" flags `[1, 2, 3, 4]` - 100% unique and obviously not an identifier - and a
-quantity running 0..59. Uniqueness alone is far too weak: it now also requires at least
-50 rows and a minimum value above 1000, so keys are caught and counts are not.
-
-**The report contradicted itself before the `is_quantity` split existed.** It warned that
-`CustomerID`'s mean was meaningless and then printed the mean four lines later, because
-the warning and the summary were computed independently. One property now gates both.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`.
@@ -141,7 +116,7 @@ column types are declared by the loader, so a contaminated column *cannot* be av
 `matplotlib` would be forty megabytes to draw rectangles, so the charts are SVG written
 by hand. `marimo` is an optional extra used only by the notebook view.
 
-## What it does NOT do
+## Scope
 
 - **Does not fix your data.** It refuses to guess what `C489449` means. It reports that
   19,500 rows carry values like it and that they will vanish under a cast.

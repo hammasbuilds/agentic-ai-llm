@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 03 inbox-pilot and 04 meeting-scribe. The merge is the point: a thread and a meeting are two sources of one object.
 
-## The finding
+## Results
 
 **Measured on the whole AMI Meeting Corpus** — all 139 real recorded meetings, 104,923
 hand-annotated dialogue acts across 556 speaker slots, of which **10,462 are Suggest or
@@ -141,18 +141,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not send.** Not once, not with a confirmation dialogue.
 - **It does not archive or delete mail.** Categories only.
 - **It does not keep a commitment it cannot attribute.** No speaker and timestamp, no row.
 - **It does not merge across speakers.** Two people promising similar things are two commitments.
-
-## Problems hit while building this
-
-- The first merger used text similarity alone and combined a promise by one attendee with a similar promise by another. Speaker identity is now a hard barrier, not a feature in a score.
-- Similarity needed a floor on length. Two three-word commitments match each other trivially and almost never mean the same thing.
-- The first honest measurement ran on twelve meetings because the full corpus never finished. That is the failure mode worth naming: a slow function does not announce itself, it just quietly narrows what you measure — and here the narrow answer was wrong by 25 points, in the flattering direction.
 
 ## Input / Output
 

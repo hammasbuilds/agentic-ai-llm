@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 20 proposal-forge and 23 market-desk; 25 web-operator becomes the crawler.
 
-## The finding
+## Results
 
 Public tender portals do not publish machine-readable requirement labels, so the mandatory
 / optional distinction is measured where it *is* labelled: **published RFCs**. RFC 2119
@@ -134,17 +134,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not submit.** Submission is a human action, every time.
 - **It does not soft-pass a mandatory item.** Missing is missing; the bid is blocked.
 - **It does not claim a capability you cannot evidence.** Unbacked claims are dropped before drafting.
 - **It does not cite an undated source.** Stale market numbers reported as current is the standard failure of this category.
-
-## Problems hit while building this
-
-- The deadline was first computed by the model, which got a month boundary wrong on a tender worth eight figures. It is date arithmetic now and always will be.
-- 'Partially satisfied' was a category in the first checklist. It is not one on a tender portal, so it was removed — anything short of satisfied blocks the bid.
 
 ## Input / Output
 

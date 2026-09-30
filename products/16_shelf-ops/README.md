@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 **Measured on 4,501 real products** from UCI Online Retail II, each with the modal,
 minimum, maximum and median price it actually transacted at.
@@ -130,17 +130,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not let an agent write a price.** Agents propose; one deterministic authority decides.
 - **It does not compound discounts.** The deepest single proposal wins and the floor is absolute.
 - **It does not issue refunds.** Returns are classified and routed.
 - **It does not scrape a marketplace that forbids it.** Feeds and APIs where they exist.
-
-## Problems hit while building this
-
-- Both agents were correct in isolation and the system was not. Nothing in either prompt could have fixed it; the fix is that only one component writes the field.
-- A percentage floor was the first design and it is wrong on a low-margin SKU — 10% off a product carrying 8% margin is a loss whatever the floor says. The floor is an absolute price.
 
 ## Input / Output
 

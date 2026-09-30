@@ -10,7 +10,7 @@
 
 ---
 
-## The finding
+## Results
 
 **The most confidently stated convention in the portfolio is the least followed.**
 
@@ -78,7 +78,7 @@ Each result names the policy, what was found, and the file it was found in:
           in    : README.md
 ```
 
-## Real findings, beyond the headline
+## Results
 
 **Four repositories import packages they never declare** — code that works on this
 machine and fails on anyone else's: `machine-learning` (plotly, streamlit), `mcp-lab`
@@ -93,37 +93,13 @@ dashboard.
 **Ten of 37 have no remote.** Four are not git repositories at all: `computer-vision`,
 `multimodal-emotion`, `infra` and `swe` hold real work on one disk with no copy anywhere.
 
-## Problems hit while building this
-
-**A hand-written standard-library list scored `imports-declared` at 0% across 30
-repositories.** Every repo "failed" because the list was missing whatever it happened to
-import. `sys.stdlib_module_names` is the actual answer and the interpreter maintains it.
-
-**A regex for imports was wrong in a way that looked like data.** The pattern
-`import\s+([\w.,\s]+)` has `\s` *inside* the character class, so `import json` consumed
-the following lines and reported `sys`, `from` and whatever came next as imported
-modules. It also read `Field` in `from pydantic import Field` as a module name. Parsing
-with `ast` fixes both and costs nothing - and the failures were plausible enough that
-they could easily have been written up as findings.
-
-**Every repository's own package looked like an undeclared third-party import.** With a
-`src/` layout the first path component is `src`, not the package, so `ragforge`,
-`cartographer` and `urdunlp` were all reported as undeclared. Local package names now
-come from the directory below `src/`, the project name, and the build backend's
-`module-name`.
-
-**One import name can come from several distributions.** `cv2` is provided by
-`opencv-python`, `opencv-python-headless` or `opencv-contrib-python`; a one-to-one alias
-map failed `classical-computer-vision`, which correctly declares the headless build. Each
-import now maps to a *set* of distributions and any of them satisfies it.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`. `tomllib` and `ast` are standard library,
 `git` is shelled out to, and the UI is Lit loaded from a CDN as an ES module - no npm, no
 build step, the `.js` file in `ui/` is the source that runs.
 
-## What it does NOT do
+## Scope
 
 - **It checks conventions, not correctness.** A README with a "what it does NOT do"
   heading passes whether or not the section says anything true.

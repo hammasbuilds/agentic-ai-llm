@@ -10,7 +10,7 @@
 
 ---
 
-## The finding
+## Results
 
 **A keyword classifier reads the Python licence as GPL, because the Python licence names
 the GPL.**
@@ -102,28 +102,6 @@ and scan, not read in a terminal. Everything else is better in the CLI.
 Rule 1 is inherited from `rag-forge`, where a quote that could not be located in the
 source was treated as a hallucination signal. Rule 2 is what this corpus added.
 
-## Problems hit while building this
-
-**Ordering fixed the misclassification; the disqualifier alone did not.** The first
-attempt added "previously distributed under" to the context check and `typing_extensions`
-was *still* read as GPL — the file matched the GPL phrase before anything checked PSF.
-Specific families now sort above the generic keyword other licences quote, and the
-disqualifier catches the same shape elsewhere. Two fixes for one bug, because there were
-two causes.
-
-**Licences are hard-wrapped at 70 columns**, so no phrase pattern matched across a line
-break and almost nothing was found. Lines are joined within paragraphs and kept apart
-between them; joining everything would have merged clauses and misplaced every citation.
-
-**MIT has no sections, and inventing them was wrong.** An early segmenter split on blank
-lines and produced "clauses" whose boundaries did not exist in the document, so citations
-pointed at fictional structure. A document with no headings is now one clause, honestly
-labelled `(whole document)`.
-
-**Four licences are still `unknown`** — all in the SWE-bench checkouts. Unknown is
-reported as a *conflict*, not a pass, because obligations you could not read are a
-compliance problem rather than an absence of one.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`. Segmentation, phrase location and the
@@ -131,7 +109,7 @@ context check are `re` and string offsets. The UI is one HTML file and `http.ser
 `docling` was the planned dependency for PDF contracts; the corpus here is plain text, so
 it would have added forty megabytes to parse nothing.
 
-## What it does NOT do
+## Scope
 
 - **This is not legal advice**, and the compatibility check reports only the two cases
   that are not arguable: strong copyleft inside a permissive project, and a licence it

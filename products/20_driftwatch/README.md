@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** the priority-70 code–doc staleness item from the SWE queue. Distinct from the shipped `docstring-drift`, which measures the phenomenon; this one repairs it continuously.
 
-## The finding
+## Results
 
 **Measured over the 35 real repositories on this machine** — their real READMEs, real
 `pyproject.toml` files and real directory contents.
@@ -56,7 +56,7 @@ The first extractor treated every sentence as a claim and reported 4,757 finding
 all of them unfalsifiable adjectives. Classification has to come before verification, or
 the output is noise with five real defects buried in it.
 
-### The second finding: some claims are made by layout, not by a sentence
+### Some claims are made by layout, not by a sentence
 
 A heading reading `## All ten, at a glance` above a table of seven rows is drift, and the
 sentence checker found **zero** checkable claims in the README containing it. The number is
@@ -162,17 +162,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not merge.** It opens a pull request; a person merges.
 - **It does not rewrite prose it cannot check.** An unfalsifiable claim is reported to a human, never silently edited.
 - **It does not reason about a claim.** Mechanical claims are executed against the repository.
 - **It does not replace `docstring-drift`.** That repository measured the phenomenon; this one repairs it.
-
-## Problems hit while building this
-
-- The first extractor treated every sentence as a claim and produced a wall of unfalsifiable findings — 'fast', 'simple', 'production-ready' — which is exactly the noise that gets a doc linter turned off. Classification comes first now.
-- A test-count claim needs the count collected, not the `def test_` lines counted: parametrised tests make the two differ, which `PROJECTS.md` already records.
 
 ## Input / Output
 

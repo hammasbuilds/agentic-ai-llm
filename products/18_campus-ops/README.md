@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 **Measured on 5,571 real scheduled events** across 3,440 days — Synthea's published
 encounter data, which is a timetable in every respect that matters: a site, a person
@@ -130,17 +130,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not admit or reject anyone.** Eligibility against published rules; a person decides.
 - **It does not publish a timetable with a clash.** NotAuthorisedError, not warned about.
 - **It does not waive or refund a fee.**
 - **It does not answer a policy question from an unversioned document.** It abstains, and abstention rate is a reported metric.
-
-## Problems hit while building this
-
-- Three clash types, not one: a room double-booked, a teacher double-booked, a cohort double-booked. The first version checked rooms only and published a timetable where a lecturer taught two classes at once.
-- Back-to-back sessions were flagged as clashes until the boundary was made half-open. A session ending at 10:00 and one starting at 10:00 do not overlap.
 
 ## Input / Output
 

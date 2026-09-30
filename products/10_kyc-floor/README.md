@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 24 urdu-desk, which becomes the name-matching engine rather than a standalone project.
 
-## The finding
+## Results
 
 **Measured on OFAC's published sanctions list** — 19,393 entities, 7,535 individuals, and
 **8,650 (primary name, alias) pairs that OFAC itself says are one party.** That is a
@@ -175,18 +175,13 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not onboard a customer.** It screens and triages; a human approves.
 - **It does not clear a true match.** The triager may dispose of clear false positives and nothing else.
 - **It does not file a SAR.** Draft only.
 - **It does not score risk with a model.** A published matrix, so a regulator can read it.
 - **It does not match names with an LLM.** That is the baseline it is measured against, not the implementation.
-
-## Problems hit while building this
-
-- Stripping every non-letter merged `al-Hassan` and `Alhassan` correctly and also merged two genuinely different names. Particle handling is separate from diacritic handling for that reason.
-- Token *order* varies between lists — `Khan Ayesha` and `Ayesha Khan` are the same person. Comparison is over sets, which then required a minimum token count so single-token names do not match everything.
 
 ## Input / Output
 

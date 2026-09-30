@@ -75,7 +75,7 @@ And one more, in `llm.Recorded`: an unscripted prompt **raises**. A fake that an
 plausibly is how a test stops testing anything, and it is also how a test suite quietly
 starts calling a real model.
 
-## What it does NOT do
+## Scope
 
 - **No Kafka, Redis or Postgres client.** `ports.py` defines the protocols; binding them is
   a deployment concern and the `infra` extra names the libraries.
@@ -86,17 +86,6 @@ starts calling a real model.
 - **No retry, backoff or circuit breaking.** That is the client library's job.
 - **No scheduler.** `Runtime.drain()` is one worker pass; what calls it in production is a
   supervisor, not this package.
-
-## Problems hit while building this
-
-- `hash()` was the obvious partitioner and is wrong in a way that only shows up under a
-  rolling restart. Caught while writing the test for it, not while writing the code.
-- The first `lock()` took any TTL. A ten-minute lock is not a longer lock, it is an outage,
-  so the builder refuses one above five minutes and points at heartbeat renewal.
-- Admission originally counted a refused request against the in-flight slots, so a tenant
-  over budget also consumed capacity. There is an explicit test for that now.
-- `Runtime.submit()` first ran the graph inline and returned the result, which was simpler
-  and defeated the entire purpose of the bus. It publishes and returns; `drain()` runs it.
 
 ## Input / Output
 

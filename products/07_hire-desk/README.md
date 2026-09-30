@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 **Absorbs:** `BUILD-PLAN.md` 18.
 
-## The finding
+## Results
 
 **Redacting a name does not redact a person.**
 
@@ -140,17 +140,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not reject a candidate.** It scores against a published rubric and ranks.
 - **It does not let the scorer see an identified record.** The scoring worker consumes a different topic; it is structurally unable to.
 - **It does not produce an overall verdict from a model.** Dimensions are structured-decoded and summed in Python.
 - **It does not report one fairness measure.** All four incompatible ones, the `credit-risk-engine` pattern.
-
-## Problems hit while building this
-
-- Dropping identifying *keys* was not enough. The name reappeared in the free-text summary field, and the education section named a school that identifies a city. Redaction has to scrub the free text, and a leak check has to prove it did.
-- The redaction barrier reads better as a topic boundary than as a function call — a reviewer can see the scorer cannot receive the identified record, rather than trusting that it does not read it.
 
 ## Input / Output
 

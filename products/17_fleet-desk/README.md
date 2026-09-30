@@ -6,7 +6,7 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-## The finding
+## Results
 
 **Measured on six TSPLIB instances**, 51 to 150 stops, each against its **proven optimal
 tour**. The headline table is berlin52 — 52 real locations in Berlin, the standard routing
@@ -158,17 +158,12 @@ triage ──(early exit)──► exit ──► END
 `triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
 anything the model wrote that no tool receipt supports, before a person ever sees it.
 
-## What it does NOT do
+## Scope
 
 - **It does not let the model plan a route.** The model narrates exceptions and writes to drivers.
 - **It does not cancel a delivery.** Exceptions are classified and escalated.
 - **It does not send a driver message unattended.**
 - **It does not invent a distance.** A pair missing from the matrix is an error, not a straight line.
-
-## Problems hit while building this
-
-- The first cost function silently treated a missing matrix entry as zero, which made an invalid route look like the best one. Missing pairs raise.
-- A route has to be validated as a permutation returning to the depot before it is costed; otherwise a route that skips two stops wins every comparison.
 
 ## Input / Output
 

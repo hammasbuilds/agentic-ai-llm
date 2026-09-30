@@ -10,7 +10,7 @@
 
 ---
 
-## The finding
+## Results
 
 **Of 12 migration pairs written the way people write them, 10 ran. Three of those restore
 the schema exactly and still lose data.** A review that compares schemas - which is what
@@ -115,28 +115,6 @@ already has rows - and it is worth noting that **this tool did not need a rule t
 it**. The engine rejected it. A shadow database catches a whole class of problems without
 anyone writing a check for them.
 
-## Problems hit while building this
-
-**A test asserted a column reorder that could not happen.** The fixture dropped
-`nickname`, which was already the *last* column, so re-adding it restored the original
-order and `columns_reordered` was correctly empty. The check was right and the test was
-wrong; it now uses a middle column, with a second test for the trailing case so the
-assertion cannot pass vacuously.
-
-**`sql.split(";")` was never going to work.** A default value containing a semicolon, or
-a `BEGIN ... END` trigger body, both split into fragments that fail to execute and look
-like a broken migration. The splitter tracks string quoting, comments and `BEGIN`/`END`
-nesting - and is still not a SQL parser, which the limits section says plainly.
-
-**Row order was read as data loss.** The first checksum hashed rows in retrieval order,
-so a migration that rebuilt a table and re-inserted its rows compared unequal. Row hashes
-are now XOR-folded, which is order-independent.
-
-**Schema comparison was one boolean and hid two different failures.** "Not restored"
-covered both a missing column and a reordered one, which are very different problems.
-`schema_equivalent` (set-wise) and `schema_restored` (order-wise) are now separate, and
-the verdict names which happened.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`.
@@ -145,7 +123,7 @@ the verdict names which happened.
 `sqlite3` from the standard library, and executing the migration is a better test than
 parsing it. The UI's API is `http.server`; only the SolidJS front end needs npm.
 
-## What it does NOT do
+## Scope
 
 - **It is SQLite, not your database.** Postgres-specific DDL, `CONCURRENTLY`, partial
   indexes and vendor types will not run here. What transfers is the method and the

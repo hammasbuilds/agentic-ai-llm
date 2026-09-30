@@ -10,7 +10,7 @@
 
 ---
 
-## The finding
+## Results
 
 **Going from 1.1x to 3.7x compression destroyed 655 of roughly 1,000 distinct messages.**
 
@@ -72,23 +72,6 @@ $ uv run --extra ui panel serve ui/app.py --show
 Highly repetitive, structurally uniform, heavy on numbers and paths — the shape
 template extraction exists for, which is why it compresses so well and loses so much.
 
-## Problems hit while building this
-
-**The first corpus was 201 lines and proved nothing.** A compression table over 201 lines
-is noise. Regenerating it properly — running fifteen real test suites — took the corpus to
-1,005 and made the 0.8-to-0.7 cliff visible. A small sample would have shown a smooth
-curve and no cliff at all.
-
-**A test asserted a merge that cannot happen, and the code was right.** Two lines sharing
-no tokens score 0.0 similarity and stay apart at *any* threshold above zero, however
-loose. The fixture now shares one token, and a second test pins the correct behaviour so
-the first cannot pass vacuously.
-
-**Masking has to come before comparison, not after.** Comparing raw tokens makes
-`took 3ms` and `took 91ms` different events, so nothing ever merges and the extractor is
-useless. Comparing after masking makes them the same event, which they are. The order is
-the entire algorithm.
-
 ## What I wrote vs what I installed
 
 **Installed: nothing.** `dependencies = []`. The extractor is Drain's idea — bucket by
@@ -97,7 +80,7 @@ implemented directly, because the interesting part is the loss accounting bolted
 and `drain3` does not expose that. `panel` is an optional extra used only by the
 dashboard.
 
-## What it does NOT do
+## Scope
 
 - **No parse tree.** Real Drain uses a fixed-depth prefix tree for speed. This compares
   against every candidate in the length bucket, which is fine for thousands of lines and
