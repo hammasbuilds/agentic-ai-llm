@@ -1,11 +1,11 @@
 """revenue-desk's revert detection, measured on real edit history.
 
-Every repository on this machine, full history — currently 36 of them, ~429
+Every repository under REPOS_ROOT, full history — currently 36 of them, ~429
 commits and ~714,000 line edits. A revert here is a line that went A, then B,
 then back to A: one edit undoing another, which is the same event
 `domain.detect_reverts` looks for on a deal record.
 
-This is a live corpus. Other sessions commit to this disk, so the repository
+This is a live corpus. Commits keep landing in those checkouts, so the repository
 count and the raw edit totals move between runs, and the assertions below are
 bands wherever that is true.
 
@@ -22,7 +22,7 @@ import pytest
 
 from revenue.churn import REPOS, Edit, find_reverts, is_authored, survey
 
-pytestmark = pytest.mark.skipif(not REPOS.exists(), reason="no checkouts at D:/github")
+pytestmark = pytest.mark.skipif(not REPOS.exists(), reason="no checkouts under REPOS_ROOT")
 
 
 @pytest.fixture(scope="module")

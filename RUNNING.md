@@ -37,11 +37,11 @@ These print an answer. There is nothing to click.
 
 | Tool | The one command worth running |
 |---|---|
-| `repo-cartographer` | `cartographer compare D:\github` |
+| `repo-cartographer` | `cartographer compare ~/code` |
 | `test-smith` | `testsmith run <repo> --limit 40` |
 | `csv-analyst` | `csv-analyst report <csv> --limit 100000` |
 | `db-surgeon` | `db-surgeon corpus` |
-| `migration-pilot` | `migration-pilot scan D:\github` |
+| `migration-pilot` | `migration-pilot scan ~/code` |
 | `review-bot` | `review-bot scan <path> --show-retracted` |
 | `study-tutor` | `study-tutor compare` |
 | `log-detective` | `log-detective cost data/` |

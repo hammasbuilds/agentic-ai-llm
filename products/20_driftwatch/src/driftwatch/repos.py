@@ -1,8 +1,8 @@
 """Reading real repositories, and the facts a README claim can be checked against.
 
-Points at `D:/github` by default — the 33 checkouts on this machine, with their
-real READMEs, real `pyproject.toml` files and real test suites. Nothing here is
-a fixture.
+Points at the folder named by `REPOS_ROOT` (default `~/code`) — a set of real
+checkouts, with their real READMEs, real `pyproject.toml` files and real test
+suites. Nothing here is a fixture.
 
 A "fact" is something collected by looking, never inferred: the declared
 `requires-python`, the declared dependencies, the number of tests pytest would
@@ -12,6 +12,7 @@ answers it.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import tomllib
@@ -19,7 +20,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-ROOT = Path("D:/github")
+ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
 # A README sentence, roughly. Splitting on markdown structure first keeps a
 # table row or a bullet from being glued onto the paragraph above it.

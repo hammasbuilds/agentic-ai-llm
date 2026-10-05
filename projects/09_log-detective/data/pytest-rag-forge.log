@@ -1,10 +1,10 @@
 
 =================================== ERRORS ====================================
 ___________________ ERROR collecting tests/test_chunker.py ____________________
-ImportError while importing test module 'D:\github\rag-forge\tests\test_chunker.py'.
+ImportError while importing test module 'C:\src\rag-forge\tests\test_chunker.py'.
 Hint: make sure your test modules/packages have valid Python names.
 Traceback:
-C:\Users\dell\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
+C:\Users\me\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
     return _bootstrap._gcd_import(name[level:], package, level)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 tests\test_chunker.py:1: in <module>
@@ -15,10 +15,10 @@ src\ragforge\ingest\chunker.py:12: in <module>
     import tiktoken
 E   ModuleNotFoundError: No module named 'tiktoken'
 __________________ ERROR collecting tests/test_citations.py ___________________
-ImportError while importing test module 'D:\github\rag-forge\tests\test_citations.py'.
+ImportError while importing test module 'C:\src\rag-forge\tests\test_citations.py'.
 Hint: make sure your test modules/packages have valid Python names.
 Traceback:
-C:\Users\dell\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
+C:\Users\me\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
     return _bootstrap._gcd_import(name[level:], package, level)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 tests\test_citations.py:1: in <module>
@@ -31,10 +31,10 @@ src\ragforge\config.py:5: in <module>
     from pydantic_settings import BaseSettings, SettingsConfigDict
 E   ModuleNotFoundError: No module named 'pydantic_settings'
 ____________________ ERROR collecting tests/test_config.py ____________________
-ImportError while importing test module 'D:\github\rag-forge\tests\test_config.py'.
+ImportError while importing test module 'C:\src\rag-forge\tests\test_config.py'.
 Hint: make sure your test modules/packages have valid Python names.
 Traceback:
-C:\Users\dell\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
+C:\Users\me\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
     return _bootstrap._gcd_import(name[level:], package, level)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 tests\test_config.py:1: in <module>
@@ -43,10 +43,10 @@ src\ragforge\config.py:5: in <module>
     from pydantic_settings import BaseSettings, SettingsConfigDict
 E   ModuleNotFoundError: No module named 'pydantic_settings'
 ______________ ERROR collecting tests/test_hybrid_integration.py ______________
-ImportError while importing test module 'D:\github\rag-forge\tests\test_hybrid_integration.py'.
+ImportError while importing test module 'C:\src\rag-forge\tests\test_hybrid_integration.py'.
 Hint: make sure your test modules/packages have valid Python names.
 Traceback:
-C:\Users\dell\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
+C:\Users\me\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none\Lib\importlib\__init__.py:88: in import_module
     return _bootstrap._gcd_import(name[level:], package, level)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 tests\test_hybrid_integration.py:12: in <module>

@@ -3,7 +3,7 @@
 This product's finding is how often one writer's update destroys another's
 recent correction. A CRM with agents writing into it is the setting; the
 mechanism is general, and there is a large, real, dated corpus of exactly that
-mechanism on this machine: the git history of thirty-odd repositories.
+mechanism on any developer's disk: the git history of a folder of repositories.
 
 A revert here is a line that went A, then B, then back to A. That is not churn
 and not a rewrite — it is one edit undoing another, which is precisely the event
@@ -15,6 +15,7 @@ property of how editing actually goes, not of how a fixture was written.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from collections import defaultdict
@@ -22,7 +23,9 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-REPOS = Path("D:/github")
+# The folder whose git checkouts are surveyed. Set REPOS_ROOT to point it
+# elsewhere; the default is ~/code.
+REPOS = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
 # Files a person does not write line by line. A committed dataset or a
 # regenerated result file produces enormous numbers of "edits" that were never

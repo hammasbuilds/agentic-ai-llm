@@ -62,9 +62,9 @@ three visually distinct states for the same reason.
 **Out:**
 
 ```
-$ compliance-auditor audit D:\github
-$ compliance-auditor audit D:\github\rag-forge --one
-$ compliance-auditor audit D:\github --json audit.json --strict   # exit 1 on any failure
+$ compliance-auditor audit ~/code
+$ compliance-auditor audit ~/code/rag-forge --one
+$ compliance-auditor audit ~/code --json audit.json --strict   # exit 1 on any failure
 $ compliance-auditor policy      # print what each control asserts, to argue with
 $ python ui/serve.py             # Lit UI on :8100
 ```
@@ -116,7 +116,7 @@ build step, the `.js` file in `ui/` is the source that runs.
 
 ```bash
 uv run pytest -q                              # 34 tests
-uv run compliance-auditor audit D:\github
+uv run compliance-auditor audit ~/code
 uv run compliance-auditor policy
 uv run python ui/serve.py                     # :8100
 ```

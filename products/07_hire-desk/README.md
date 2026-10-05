@@ -100,7 +100,7 @@ is closed, so a column added next month does not quietly become writable.
 
 ## Real data
 
-`D:\\github\\_research\\extracted.jsonl` for the roles, a public résumé corpus for the candidates, and **name-swapped duplicates** for the fairness audit — the same CV under several names is the only honest way to measure this. ⚠️ This product does not start until a real CV corpus is sourced; inventing CVs breaks the no-fabricated-dataset rule.
+A local file of mined hiring posts (`extracted.jsonl`, not published) for the roles, a public résumé corpus for the candidates, and **name-swapped duplicates** for the fairness audit — the same CV under several names is the only honest way to measure this. ⚠️ This product does not start until a real CV corpus is sourced; inventing CVs breaks the no-fabricated-dataset rule.
 
 ## The deterministic core
 

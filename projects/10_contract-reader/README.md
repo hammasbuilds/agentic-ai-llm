@@ -74,7 +74,7 @@ $ contract-reader read mcp-lab/LICENSE
 ```
 
 ```
-$ contract-reader survey D:\github --project MIT
+$ contract-reader survey ~/code --project MIT
 $ contract-reader obligations          # what it looks for, to argue with
 $ python ui/serve.py                   # http://127.0.0.1:8115
 ```
@@ -129,7 +129,7 @@ it would have added forty megabytes to parse nothing.
 
 ```bash
 uv run pytest -q                                   # 27 tests
-uv run contract-reader survey D:\github
+uv run contract-reader survey ~/code
 uv run contract-reader read <path/to/LICENSE> -v
 uv run python ui/serve.py                          # :8115, nothing to install
 ```

@@ -41,7 +41,7 @@ tested, which is the point: the gap is in what a normal testing habit produces.
 **Out:**
 
 ```
-$ testsmith run D:\github\credit-risk-engine --limit 40
+$ testsmith run ~/code/credit-risk-engine --limit 40
 
   OUTCOMES
     killed      23

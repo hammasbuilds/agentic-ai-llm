@@ -145,7 +145,7 @@ is closed, so a column added next month does not quietly become writable.
 
 ## Real data
 
-`D:\\github\\_research\\extracted.jsonl` — 247 records already mined from 286 hiring-post screenshots. Companies hiring AI engineers *are* the lead list. Plus the SECP public register and OpenCorporates.
+A local file of mined hiring posts (`extracted.jsonl`, not published) — 247 records already mined from 286 hiring-post screenshots. Companies hiring AI engineers *are* the lead list. Plus the SECP public register and OpenCorporates.
 
 ## The deterministic core
 

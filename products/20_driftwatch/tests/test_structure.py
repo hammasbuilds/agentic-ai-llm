@@ -110,7 +110,7 @@ def test_the_one_real_drift_this_ever_caught():
     assert "heading says 10" in found.detail
 
 
-@pytest.mark.skipif(not ROOT.exists(), reason="no checkouts at D:/github")
+@pytest.mark.skipif(not ROOT.exists(), reason="no checkouts under REPOS_ROOT")
 def test_across_the_real_portfolio_the_rate_is_believable():
     # Six headings across 35 repositories state a count, and all six are right
     # now that the one drift has been fixed upstream. The number that matters is

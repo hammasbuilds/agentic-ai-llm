@@ -1,7 +1,7 @@
-"""driftwatch against the 35 real repositories on this machine.
+"""driftwatch against a folder of real repositories (REPOS_ROOT).
 
 Real READMEs, real `pyproject.toml` files, real directory contents. Every figure
-asserted here was produced by running this code over `D:/github`.
+asserted here was produced by running this code over 35 real checkouts.
 
 These assertions are about a working tree that changes, so they are written as
 bands and properties rather than frozen counts wherever a count would rot. The
@@ -13,7 +13,7 @@ import pytest
 from driftwatch.domain import MECHANICAL, Claim, broken, verifiable_share, verify
 from driftwatch.repos import ROOT, facts_for, scan, sentences
 
-pytestmark = pytest.mark.skipif(not ROOT.exists(), reason="no checkouts at D:/github")
+pytestmark = pytest.mark.skipif(not ROOT.exists(), reason="no checkouts under REPOS_ROOT")
 
 
 @pytest.fixture(scope="module")
