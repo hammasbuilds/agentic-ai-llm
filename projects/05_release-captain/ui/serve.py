@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -227,7 +228,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Web view for release-captain")
-    parser.add_argument("folder", nargs="?", default=r"D:\github",
+    default_root = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+    parser.add_argument("folder", nargs="?", default=str(default_root),
                         help="folder containing git checkouts")
     parser.add_argument("--port", type=int, default=8090)
     args = parser.parse_args()

@@ -8,7 +8,7 @@ import { ref, computed } from "vue";
  * action for them.
  */
 
-const path = ref("D:\\github");
+const path = ref("C:\\src");
 const busy = ref(false);
 const error = ref("");
 const result = ref(null);

@@ -52,7 +52,7 @@ def _(mo):
 @app.cell
 def _(Path, mo):
     folder = mo.ui.text(
-        value=r"D:\github\machine-learning\data\raw",
+        value=str(Path.home() / "code" / "machine-learning" / "data" / "raw"),
         label="Folder",
         full_width=True,
     )

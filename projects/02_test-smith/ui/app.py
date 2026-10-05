@@ -10,6 +10,7 @@ lines were executed, is a list you want to click through against the source.
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from nicegui import ui  # noqa: E402
 
 from testsmith.runner import run, source_files  # noqa: E402
 
-DEFAULT_ROOT = Path(r"D:\github")
+DEFAULT_ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
 state: dict = {"report": None, "running": False}
 

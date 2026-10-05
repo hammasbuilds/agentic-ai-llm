@@ -6,6 +6,7 @@ script on this machine; none was estimated.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -25,7 +26,7 @@ REPOS = [
 ]
 
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 40
-ROOT = Path(r"D:\github")
+ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
 print(f"{'repo':26s} {'mut':>4s} {'kill':>4s} {'live':>4s} {'err':>4s} "
       f"{'score':>6s} {'cov-score':>9s} {'live/cov':>8s}")

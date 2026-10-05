@@ -9,7 +9,7 @@ import { useState } from "react";
  * would make the tool look more productive and less trustworthy.
  */
 export default function Index() {
-  const [path, setPath] = useState("D:\\github\\rag-forge");
+  const [path, setPath] = useState("C:\\src\\rag-forge");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

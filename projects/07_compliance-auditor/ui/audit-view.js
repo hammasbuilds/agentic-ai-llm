@@ -62,7 +62,7 @@ class AuditView extends LitElement {
     this.error = "";
     this.busy = false;
     this.expanded = null;
-    this.path = "D:\\github";
+    this.path = "C:\\src";
   }
 
   async run() {

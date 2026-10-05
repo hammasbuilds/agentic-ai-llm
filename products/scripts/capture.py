@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(r"D:\github\agentic-ai-lab\products")
+ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "scripts" / "runs.json"
 
 PRODUCTS = sorted(d for d in ROOT.iterdir() if d.is_dir() and d.name[0].isdigit())

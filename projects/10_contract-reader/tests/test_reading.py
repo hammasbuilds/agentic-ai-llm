@@ -7,6 +7,7 @@ forced, and it has its own section below.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -223,7 +224,7 @@ def test_an_unidentified_licence_is_reported_as_a_conflict():
 # -- against the real corpus ----------------------------------------------
 
 
-CORPUS = Path(r"D:\github")
+CORPUS = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
 
 @pytest.mark.skipif(not CORPUS.exists(), reason="local checkout not present")
