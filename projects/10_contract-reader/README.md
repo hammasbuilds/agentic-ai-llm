@@ -4,8 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-27-success" alt="tests">
-  <img src="https://img.shields.io/badge/real%20licences-75-orange" alt="licences">
+  <img src="https://img.shields.io/badge/real%20licences-94-orange" alt="licences">
 </p>
 
 ---
@@ -35,22 +34,42 @@ span is reported so the reader can disagree:
     python software foundation"
 ```
 
-Across **75 real licence files** in this portfolio - 128 KB of legal text from vendored
-packages, third-party checkouts and the repositories themselves:
+Across **94 real licence files** in this portfolio, read on 2026-10-05:
 
 | family | files |
 |---|---|
-| MIT | 50 |
-| BSD | 13 |
-| Apache-2.0 | 5 |
-| unknown | 4 |
-| MPL-2.0 | 2 |
-| PSF | 1 |
+| MIT | 75 |
+| BSD | 14 |
+| Apache-2.0 | 3 |
+| CC | 1 |
+| unknown | 1 |
 
-**The only genuine copyleft is two MPL-2.0 packages** — `certifi` and `tqdm`, both
-vendored under `gan-diffusion-projects/pylibs/`. MPL-2.0 is file-level copyleft:
-modifications to *those files* must stay MPL, even inside an MIT project. Nothing in the
-tree is GPL.
+**One file in ninety-four is unidentifiable**, and it is honestly so: 51 bytes reading
+`Copyright 2019 Kenneth Reitz. All rights reserved.` with no grant of any kind. A grant
+is what makes a licence, so "obligations unknown" is the right answer for it.
+
+It used to be 26 of 198, and each of those 26 was reported as a conflict. Three causes,
+none of them the conflict rule:
+
+- **Every Creative Commons file read as unknown**, including this author's own
+  `llm-agentic-datasets`. The CC licences open with *"Creative Commons Corporation …
+  **is not a** law firm and **does not** provide legal services"* — and `is not a` and
+  `does not` are context disqualifiers, written to stop the PSF licence being read as
+  GPL because it names the GPL in a compatibility clause. Only the first occurrence of a
+  name was examined, so the disclaimer decided. Every occurrence is now considered.
+- **Documentation pages were read as licences.** Sphinx and MkDocs projects ship
+  `docs/license.rst` saying "see LICENSE in the root"; twelve of those were read, failed
+  to identify, and were each reported as a conflict.
+- **Virtualenvs were surveyed.** The skip list named `.venv` and `.venvs`, so
+  `.venv-check` was walked and the survey filled with third-party packages. A
+  virtualenv is now detected by its `pyvenv.cfg`, which is what makes one.
+
+That is a tool whose first duty is not to cry wolf being wrong about 13% of what it read.
+The three causes are pinned as fixtures in
+[`tests/fixtures/`](tests/fixtures), not against this disk — an earlier version of this
+section described two MPL-2.0 packages under `gan-diffusion-projects/pylibs/`, and that
+tree is no longer on the machine, so the finding could not be checked at all. **Nothing
+in the tree is GPL.**
 
 ## Input / Output
 

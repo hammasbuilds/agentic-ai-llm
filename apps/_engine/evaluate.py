@@ -107,9 +107,14 @@ def fabrication_rate(results: list[dict], listings: dict[str, list[str]]) -> dic
     named = 0
     real = 0
     per_instance = []
+    # An instance whose repo could not be listed is skipped, and saying nothing about
+    # that reports a rate over a denominator nobody can see - while the skipped set is
+    # exactly the repositories that failed to list, which is not a random sample.
+    unlistable = 0
     for r in results:
         listing = set(listings.get(r["repo"], []))
         if not listing:
+            unlistable += 1
             continue
         exists = [p for p in r["ranked"] if p in listing]
         named += len(r["ranked"])
@@ -120,6 +125,8 @@ def fabrication_rate(results: list[dict], listings: dict[str, list[str]]) -> dic
         "paths_that_exist": real,
         "rate_exists": real / named if named else 0.0,
         "mean_per_instance": sum(per_instance) / len(per_instance) if per_instance else 0.0,
+        "instances_scored": len(per_instance),
+        "instances_unlistable": unlistable,
     }
 
 

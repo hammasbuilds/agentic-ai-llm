@@ -126,3 +126,22 @@ def locate(text: str, phrase: str) -> tuple[int, int] | None:
     pattern = re.compile(r"\s+".join(re.escape(w) for w in phrase.split()), re.IGNORECASE)
     match = pattern.search(text)
     return (match.start(), match.end()) if match else None
+
+
+def locate_all(text: str, phrase: str, limit: int = 12):
+    """Every place the phrase appears, tolerant of whitespace differences.
+
+    `locate` returns the first occurrence, and that is wrong for deciding whether a
+    licence *adopts* a name or merely mentions it. The Creative Commons licences open
+    with "Creative Commons Corporation ... is not a law firm and does not provide legal
+    services" - so the first occurrence of "creative commons" sits in a sentence
+    carrying two of the context disqualifiers, and reading only that one made every
+    CC-licensed file unidentifiable.
+    """
+    if not phrase:
+        return
+    pattern = re.compile(r"\s+".join(re.escape(w) for w in phrase.split()), re.IGNORECASE)
+    for found, match in enumerate(pattern.finditer(text)):
+        if found >= limit:
+            return
+        yield match.start(), match.end()

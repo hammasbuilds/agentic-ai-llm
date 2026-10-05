@@ -22,6 +22,24 @@ LICENCE_NAMES = {
 SKIP = {".venv", ".venvs", "node_modules", "__pycache__", ".git", ".tox"}
 
 
+# A documentation page that POINTS AT a licence is not a licence. Sphinx and MkDocs
+# projects ship `docs/license.rst` saying "see LICENSE in the project root", and reading
+# those as licence files produced twelve unidentifiable "licences" and twelve conflict
+# reports - a checker whose first duty is not to cry wolf.
+DOC_DIRS = {"docs", "doc", "documentation", "source", "artwork"}
+
+
+def _is_virtualenv(path: Path) -> bool:
+    """A virtualenv, by its marker file rather than its name.
+
+    SKIP listed `.venv` and `.venvs`, so `.venv-check` and `.venv-check2` were walked
+    and the survey filled with third-party packages: 198 licence files where the
+    README's measurement found 75. A name list cannot keep up with what people call
+    their environments; `pyvenv.cfg` is what makes one.
+    """
+    return (path / "pyvenv.cfg").exists()
+
+
 def _find(root: Path) -> list[Path]:
     if root.is_file():
         return [root]
@@ -30,6 +48,10 @@ def _find(root: Path) -> list[Path]:
         if p.name.upper() not in LICENCE_NAMES:
             continue
         if any(x in p.parts for x in SKIP):
+            continue
+        if any(part.lower() in DOC_DIRS for part in p.parent.parts):
+            continue
+        if any(_is_virtualenv(parent) for parent in p.parents):
             continue
         out.append(p)
     return sorted(out)

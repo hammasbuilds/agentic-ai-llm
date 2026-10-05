@@ -244,3 +244,84 @@ def test_the_python_licence_in_the_corpus_is_not_read_as_gpl():
     reading = read(str(path), path.read_text(encoding="utf-8", errors="replace"))
     assert reading.family == "PSF"
     assert not reading.copyleft
+
+
+# --- found by an independent review, which re-ran the survey -------------------------
+#
+# The README's headline no longer reproduced: 26 of 198 licence files came back
+# unidentifiable and each one was reported as a conflict. Three separate causes, and
+# none of them was the conflict rule - reporting an unidentifiable licence as a problem
+# is the documented, conservative choice and it stays.
+
+
+def fixture(name: str) -> str:
+    return (Path(__file__).parent / "fixtures" / name).read_text(encoding="utf-8")
+
+
+def test_a_creative_commons_licence_is_identified():
+    """Every CC file in the portfolio read as unknown, including the author's own.
+
+    The CC licences open with "Creative Commons Corporation ... is not a law firm and
+    does not provide legal services", so the FIRST occurrence of the name sits in a
+    sentence carrying two context disqualifiers - guards written to stop the PSF
+    licence being read as GPL because it mentions the GPL in a compatibility clause.
+    Only that first occurrence was examined. Every occurrence is now considered, and a
+    name used in the licence's own grant counts even when it also appears in a
+    disclaimer.
+    """
+    reading = read("LICENSE", fixture("cc_by_4.txt"))
+    assert reading.family == "CC"
+    assert reading.family_citation is not None
+    # And the sentence it grounded the claim in is not the disclaimer.
+    assert "is not a law firm" not in reading.family_citation.sentence
+
+
+def test_the_disqualifiers_still_stop_a_licence_being_misread():
+    """The guard the fix had to preserve: a mention is not an adoption."""
+    for sentence in (
+        "This licence is compatible with the Apache License.",
+        "This is not a Mozilla Public License.",
+        "Unlike the Apache License, no patent grant is made.",
+    ):
+        assert read("LICENSE", sentence).family == "unknown"
+
+
+def test_a_bare_copyright_notice_is_honestly_unidentifiable():
+    """A grant is what makes a licence. This is the one file in the portfolio that
+    still reads as unknown, and unknown is the right answer for it."""
+    reading = read("LICENSE", fixture("bare_copyright.txt"))
+    assert reading.family == "unknown"
+    assert conflicts("MIT", reading) is not None
+
+
+def test_a_documentation_page_is_not_a_licence_file(tmp_path: Path):
+    """Sphinx and MkDocs ship docs/license.rst saying "see LICENSE in the root".
+
+    Twelve of those were read as licence files, failed to identify, and were each
+    reported as a conflict - in a tool whose stated first duty is not to cry wolf.
+    """
+    from contractreader.cli import _find
+
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "license.rst").write_text(fixture("docs_license_page.rst"), "utf-8")
+    (tmp_path / "LICENSE").write_text("Permission is hereby granted, free of charge", "utf-8")
+    found = [p.name for p in _find(tmp_path)]
+    assert found == ["LICENSE"]
+
+
+def test_a_virtualenv_is_skipped_by_its_marker_not_its_name(tmp_path: Path):
+    """SKIP listed .venv and .venvs, so .venv-check was surveyed.
+
+    The portfolio survey filled with third-party packages: 198 licence files where the
+    README's measurement found 75. A name list cannot keep up with what people call
+    their environments.
+    """
+    from contractreader.cli import _find
+
+    env = tmp_path / ".venv-check" / "Lib" / "site-packages" / "thing"
+    env.mkdir(parents=True)
+    (tmp_path / ".venv-check" / "pyvenv.cfg").write_text("home = /usr\n", "utf-8")
+    (env / "LICENSE").write_text("Permission is hereby granted, free of charge", "utf-8")
+    (tmp_path / "LICENSE").write_text("Permission is hereby granted, free of charge", "utf-8")
+    found = _find(tmp_path)
+    assert [p.parent.name for p in found] == [tmp_path.name]

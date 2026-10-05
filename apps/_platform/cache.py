@@ -42,10 +42,24 @@ GEN_TTL = 60 * 60 * 24 * 30
 _client: aioredis.Redis | None = None
 
 
+# How long to wait for a cache that may not be there. With no timeout, every call to
+# an absent Redis costs the operating system's full TCP connect timeout - 4 seconds on
+# this machine - and a page that reads the cache three times took 12.5 of them to
+# render. The cache is an optimisation; waiting four seconds to find out it is missing
+# is slower than not having one.
+CONNECT_TIMEOUT = float(os.environ.get("REDIS_CONNECT_TIMEOUT", "0.5"))
+OP_TIMEOUT = float(os.environ.get("REDIS_OP_TIMEOUT", "2.0"))
+
+
 def client() -> aioredis.Redis:
     global _client
     if _client is None:
-        _client = aioredis.from_url(REDIS_URL, decode_responses=True)
+        _client = aioredis.from_url(
+            REDIS_URL,
+            decode_responses=True,
+            socket_connect_timeout=CONNECT_TIMEOUT,
+            socket_timeout=OP_TIMEOUT,
+        )
     return _client
 
 

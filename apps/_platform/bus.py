@@ -23,6 +23,8 @@ than pretending the bus is there.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import os
 import time
@@ -41,15 +43,25 @@ TOPIC_COMPLETED = "jobs.completed"
 
 _producer: AIOKafkaProducer | None = None
 _available: bool | None = None
+# When the last failed attempt was, so an unreachable bus is not retried on every
+# request and is not written off for the life of the process either. `docker compose up`
+# after starting an app is the normal sequence, and before this the app stayed degraded
+# until it was restarted.
+_last_attempt: float = 0.0
+RETRY_AFTER = float(os.environ.get("BUS_RETRY_AFTER", "30"))
+# A bounded first attempt. An absent broker costs the operating system's full TCP
+# connect timeout - about four seconds here - and that is paid by whoever opens the page.
+START_TIMEOUT = float(os.environ.get("BUS_START_TIMEOUT", "1.5"))
 
 
 async def producer() -> AIOKafkaProducer | None:
     """The shared producer, or None if the bus is not reachable."""
-    global _producer, _available
+    global _producer, _available, _last_attempt
     if _producer is not None:
         return _producer
-    if _available is False:
+    if _available is False and (time.monotonic() - _last_attempt) < RETRY_AFTER:
         return None
+    _last_attempt = time.monotonic()
     try:
         p = AIOKafkaProducer(
             bootstrap_servers=BOOTSTRAP,
@@ -60,10 +72,17 @@ async def producer() -> AIOKafkaProducer | None:
             acks="all",
             request_timeout_ms=10_000,
         )
-        await p.start()
+        await asyncio.wait_for(p.start(), timeout=START_TIMEOUT)
         _producer, _available = p, True
         return p
-    except (KafkaError, OSError, AssertionError):
+    except (KafkaError, OSError, AssertionError, TimeoutError):
+        # Close the half-started client. aiokafka allocates its sender and connection
+        # objects in the constructor, so a failed start leaves them for the garbage
+        # collector to complain about: booting any app with no broker printed
+        # "Unclosed AIOKafkaProducer" on every request, which is both noise in the
+        # window someone is watching and a real socket left to time out.
+        with contextlib.suppress(Exception):
+            await p.stop()
         _available = False
         return None
 
@@ -155,6 +174,8 @@ async def replay_completed(app: str | None = None, limit: int = 200) -> list[dic
     try:
         await c.start()
     except (KafkaError, OSError, AssertionError):
+        with contextlib.suppress(Exception):
+            await c.stop()  # same half-started client as the producer above
         return out
     try:
         while len(out) < limit:

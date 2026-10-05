@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .segment import Clause, locate, normalise, segment
+from .segment import Clause, locate, locate_all, normalise, segment
 
 # -- obligation patterns ---------------------------------------------------
 
@@ -240,17 +240,24 @@ def read(path: str, raw: str) -> Reading:
     for name, phrases in FAMILIES:
         matched = False
         for phrase in phrases:
-            span = locate(lowered, phrase)
+            # Every occurrence, not the first. A licence that names itself in a
+            # disclaiming sentence and again in its own grant was read as
+            # unidentifiable because only the disclaimer was examined - which is how
+            # every Creative Commons file in the portfolio came back unknown, including
+            # one of this author's own repositories.
+            span = None
+            sentence = ""
+            for candidate in locate_all(lowered, phrase):
+                around = _sentence_around(text, *candidate)
+                disqualifier = _disqualified(around)
+                if disqualifier:
+                    rejected.append(
+                        (name, f"'{phrase}' appears inside '{disqualifier}': {around[:110]}")
+                    )
+                    continue
+                span, sentence = candidate, around
+                break
             if span is None:
-                continue
-            sentence = _sentence_around(text, *span)
-            disqualifier = _disqualified(sentence)
-            if disqualifier:
-                # The real case: the PSF licence names the GPL in a
-                # compatibility clause and a keyword match calls it GPL.
-                rejected.append(
-                    (name, f"'{phrase}' appears inside '{disqualifier}': {sentence[:110]}")
-                )
                 continue
             family = name
             family_citation = Citation(
