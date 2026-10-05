@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 11, plus the four queued `incident-copilot` upgrades. Built on the `incident-copilot` core; distinct from it because that is a library and a CLI and this is the product.
-
 ## Results
 
 **Measured on 32,000 real production log lines** — all sixteen of Loghub's published
@@ -107,7 +105,7 @@ is closed, so a column added next month does not quietly become writable.
 
 ## Real data
 
-**Loghub** — HDFS, BGL and Thunderbird, real public log datasets with labelled anomalies. `log-detective` already ran on 1,005 real lines captured on this machine; this is the scale-up, and it resolves the 'needs real alerts' blocker that held this project up.
+**Loghub** — HDFS, BGL and Thunderbird, real public log datasets with labelled anomalies. `log-detective` already ran on 1,005 real captured log lines; this is the scale-up, and it resolves the 'needs real alerts' blocker that held this project up.
 
 ## The deterministic core
 

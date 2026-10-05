@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 18.
-
 ## Results
 
 **Redacting a name does not redact a person.**
@@ -52,8 +50,8 @@ measurement.
 
 ### Why conversation rather than CVs
 
-No CV corpus exists on this machine, and `pending works` already recorded that inventing
-one breaks the no-fabricated-dataset rule. Real conversation has the property that matters
+No real CV corpus is available, and inventing one would break the no-fabricated-dataset
+rule. Real conversation has the property that matters
 — names used naturally, including the short forms nobody thinks to redact. **The
 identified-versus-redacted score delta is therefore still unmeasured**, and is not claimed.
 

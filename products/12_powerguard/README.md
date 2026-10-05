@@ -8,7 +8,7 @@ serves the shared operator console at `/`.
 
 ## Results
 
-Measured against this machine's real process table, not a fixture.
+Measured against a real Windows workstation's process table, not a fixture.
 
 ### 1 · On a shared machine, the custodian protects nothing — and that is correct
 
@@ -28,7 +28,7 @@ That is the whole product. A custodian that signals a PID it did not start is wo
 custodian.
 
 **But "3 of 3" is a snapshot, and a snapshot is not a guarantee.** The table above describes
-this machine at one moment. The guarantee is asserted separately over **4,000 generated
+one machine at one moment. The guarantee is asserted separately over **4,000 generated
 machine states** — both power states, the whole battery range, every mix of owned and
 unowned work — and in none of them is an action ever aimed at a pid this custodian does not
 own.
@@ -53,7 +53,7 @@ hibernate system — battery 5%, 3 min left; SUSPENDS 1 job(s) belonging to
 ```
 
 A live test could never have found this: it needs a flat battery *and* another session's
-job, and this machine has not been on battery while that was true.
+job, and the test machine has not been on battery while that was true.
 
 ### 2 · A classifier that reads an install path is reading noise
 

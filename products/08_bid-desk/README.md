@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 20 proposal-forge and 23 market-desk; 25 web-operator becomes the crawler.
-
 ## Results
 
 Public tender portals do not publish machine-readable requirement labels, so the mandatory

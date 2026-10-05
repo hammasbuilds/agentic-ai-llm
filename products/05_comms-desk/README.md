@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 03 inbox-pilot and 04 meeting-scribe. The merge is the point: a thread and a meeting are two sources of one object.
-
 ## Results
 
 **Measured on the whole AMI Meeting Corpus** — all 139 real recorded meetings, 104,923

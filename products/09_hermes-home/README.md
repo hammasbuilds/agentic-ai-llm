@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 01. The flagship, and the repo where `../platform` actually lives.
-
 ## Results
 
 **Measured on LoCoMo** — ten real long conversations, a median of **29 sessions and 646

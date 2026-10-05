@@ -16,7 +16,7 @@ of one thing are, and **output from a real adapter**.
 hour, written up separately by each person who was in the room, with no instruction to
 differ. 300 summaries, 80 meetings, 397 same-meeting pairs.
 
-**The adapter.** 12 real source texts through `qwen2.5:14b-instruct` on this machine, asked
+**The adapter.** 12 real source texts through a local `qwen2.5:14b-instruct`, asked
 for a LinkedIn post, an Instagram caption, an X post and a portfolio note: 48 generations,
 cached in `data/adapter_runs.json` by `scripts/run_adapter.py`.
 

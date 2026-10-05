@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 24 urdu-desk, which becomes the name-matching engine rather than a standalone project.
-
 ## Results
 
 **Measured on OFAC's published sanctions list** — 19,393 entities, 7,535 individuals, and

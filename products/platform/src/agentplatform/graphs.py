@@ -4,8 +4,8 @@ A graph is declared as data. It runs today on the executor below, with nothing
 installed, and :func:`to_langgraph` compiles the same declaration once langgraph
 is present. Products describe their graph once either way.
 
-The shapes, and the measured findings that constrain each, are in
-``../../PRODUCT-PLAN.md``. Two of them are enforced here rather than suggested:
+Two of the measured findings that constrain these shapes are enforced here rather than
+suggested:
 
 - a fan-out always hands the next node the **branch status list**, because a
   silently failed branch was disclosed 0% of the time otherwise;

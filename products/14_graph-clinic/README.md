@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** the priority-68 Medical Graph RAG item from the SWE queue. Brings Neo4j, a database nothing else in the portfolio uses.
-
 ## Results
 
 **Measured on all 7,405 HotpotQA validation questions**, read from the local HuggingFace

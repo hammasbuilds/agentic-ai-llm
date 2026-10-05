@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** the priority-80 item from the SWE queue, where it is described as the strongest unbuilt idea.
-
 ## Results
 
 **Measured by running N workers against the real Redis**, 40 entities, three repeats per

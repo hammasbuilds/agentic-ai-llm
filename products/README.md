@@ -60,7 +60,7 @@ figure below was typed by hand; each is asserted by a test that runs the code ov
 | [09](09_hermes-home) | [**hermes-home**](09_hermes-home) | LoCoMo, 1,982 questions | Median answer lives **14 sessions back**; an 8-session window answers **28%** |
 | [10](10_kyc-floor) | [**kyc-floor**](10_kyc-floor) | OFAC 8,650 + UN 2,163 labelled aliases | Skeletons buy **+19.8 points for zero precision cost** — and **+18.6 on a second list** |
 | [11](11_watchtower) | [**watchtower**](11_watchtower) | 30,098 OSV PyPI advisories | "Below the highest fix" is wrong **15.4%** of the time — and **cannot fire at all** on 39% of them |
-| [12](12_powerguard) | [**powerguard**](12_powerguard) | this machine + 4,000 generated states | **0** actions ever aimed at another session's pid — except hibernate, which reaches everything |
+| [12](12_powerguard) | [**powerguard**](12_powerguard) | a real process table + 4,000 generated states | **0** actions ever aimed at another session's pid — except hibernate, which reaches everything |
 | [13](13_swarm-lab) | [**swarm-lab**](13_swarm-lab) | N workers on real Redis | Uncoordinated waste is exactly **1 - 1/N**; 95% at N=21 |
 | [14](14_graph-clinic) | [**graph-clinic**](14_graph-clinic) | all 7,405 HotpotQA questions | Graph wins **4.5x** on bridge questions and finds **1 in 1,000** comparison ones |
 | [15](15_claims-floor) | [**claims-floor**](15_claims-floor) | 6,000 eCFR versions, 6 regulators | Returning the current text is wrong **49%** of the time, by a median of **2.5 years** |
@@ -105,7 +105,7 @@ is not.
 
 ### Six found real bugs by being run
 
-- **powerguard** classified 14 jobs on this machine; eleven were the interpreter's install
+- **powerguard** classified 14 jobs on a real workstation; eleven were the interpreter's install
   path matching `\buv\b`. It also produced `checkpoint python.exe` as an instruction, with
   two different `python.exe` processes running — so `Action` now carries a pid and refuses
   to exist without one.
@@ -121,7 +121,7 @@ is not.
   rather than vulnerabilities.
 - **powerguard** guarantees it never signals a process it does not own, and then hibernates
   the whole machine, which reaches every process on it. Found by generating 4,000 machine
-  states — it needs a flat battery *and* another session's job at once, which this machine
+  states — it needs a flat battery *and* another session's job at once, which the test machine
   has never been in while anyone looked.
 - **revenue-desk** counted committed datasets and regenerated `results.json` files as human
   edits, and read a line moved within a single commit as a revert. Together those made its
@@ -231,7 +231,7 @@ Two bugs that only a real broker could have found, both now fixed and both with 
 - **The polls that establish assignment also fetch records.** Discarding them loses the
   first batch entirely — assignment succeeds, messages gone. `KafkaBus` buffers them.
 
-## Measured on this machine
+## Measured on a local GPU
 
 2026-09-20, Quadro RTX 5000 16 GB, `qwen2.5:14b-instruct` at Q4:
 

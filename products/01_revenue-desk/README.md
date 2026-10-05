@@ -6,19 +6,17 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** `BUILD-PLAN.md` 17 lead-scout, and 25 web-operator as a tool.
-
 ## Results
 
 This product exists to measure how often one writer's update destroys another's recent
-correction. There is no CRM log on this machine to measure that on — so rather than invent
+correction. There is no real CRM log available to measure that on — so rather than invent
 one, the same *mechanism* is measured on the largest real corpus of dated edits available:
 **the git history of the repositories on this disk.**
 
 A revert is a line that went A, then B, then back to A. Not a rewrite, not churn — one edit
 undoing another, which is exactly what `detect_reverts` looks for on a deal record.
 
-**Measured over every repository on this machine, full history** — 36 checkouts, 429
+**Measured over every repository in a real folder of checkouts, full history** — 36 checkouts, 429
 commits, 714,164 line edits. This is a live disk: the totals move as other work lands on it,
 which turns out to be the point.
 
@@ -74,7 +72,7 @@ import — happens weekly. There is a test pinning both halves of this.
 ### What is not claimed
 
 **The agent-versus-human revert rate in a CRM is not measured here**, because no such log
-exists on this machine. What is established is the floor, the detector, and the fact that
+was available. What is established is the floor, the detector, and the fact that
 the detector finds real reverts in real history rather than only in fixtures. The product's
 provenance mechanism — field-level ownership, an agent allowed to propose but not overwrite
 a human-owned field — is built because you cannot reach that floor without controls, not

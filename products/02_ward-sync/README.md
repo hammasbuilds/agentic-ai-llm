@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** the queued `clinical-triage-crew`, and `BUILD-PLAN.md` 02 voice-desk as the phone intake channel.
-
 ## Results
 
 **Measured on Synthea's published patient sample** — 3,850 medication records across 105

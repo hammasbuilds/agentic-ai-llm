@@ -6,8 +6,6 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** the 'never let a model do arithmetic on money' lever from `BUILD-PLAN.md` 12 cloud-janitor.
-
 ## Results
 
 **Measured on 54,716 real invoices** from UCI's Online Retail II, reduced once to invoice

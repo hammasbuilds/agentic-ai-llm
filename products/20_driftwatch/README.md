@@ -6,11 +6,9 @@
 it; the graph pauses for a person; approving resumes it without regenerating anything. It
 serves the shared operator console at `/`.
 
-**Absorbs:** the priority-70 code–doc staleness item from the SWE queue. Distinct from the shipped `docstring-drift`, which measures the phenomenon; this one repairs it continuously.
-
 ## Results
 
-**Measured over the 35 real repositories on this machine** — their real READMEs, real
+**Measured over 35 real repositories** — their real READMEs, real
 `pyproject.toml` files and real directory contents.
 
 | | |
@@ -122,7 +120,7 @@ is closed, so a column added next month does not quietly become writable.
 
 ## Real data
 
-The 35 repositories already on this machine and their real READMEs. `compliance-auditor` has already run over them and produced the figure this product starts from.
+35 real repositories and their real READMEs. `compliance-auditor` has already run over them and produced the figure this product starts from.
 
 ## The deterministic core
 

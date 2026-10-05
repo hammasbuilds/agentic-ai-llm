@@ -89,7 +89,7 @@ starts calling a real model.
 
 ## Input / Output
 
-Measured on this machine, 2026-09-20, Quadro RTX 5000 16 GB, `qwen2.5:14b-instruct` at Q4
+Measured on a local GPU, 2026-09-20, Quadro RTX 5000 16 GB, `qwen2.5:14b-instruct` at Q4
 via ollama:
 
 | | |
