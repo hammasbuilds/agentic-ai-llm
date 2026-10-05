@@ -283,18 +283,21 @@ def test_the_readme_table_is_what_the_fixture_says(frozen):
     printed the rate it was labelled with. A number in a README is a claim, and this is
     the fourth time one drifted from the code; the only fix that holds is to compute it.
     """
-    import re
-
     readme = (Path(__file__).parent.parent / "README.md").read_text(encoding="utf-8")
     row = {}
     for line in readme.splitlines():
         cells = [c.strip().strip("*") for c in line.strip().strip("|").split("|")]
-        if len(cells) == 4 and cells[0] in ("Line edits counted", "Reverts found", "Revert rate"):
+        wanted = ("Line edits counted", "Reverts found", "Revert rate")
+        if len(cells) == 4 and cells[0] in wanted:
             row[cells[0]] = cells[1:]
     assert set(row) == {"Line edits counted", "Reverts found", "Revert rate"}, row
 
     total = lambda key: sum(r[key] for r in frozen)  # noqa: E731
-    columns = [("edits", "reverts"), ("authored_edits", "authored_reverts"), ("code_edits", "code_reverts")]
+    columns = [
+        ("edits", "reverts"),
+        ("authored_edits", "authored_reverts"),
+        ("code_edits", "code_reverts"),
+    ]
     for n, (edits, reverts) in enumerate(columns):
         assert row["Line edits counted"][n] == f"{total(edits):,}"
         assert row["Reverts found"][n] == f"{total(reverts):,}"
