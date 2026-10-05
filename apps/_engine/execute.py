@@ -18,6 +18,7 @@ something. A candidate caught by crashing would have survived behind a guard cla
 from __future__ import annotations
 
 import re
+import secrets
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,20 @@ TIMEOUT = 10.0
 
 # Solution first, then setup, then tests. Setup sometimes instantiates classes the
 # solution defines, so running it first raises NameError on perfectly good code.
+#
+# The success marker is a fresh random token per run, and the pass condition is that it
+# is the LAST line of stdout. Both halves are necessary, and the fixed marker this
+# replaced was a false-accept channel in the harness itself:
+#
+#     candidate: print("__OK__")          tests: assert add(2, 3) == 5
+#     -> the assert raises NameError, exit code 1, and the run scored `pass`
+#        because "__OK__" was already in stdout.
+#
+# A candidate returning 0 for every input scored `pass` the same way. That is exactly
+# the failure App 02 exists to measure, sitting in the thing doing the measuring, and
+# every number any app here reports depends on this function being right. A nonce
+# cannot be printed by code that has never seen it, and requiring it last means output
+# after the tests cannot stand in for the tests having run.
 _RUNNER = """\
 import sys
 {code}
@@ -36,7 +51,7 @@ import sys
 {setup}
 
 {tests}
-print("__OK__")
+print({marker!r})
 """
 
 _FENCE = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
@@ -68,7 +83,8 @@ def extract_code(raw: str) -> str:
 def run(code: str, tests, setup: str = "", timeout: float = TIMEOUT) -> Outcome:
     if isinstance(tests, str):
         tests = [tests]
-    src = _RUNNER.format(code=code, setup=setup, tests="\n".join(tests))
+    marker = f"__OK__{secrets.token_hex(8)}__"
+    src = _RUNNER.format(code=code, setup=setup, tests="\n".join(tests), marker=marker)
     with tempfile.TemporaryDirectory() as tmp:
         f = Path(tmp) / "candidate.py"
         # newline="" disables Windows LF->CRLF translation. Source that already contains
@@ -91,7 +107,10 @@ def run(code: str, tests, setup: str = "", timeout: float = TIMEOUT) -> Outcome:
         except OSError as exc:
             return Outcome("error", f"spawn failed: {exc}")
 
-    if "__OK__" in (r.stdout or ""):
+    # Last line, not anywhere: anything the candidate printed after the tests would
+    # otherwise stand in for the tests having run.
+    lines = [line for line in (r.stdout or "").splitlines() if line.strip()]
+    if lines and lines[-1].strip() == marker:
         return Outcome("pass")
     err = (r.stderr or "").strip()
     last = err.rsplit("\n", 1)[-1] if err else ""
