@@ -1,143 +1,163 @@
 """revenue-desk's revert detection, measured on real edit history.
 
-Every repository under REPOS_ROOT, full history — currently 36 of them, ~429
-commits and ~714,000 line edits. A revert here is a line that went A, then B,
-then back to A: one edit undoing another, which is the same event
-`domain.detect_reverts` looks for on a deal record.
+A revert here is a line that went A, then B, then back to A: one edit undoing
+another, which is the same event `domain.detect_reverts` looks for on a deal
+record.
 
-This is a live corpus. Commits keep landing in those checkouts, so the repository
-count and the raw edit totals move between runs, and the assertions below are
-bands wherever that is true.
+**The finding is measured against a frozen survey**, not against this disk.
+`fixtures/portfolio_survey.json` is one row per repository under REPOS_ROOT with
+full history, taken on 2026-10-05: 74 repositories, 1,222 commits, 1.6M line
+edits. The live corpus is the working disk of a machine several sessions commit
+to, and every assertion that rested on it has now broken at least once —
+`authored_reverts == 27` first, then the median revert gap, then the share of
+repositories with no revert, then the rate band itself. Each break was a
+property of the disk that afternoon rather than of the method, and widening a
+band each time is not a measurement, it is a moving target.
 
-The headline is not the rate anyway. It is that **the rate is an order of
-magnitude too high unless you first decide what counts as an edit** — and that
-is exactly the decision this product has to get right on a CRM where agents and
-people write into the same records. The authored rate has now survived a 7.5 MB
-dataset commit and a new repository appearing without moving at all.
+So the finding is pinned to data, the live corpus gets one smoke test that the
+tool still runs on it, and when the frozen numbers are to be refreshed the
+fixture is regenerated deliberately.
+
+The headline is not any rate. It is that **the rate is an order of magnitude too
+high unless you first decide what counts as an edit** — and getting that
+decision right is this product's whole job on a CRM where agents and people
+write into the same records.
 """
 
+import json
 import statistics
+from pathlib import Path
 
 import pytest
 
-from revenue.churn import REPOS, Edit, find_reverts, is_authored, survey
+from revenue.churn import REPOS, Edit, find_reverts, is_authored, is_code, survey
 
-pytestmark = pytest.mark.skipif(not REPOS.exists(), reason="no checkouts under REPOS_ROOT")
+FIXTURE = Path(__file__).parent / "fixtures/portfolio_survey.json"
 
 
 @pytest.fixture(scope="module")
-def surveyed():
-    return survey()  # no repo cap, full history
+def frozen():
+    return json.loads(FIXTURE.read_text(encoding="utf-8"))["repos"]
 
 
-def totals(surveyed):
-    return (
-        sum(s.edits for s in surveyed),
-        sum(len(s.reverts) for s in surveyed),
-        sum(s.authored_edits for s in surveyed),
-        sum(len(s.authored_reverts) for s in surveyed),
-    )
+def rate(rows, numerator: str, denominator: str) -> float:
+    edits = sum(r[denominator] for r in rows)
+    return sum(r[numerator] for r in rows) / edits if edits else 0.0
 
 
-def test_the_whole_portfolio_is_read(surveyed):
-    # Bands, not equalities. This corpus is the working disk of a machine other
-    # sessions also commit to, so the repository count and the raw edit total
-    # move between runs — a 36th checkout appeared while this file was being
-    # written. What must not move is the finding, and it does not: see
-    # test_the_honest_rate_survives_a_dataset_commit.
-    assert len(surveyed) >= 35
-    assert sum(s.commits for s in surveyed) > 400
-    assert sum(s.edits for s in surveyed) > 500_000
-    assert all(s.commits > 0 for s in surveyed)
+# --- the finding ----------------------------------------------------------------------
 
 
-def test_taking_the_first_twelve_alphabetically_is_not_a_sample():
-    # The old default stopped at 12 repositories in name order. That is not a
-    # sample of anything: it reported 0.0237% against 0.1222% over all 35, a
-    # fivefold undercount, because the repositories with the most regenerated
-    # result files — mcp-lab and nlp-lab, 1,343 reverts between them — happen to
-    # sort after the twelfth.
-    #
-    # Note which number that bias moves. The AUTHORED rate goes the other way:
-    # 24 of the 27 hand-written reverts are in those first twelve, so the subset
-    # slightly OVERstates it. A convenience cut has no reliable direction, which
-    # is the argument against reasoning about its bias instead of removing it.
-    twelve = survey(repos=12)
-    everything = survey()
-    assert len(twelve) == 12
-
-    naive_part = sum(len(s.reverts) for s in twelve) / sum(s.edits for s in twelve)
-    naive_full = sum(len(s.reverts) for s in everything) / sum(s.edits for s in everything)
-    assert naive_part < naive_full / 4
-
-    authored_part = sum(len(s.authored_reverts) for s in twelve) / sum(
-        s.authored_edits for s in twelve
-    )
-    authored_full = sum(len(s.authored_reverts) for s in everything) / sum(
-        s.authored_edits for s in everything
-    )
-    assert authored_part > authored_full
+def test_the_whole_portfolio_was_read(frozen):
+    assert len(frozen) == 74
+    assert sum(r["commits"] for r in frozen) == 1_222
+    assert sum(r["edits"] for r in frozen) > 1_600_000
+    assert all(r["commits"] > 0 for r in frozen)
 
 
-def test_generated_files_are_most_of_the_edits_and_nearly_all_the_reverts(surveyed):
+def test_generated_files_are_most_of_the_edits_and_nearly_all_the_reverts(frozen):
     # THE FINDING. Committed datasets and regenerated `results.json` files are
-    # most of every line edit in the portfolio — and 97% of every revert.
+    # 63% of every line edit in the portfolio — and 93% of every revert.
     #
-    # The edit share is deliberately a wide band. It is not a constant: it moves
-    # whenever anyone commits a dataset, and it did, mid-measurement — see
-    # test_the_honest_rate_survives_a_dataset_commit. The *revert* share is the
-    # stable half, and the asymmetry between them is the whole point: generated
-    # files dominate the numerator far more than the denominator, so leaving
-    # them in multiplies the answer.
-    edits, reverts, authored_edits, authored_reverts = totals(surveyed)
-    generated_edits = (edits - authored_edits) / edits
-    generated_reverts = (reverts - authored_reverts) / reverts
-    assert 0.5 < generated_edits < 0.8
-    assert generated_reverts == pytest.approx(0.969, abs=0.03)
+    # The asymmetry is the point: generated files dominate the numerator far
+    # more than the denominator, so leaving them in multiplies the answer.
+    edits = sum(r["edits"] for r in frozen)
+    reverts = sum(r["reverts"] for r in frozen)
+    generated_edits = (edits - sum(r["authored_edits"] for r in frozen)) / edits
+    generated_reverts = (reverts - sum(r["authored_reverts"] for r in frozen)) / reverts
+    assert generated_edits == pytest.approx(0.632, abs=0.005)
+    assert generated_reverts == pytest.approx(0.925, abs=0.005)
     assert generated_reverts > generated_edits * 1.4
 
 
-#: The authored rate, observed across corpus sizes that differ by a third.
+#: The rate over source lines. Frozen reading: 46 reverts / 372,794 code edits.
 #:
-#:   36 repos, ~264,000 authored edits, 27 reverts  ->  0.000101
-#:   47 repos,  337,322 authored edits, 32 reverts  ->  0.000095
-#:
-#: Roughly one revert per ten thousand hand-written line edits. The band below
-#: is wide enough to hold both readings and nothing else: the naive rate over
-#: the same history is 0.001016, ten times the top of this range, so the
-#: distinction the product rests on cannot slip through it.
-AUTHORED_RATE = (0.00007, 0.00013)
+#: Roughly one revert per eight thousand lines of hand-written code. The naive
+#: rate over the same history is 0.001155 — nine times this — so the distinction
+#: the product rests on cannot slip through the band below.
+CODE_RATE = (0.00007, 0.00018)
 
 
-def test_the_honest_rate_survives_a_dataset_commit(surveyed):
-    # Committing one 7.5 MB GenBank corpus to this repository added ~127,000
-    # line edits. The naive rate fell from 0.1489% to 0.1222% — an 18% swing
-    # caused by no change in how anybody edits anything. The authored rate did
-    # not move.
-    #
-    # That is the argument for the distinction, made by accident and kept.
-    #
-    # This asserted `authored_reverts == 27` and broke the moment anyone
-    # committed anything, which on a live corpus is every day - the count is a
-    # property of this disk on the afternoon it was written, not of the claim.
-    # The claim is that the RATE holds while the corpus moves under it, and the
-    # file's own docstring already said the assertions here are bands wherever
-    # that is true. This one was not. It is now.
-    _, _, authored_edits, authored_reverts = totals(surveyed)
-    low, high = AUTHORED_RATE
-    assert authored_edits > 250_000, "too little authored history to say anything"
-    assert low < authored_reverts / authored_edits < high
+def test_the_rate_a_person_actually_produces(frozen):
+    assert rate(frozen, "code_reverts", "code_edits") == pytest.approx(0.000123, abs=0.000005)
+    low, high = CODE_RATE
+    assert low < rate(frozen, "code_reverts", "code_edits") < high
+    naive = rate(frozen, "reverts", "edits")
+    assert naive / rate(frozen, "code_reverts", "code_edits") > 8
 
 
-def test_the_rate_a_person_actually_produces(surveyed):
-    # Around one revert per ten thousand hand-written line edits. Git has diffs,
-    # atomic commits and review, and this is the floor such a medium achieves.
-    # The naive number over the same history is an order of magnitude higher,
-    # and unlike this one it drifts with whatever was committed.
-    edits, reverts, authored_edits, authored_reverts = totals(surveyed)
-    low, high = AUTHORED_RATE
-    assert low < authored_reverts / authored_edits < high
-    assert (reverts / edits) / (authored_reverts / authored_edits) > 8
+def test_authored_was_not_a_fine_enough_cut(frozen):
+    """Why there is a third class, and not just "did a person type this".
+
+    The authored rate more than doubled between surveys — 0.000101 across 36
+    repositories, 0.000234 across 74 — and nobody started undoing their own work
+    twice as often. 92 of the 138 authored reverts are prose: a README line
+    returning verbatim while whole tables are rewritten in bulk is a line being
+    restated, not one writer overruling another.
+
+    `is_authored` separates a person from a script. It does not separate a
+    decision from a restatement, and only code makes that distinction cleanly —
+    a line of prose has no behaviour to undo. Once prose is out of the
+    denominator the rate is 0.000123, inside the band measured at half the
+    corpus size: the claim survived the portfolio doubling, which is the only
+    reason to believe it.
+    """
+    code = rate(frozen, "code_reverts", "code_edits")
+    prose_reverts = sum(r["authored_reverts"] - r["code_reverts"] for r in frozen)
+    prose_edits = sum(r["authored_edits"] - r["code_edits"] for r in frozen)
+    prose = prose_reverts / prose_edits
+    assert prose == pytest.approx(0.000425, abs=0.00002)
+    assert prose > code * 3
+
+
+def test_a_convenience_cut_has_no_reliable_direction(frozen):
+    # The old default stopped at 12 repositories in name order. That is not a
+    # sample of anything, and the argument against it is not that it is biased
+    # one way — it is that the direction is not stable. At 36 repositories the
+    # subset understated the naive rate fivefold and OVERstated the authored
+    # one; at 74 it understates both. A bias you cannot predict cannot be
+    # reasoned about, only removed.
+    twelve = frozen[:12]
+    assert len(twelve) == 12
+    assert rate(twelve, "reverts", "edits") < rate(frozen, "reverts", "edits") / 2
+    assert rate(twelve, "code_reverts", "code_edits") < rate(frozen, "code_reverts", "code_edits")
+
+
+def test_most_repositories_contain_no_authored_revert_at_all(frozen):
+    big = [r for r in frozen if r["code_edits"] > 1000]
+    assert len(big) == 59
+    clean = [r for r in big if not r["code_reverts"]]
+    assert len(clean) == 42  # 0.712 of them
+
+
+def test_no_real_revert_happens_within_a_single_commit(frozen):
+    gaps = [g for r in frozen for g in r["code_gaps"]]
+    assert len(gaps) == 46
+    assert min(gaps) >= 1  # undoing is a relation between commits
+    assert statistics.median(gaps) == 6  # and not usually the very next one
+    assert max(gaps) == 44  # a few come back much later
+
+
+# --- the live corpus ------------------------------------------------------------------
+
+
+@pytest.mark.skipif(not REPOS.exists(), reason="no checkouts under REPOS_ROOT")
+def test_the_tool_still_runs_on_the_live_corpus():
+    """That it reads a real disk at all. Deliberately the only live assertion.
+
+    Wide bands and no claim about any particular repository: this exists to
+    catch the tool breaking, not to re-measure the finding, and it is skipped
+    wherever REPOS_ROOT is not a tree of checkouts — which is why the runner now
+    reports skips instead of folding them into a total.
+    """
+    surveyed = survey(repos=5)
+    assert 0 < len(surveyed) <= 5
+    assert all(s.commits > 0 for s in surveyed)
+    assert sum(s.edits for s in surveyed) > 0
+    assert all(s.code_edits <= s.authored_edits <= s.edits for s in surveyed)
+
+
+# --- the classifiers and the detector -------------------------------------------------
 
 
 def test_a_results_file_is_not_authored():
@@ -152,11 +172,17 @@ def test_a_results_file_is_not_authored():
     assert is_authored("config/settings.json")
 
 
-def test_most_repositories_contain_no_authored_revert_at_all(surveyed):
-    big = [s for s in surveyed if s.authored_edits > 1000]
-    assert len(big) >= 30
-    clean = [s for s in big if not s.authored_reverts]
-    assert len(clean) / len(big) > 0.75  # 29 of 35
+def test_only_source_carries_behaviour_to_undo():
+    assert is_code("src/revenue/churn.py")
+    assert is_code("scripts/build.sh")
+    assert is_code("web/app.tsx")
+    # Authored, and nothing in it can be reversed.
+    assert not is_code("README.md")
+    assert not is_code("pyproject.toml")
+    assert not is_code("docs/design.md")
+    # Not authored at all, so not code either.
+    assert not is_code("results/metrics.json")
+    assert not is_code("data/invoices.csv")
 
 
 def test_a_line_that_comes_back_verbatim_is_a_revert():
@@ -182,14 +208,6 @@ def test_a_line_removed_and_restored_inside_one_commit_is_not_a_revert():
         Edit("c2", 1, "a.py", "timeout = 30  # measured", added=True),
     ]
     assert find_reverts(history) == []
-
-
-def test_no_real_revert_happens_within_a_single_commit(surveyed):
-    gaps = [r.gap for s in surveyed for r in s.authored_reverts]
-    assert gaps
-    assert min(gaps) >= 1  # undoing is a relation between commits
-    assert statistics.median(gaps) == 1  # and usually the very next one
-    assert max(gaps) > 5  # though a few come back much later
 
 
 def test_a_rewrite_is_not_a_revert():

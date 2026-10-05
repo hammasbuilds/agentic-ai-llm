@@ -25,8 +25,16 @@ _TABLE_RULE = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+\S")
 _FENCE = re.compile(r"^\s*(?:```|~~~)")
 
+# The digits have to stand alone. Without the trailing guard, "all 3,975 pages"
+# matched "3" and "qwen2.5-coder:14b" matched "5" - a count read out of the middle
+# of a larger number or a model name, which is how a correct README is reported as
+# drifted and how a checker loses the right to be believed.
+# A comma or full stop AFTER the number is ordinary punctuation - "All ten, at a
+# glance" - so only a thousands separator or a decimal point disqualifies it.
 _NUMBER = re.compile(
-    rf"\b(\d{{1,3}}|{'|'.join(_WORD_NUMBERS)})\b", re.I
+    rf"(?<![\d.,:\-])\b(\d{{1,3}}|{'|'.join(_WORD_NUMBERS)})\b"
+    rf"(?![\d:%\-]|,\d|\.\d|\s*%|[A-Za-z])",
+    re.I,
 )
 
 # A number can appear in a heading without counting anything. Each of these was
@@ -41,17 +49,56 @@ _SECTION_INDEX = re.compile(r"^\[?\s*\d{1,2}\s*(?:[-–—·:.)\]]|\s\S)")
 _DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b")
 _VERSIONED = re.compile(r"\b[vV]?\d+\.\d+")
 _RANKING = re.compile(r"\b(top|best|worst|first|last)\s+\d", re.I)
+# "Result 3 - the average is carried by four trivial cases", "Finding 5 in detail",
+# "Round 2". The number says WHICH section this is; the block under it is not three
+# of anything.
+_ORDINAL_LABEL = re.compile(
+    r"^\s*(?:result|finding|round|phase|step|stage|part|chapter|section|appendix"
+    r"|table|figure|fig|example|case|note|question|q|experiment|run|day|week)"
+    r"\s*\.?\s*\d{1,3}\b",
+    re.I,
+)
+# "There aren't 200 sources. There are about ten." A number being denied, bounded
+# or approximated is not a number being counted.
+_NEGATED = re.compile(
+    r"\b(?:aren'?t|isn'?t|are\s+not|is\s+not|not|no|never|without|only"
+    r"|fewer\s+than|less\s+than|more\s+than|under|over|about|around|roughly|~)"
+    r"\s+(?:\w+\s+){0,2}?\d{1,3}\b",
+    re.I,
+)
+# A measurement rather than a tally: "F1 with 95% bootstrap CI", "within 3 ms".
+_MEASURE = re.compile(
+    r"\d{1,3}\s*(?:%|percent|ms\b|sec\b|mins?\b|hours?\b|MB\b|GB\b|KB\b|px\b|k\b)"
+    r"|\bCI\b|\bp\s*[<=>]",
+    re.I,
+)
+#: A count labels the block and says so early - "The twenty business agents", "Ten
+#: palettes". Once the number is buried mid-sentence the heading is prose about a
+#: dataset: "What it scores, on 47 questions with qwen2.5-coder" counts nothing
+#: beneath it, and reading it as a count is how this checker reported 81% of the
+#: portfolio as broken.
+_LATE_NUMBER_WORDS = 6
 
 
 def _is_a_count(heading: str) -> bool:
     """Whether the number in this heading is counting the block beneath it."""
-    if _SECTION_INDEX.match(heading.strip()):
+    heading = heading.strip()
+    if _SECTION_INDEX.match(heading) or _ORDINAL_LABEL.match(heading):
         return False
-    return not (
-        _DATE.search(heading)
-        or _VERSIONED.search(heading)
-        or _RANKING.search(heading)
-    )
+    if _DATE.search(heading) or _VERSIONED.search(heading) or _RANKING.search(heading):
+        return False
+    if _NEGATED.search(heading) or _MEASURE.search(heading):
+        return False
+    match = _NUMBER.search(heading)
+    if not match:
+        return False
+    before = heading[: match.start()]
+    # A clause break before the number means the heading is a sentence that
+    # mentions a quantity, not a label on a list: "What it scores, on 47 questions
+    # with qwen2.5-coder" has nothing to do with the two items beneath it.
+    if any(punctuation in before for punctuation in ",;("):
+        return False
+    return len(before.split()) < _LATE_NUMBER_WORDS
 
 
 def _without_code(markdown: str) -> list[str]:

@@ -27,6 +27,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TREES = ("projects", "products")
+#: Per-suite ceiling. The slowest honest suite here takes ~30s.
+TIMEOUT = 300
 
 
 def suites(trees: tuple[str, ...]) -> list[Path]:
@@ -64,11 +66,17 @@ def counts(blob: str) -> dict[str, int]:
 
 def run(package: Path) -> tuple[str, dict[str, int], str]:
     """Return (outcome, pytest's counts, detail) for one package."""
-    proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"],
-        cwd=package, capture_output=True, text=True, errors="replace",
-        timeout=900, check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"],
+            cwd=package, capture_output=True, text=True, errors="replace",
+            timeout=TIMEOUT, check=False,
+        )
+    except subprocess.TimeoutExpired:
+        # A hung suite is one package's problem and must not become every other
+        # package's. This used to raise out of main(), abandoning the twenty-one
+        # suites after it and printing a traceback where a result belonged.
+        return "HUNG", {}, f"no output in {TIMEOUT}s; killed"
     blob = proc.stdout + proc.stderr
     tally = counts(blob)
     if proc.returncode == 0:

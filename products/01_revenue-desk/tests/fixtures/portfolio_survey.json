@@ -1,0 +1,1009 @@
+{
+ "measured": "2026-10-05",
+ "note": "One row per repository under REPOS_ROOT, full history. Frozen so the finding is asserted against stable data instead of against whatever is committed on this disk today.",
+ "repos": [
+  {
+   "repo": "3d-computer-vision",
+   "commits": 2,
+   "edits": 20661,
+   "reverts": 0,
+   "authored_edits": 4953,
+   "authored_reverts": 0,
+   "code_edits": 3588,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "agent-memory",
+   "commits": 29,
+   "edits": 302105,
+   "reverts": 266,
+   "authored_edits": 7554,
+   "authored_reverts": 0,
+   "code_edits": 6414,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "agent-sandbox",
+   "commits": 16,
+   "edits": 9979,
+   "reverts": 23,
+   "authored_edits": 6973,
+   "authored_reverts": 0,
+   "code_edits": 5945,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "agentic-ai-lab",
+   "commits": 26,
+   "edits": 371383,
+   "reverts": 2,
+   "authored_edits": 40733,
+   "authored_reverts": 2,
+   "code_edits": 29007,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "assay-drift",
+   "commits": 18,
+   "edits": 7347,
+   "reverts": 0,
+   "authored_edits": 4078,
+   "authored_reverts": 0,
+   "code_edits": 2689,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "blast-radius",
+   "commits": 25,
+   "edits": 13662,
+   "reverts": 4,
+   "authored_edits": 13576,
+   "authored_reverts": 4,
+   "code_edits": 6671,
+   "code_reverts": 4,
+   "code_gaps": [
+    3,
+    4,
+    7,
+    16
+   ],
+   "code_revert_paths": [
+    "src/blast_radius/diff.py",
+    "src/blast_radius/probe.py",
+    "src/blast_radius/report.py"
+   ]
+  },
+  {
+   "repo": "book-to-skill",
+   "commits": 15,
+   "edits": 25506,
+   "reverts": 32,
+   "authored_edits": 10327,
+   "authored_reverts": 6,
+   "code_edits": 6750,
+   "code_reverts": 6,
+   "code_gaps": [
+    3,
+    3,
+    3,
+    3,
+    3,
+    5
+   ],
+   "code_revert_paths": [
+    "src/booktoskill/experiments.py",
+    "src/booktoskill/layout.py",
+    "src/booktoskill/metrics.py"
+   ]
+  },
+  {
+   "repo": "bounded-agent-runtime",
+   "commits": 15,
+   "edits": 1934,
+   "reverts": 0,
+   "authored_edits": 1934,
+   "authored_reverts": 0,
+   "code_edits": 1337,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "browser-agent",
+   "commits": 22,
+   "edits": 41797,
+   "reverts": 15,
+   "authored_edits": 30960,
+   "authored_reverts": 3,
+   "code_edits": 15710,
+   "code_reverts": 2,
+   "code_gaps": [
+    1,
+    6
+   ],
+   "code_revert_paths": [
+    "src/browser_agent/llm.py",
+    "src/browser_agent/report.py"
+   ]
+  },
+  {
+   "repo": "cartographer",
+   "commits": 11,
+   "edits": 7347,
+   "reverts": 0,
+   "authored_edits": 6686,
+   "authored_reverts": 0,
+   "code_edits": 1840,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "causal-inference",
+   "commits": 3,
+   "edits": 972,
+   "reverts": 0,
+   "authored_edits": 435,
+   "authored_reverts": 0,
+   "code_edits": 308,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "classical-computer-vision",
+   "commits": 58,
+   "edits": 202271,
+   "reverts": 124,
+   "authored_edits": 146668,
+   "authored_reverts": 20,
+   "code_edits": 100308,
+   "code_reverts": 4,
+   "code_gaps": [
+    1,
+    12,
+    23,
+    23
+   ],
+   "code_revert_paths": [
+    "projects/02_portrait_mode/ui/app.py",
+    "shared/figures.py",
+    "shared/synth.py"
+   ]
+  },
+  {
+   "repo": "clcuv-surveillance",
+   "commits": 32,
+   "edits": 46496,
+   "reverts": 1,
+   "authored_edits": 5003,
+   "authored_reverts": 1,
+   "code_edits": 4243,
+   "code_reverts": 1,
+   "code_gaps": [
+    2
+   ],
+   "code_revert_paths": [
+    "src/clcuv/atlas.py"
+   ]
+  },
+  {
+   "repo": "code-eval-harness",
+   "commits": 15,
+   "edits": 19722,
+   "reverts": 435,
+   "authored_edits": 1905,
+   "authored_reverts": 0,
+   "code_edits": 441,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "code-llm-lab",
+   "commits": 39,
+   "edits": 24844,
+   "reverts": 6,
+   "authored_edits": 8987,
+   "authored_reverts": 3,
+   "code_edits": 5333,
+   "code_reverts": 2,
+   "code_gaps": [
+    10,
+    10
+   ],
+   "code_revert_paths": [
+    "projects/03_tests_that_kill/run.py"
+   ]
+  },
+  {
+   "repo": "commit-history-forensics",
+   "commits": 22,
+   "edits": 2797,
+   "reverts": 0,
+   "authored_edits": 2792,
+   "authored_reverts": 0,
+   "code_edits": 1373,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "context-bench",
+   "commits": 10,
+   "edits": 5098,
+   "reverts": 0,
+   "authored_edits": 2415,
+   "authored_reverts": 0,
+   "code_edits": 1049,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "contract-reader",
+   "commits": 8,
+   "edits": 1366,
+   "reverts": 0,
+   "authored_edits": 1366,
+   "authored_reverts": 0,
+   "code_edits": 1124,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "credit-risk-engine",
+   "commits": 15,
+   "edits": 5073,
+   "reverts": 0,
+   "authored_edits": 3488,
+   "authored_reverts": 0,
+   "code_edits": 2708,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "datasets",
+   "commits": 2,
+   "edits": 74,
+   "reverts": 0,
+   "authored_edits": 74,
+   "authored_reverts": 0,
+   "code_edits": 0,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "deep-computer-vision",
+   "commits": 20,
+   "edits": 11882,
+   "reverts": 23,
+   "authored_edits": 9039,
+   "authored_reverts": 23,
+   "code_edits": 810,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "deep-research-agent",
+   "commits": 11,
+   "edits": 1521,
+   "reverts": 0,
+   "authored_edits": 1308,
+   "authored_reverts": 0,
+   "code_edits": 974,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "demand-forecast-platform",
+   "commits": 19,
+   "edits": 4336,
+   "reverts": 4,
+   "authored_edits": 3575,
+   "authored_reverts": 4,
+   "code_edits": 2902,
+   "code_reverts": 2,
+   "code_gaps": [
+    11,
+    12
+   ],
+   "code_revert_paths": [
+    "src/forecast/backtest.py",
+    "src/forecast/models.py"
+   ]
+  },
+  {
+   "repo": "devign-leakage",
+   "commits": 14,
+   "edits": 1668,
+   "reverts": 0,
+   "authored_edits": 1531,
+   "authored_reverts": 0,
+   "code_edits": 717,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "doc-intelligence-api",
+   "commits": 20,
+   "edits": 2120,
+   "reverts": 0,
+   "authored_edits": 2120,
+   "authored_reverts": 0,
+   "code_edits": 1630,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "docstring-drift",
+   "commits": 19,
+   "edits": 5406,
+   "reverts": 0,
+   "authored_edits": 1975,
+   "authored_reverts": 0,
+   "code_edits": 1005,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "doubt",
+   "commits": 6,
+   "edits": 1149,
+   "reverts": 0,
+   "authored_edits": 1149,
+   "authored_reverts": 0,
+   "code_edits": 970,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "enterprise-ops-crew",
+   "commits": 12,
+   "edits": 1710,
+   "reverts": 0,
+   "authored_edits": 1710,
+   "authored_reverts": 0,
+   "code_edits": 1191,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "faithful",
+   "commits": 8,
+   "edits": 12655,
+   "reverts": 0,
+   "authored_edits": 2184,
+   "authored_reverts": 0,
+   "code_edits": 1535,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "flake-detective",
+   "commits": 33,
+   "edits": 7280,
+   "reverts": 1,
+   "authored_edits": 7092,
+   "authored_reverts": 1,
+   "code_edits": 5205,
+   "code_reverts": 1,
+   "code_gaps": [
+    5
+   ],
+   "code_revert_paths": [
+    "src/flake_detective/run.py"
+   ]
+  },
+  {
+   "repo": "generative-vision-lab",
+   "commits": 17,
+   "edits": 5066,
+   "reverts": 17,
+   "authored_edits": 1851,
+   "authored_reverts": 10,
+   "code_edits": 1502,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "hammas159",
+   "commits": 8,
+   "edits": 702,
+   "reverts": 0,
+   "authored_edits": 702,
+   "authored_reverts": 0,
+   "code_edits": 0,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "hammasbuilds",
+   "commits": 10,
+   "edits": 969,
+   "reverts": 0,
+   "authored_edits": 969,
+   "authored_reverts": 0,
+   "code_edits": 0,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "harness-ablation",
+   "commits": 14,
+   "edits": 9474,
+   "reverts": 1,
+   "authored_edits": 7321,
+   "authored_reverts": 0,
+   "code_edits": 6074,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "incident-copilot",
+   "commits": 22,
+   "edits": 1741,
+   "reverts": 2,
+   "authored_edits": 1741,
+   "authored_reverts": 2,
+   "code_edits": 1097,
+   "code_reverts": 1,
+   "code_gaps": [
+    18
+   ],
+   "code_revert_paths": [
+    "src/copilot/metrics/anomaly.py"
+   ]
+  },
+  {
+   "repo": "insurance-mlops",
+   "commits": 19,
+   "edits": 2982,
+   "reverts": 1,
+   "authored_edits": 2982,
+   "authored_reverts": 1,
+   "code_edits": 2367,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "job-radar",
+   "commits": 16,
+   "edits": 7850,
+   "reverts": 0,
+   "authored_edits": 7850,
+   "authored_reverts": 0,
+   "code_edits": 7192,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "knowledge-tracing",
+   "commits": 20,
+   "edits": 22707,
+   "reverts": 3,
+   "authored_edits": 9717,
+   "authored_reverts": 1,
+   "code_edits": 6360,
+   "code_reverts": 1,
+   "code_gaps": [
+    10
+   ],
+   "code_revert_paths": [
+    "src/kt/run.py"
+   ]
+  },
+  {
+   "repo": "langchain-lab",
+   "commits": 15,
+   "edits": 13761,
+   "reverts": 0,
+   "authored_edits": 9034,
+   "authored_reverts": 0,
+   "code_edits": 4616,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "langgraph-lab",
+   "commits": 9,
+   "edits": 8079,
+   "reverts": 0,
+   "authored_edits": 5730,
+   "authored_reverts": 0,
+   "code_edits": 2725,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "ledger-truth",
+   "commits": 8,
+   "edits": 1140,
+   "reverts": 0,
+   "authored_edits": 1140,
+   "authored_reverts": 0,
+   "code_edits": 953,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "llm-agentic-datasets",
+   "commits": 4,
+   "edits": 406,
+   "reverts": 0,
+   "authored_edits": 406,
+   "authored_reverts": 0,
+   "code_edits": 0,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "llm-gateway",
+   "commits": 12,
+   "edits": 1713,
+   "reverts": 0,
+   "authored_edits": 1713,
+   "authored_reverts": 0,
+   "code_edits": 1161,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "llm-observability-platform",
+   "commits": 14,
+   "edits": 1604,
+   "reverts": 0,
+   "authored_edits": 1604,
+   "authored_reverts": 0,
+   "code_edits": 1008,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "machine-learning",
+   "commits": 10,
+   "edits": 15008,
+   "reverts": 0,
+   "authored_edits": 12812,
+   "authored_reverts": 0,
+   "code_edits": 10383,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "mbpp-false-accepts",
+   "commits": 15,
+   "edits": 2566,
+   "reverts": 0,
+   "authored_edits": 2134,
+   "authored_reverts": 0,
+   "code_edits": 1432,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "mcp-lab",
+   "commits": 26,
+   "edits": 65077,
+   "reverts": 0,
+   "authored_edits": 10219,
+   "authored_reverts": 0,
+   "code_edits": 4917,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "minimal-diff",
+   "commits": 30,
+   "edits": 32760,
+   "reverts": 85,
+   "authored_edits": 7007,
+   "authored_reverts": 6,
+   "code_edits": 5697,
+   "code_reverts": 3,
+   "code_gaps": [
+    2,
+    3,
+    7
+   ],
+   "code_revert_paths": [
+    "src/minimal_diff/_child.py",
+    "src/minimal_diff/cli.py",
+    "src/minimal_diff/stats.py"
+   ]
+  },
+  {
+   "repo": "model-serving-platform",
+   "commits": 18,
+   "edits": 1610,
+   "reverts": 0,
+   "authored_edits": 1610,
+   "authored_reverts": 0,
+   "code_edits": 978,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "nlp-lab",
+   "commits": 40,
+   "edits": 30711,
+   "reverts": 739,
+   "authored_edits": 20679,
+   "authored_reverts": 1,
+   "code_edits": 15139,
+   "code_reverts": 1,
+   "code_gaps": [
+    22
+   ],
+   "code_revert_paths": [
+    "projects/01_embedding_fair_comparison/src/retrievers.py"
+   ]
+  },
+  {
+   "repo": "notebook-to-package",
+   "commits": 9,
+   "edits": 11762,
+   "reverts": 0,
+   "authored_edits": 11602,
+   "authored_reverts": 0,
+   "code_edits": 2496,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "outcome",
+   "commits": 7,
+   "edits": 1325,
+   "reverts": 1,
+   "authored_edits": 1325,
+   "authored_reverts": 1,
+   "code_edits": 1149,
+   "code_reverts": 1,
+   "code_gaps": [
+    2
+   ],
+   "code_revert_paths": [
+    "scripts/fetch_data.py"
+   ]
+  },
+  {
+   "repo": "pak-law-assistant",
+   "commits": 21,
+   "edits": 10049,
+   "reverts": 4,
+   "authored_edits": 6841,
+   "authored_reverts": 4,
+   "code_edits": 5917,
+   "code_reverts": 3,
+   "code_gaps": [
+    9,
+    11,
+    11
+   ],
+   "code_revert_paths": [
+    "src/paklaw/answer.py",
+    "src/paklaw/citation.py",
+    "src/paklaw/corpus.py"
+   ]
+  },
+  {
+   "repo": "perf-hunter",
+   "commits": 7,
+   "edits": 16295,
+   "reverts": 0,
+   "authored_edits": 16206,
+   "authored_reverts": 0,
+   "code_edits": 1281,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "pr-referee",
+   "commits": 5,
+   "edits": 2186,
+   "reverts": 0,
+   "authored_edits": 2186,
+   "authored_reverts": 0,
+   "code_edits": 1712,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "primer-designer",
+   "commits": 21,
+   "edits": 12498,
+   "reverts": 0,
+   "authored_edits": 12343,
+   "authored_reverts": 0,
+   "code_edits": 2014,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "qlora-finetune-suite",
+   "commits": 10,
+   "edits": 4481,
+   "reverts": 0,
+   "authored_edits": 1853,
+   "authored_reverts": 0,
+   "code_edits": 1483,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "rag-forge",
+   "commits": 20,
+   "edits": 4258,
+   "reverts": 0,
+   "authored_edits": 2732,
+   "authored_reverts": 0,
+   "code_edits": 1798,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "rag-lab",
+   "commits": 6,
+   "edits": 3957,
+   "reverts": 1,
+   "authored_edits": 2220,
+   "authored_reverts": 1,
+   "code_edits": 1728,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "repo-surgeon",
+   "commits": 6,
+   "edits": 2415,
+   "reverts": 0,
+   "authored_edits": 2415,
+   "authored_reverts": 0,
+   "code_edits": 2051,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "router-14b",
+   "commits": 5,
+   "edits": 678,
+   "reverts": 0,
+   "authored_edits": 678,
+   "authored_reverts": 0,
+   "code_edits": 524,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "sql-analyst-agent",
+   "commits": 19,
+   "edits": 3021,
+   "reverts": 0,
+   "authored_edits": 1994,
+   "authored_reverts": 0,
+   "code_edits": 1469,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "suite-auditor",
+   "commits": 24,
+   "edits": 11498,
+   "reverts": 1,
+   "authored_edits": 11498,
+   "authored_reverts": 1,
+   "code_edits": 4510,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "super-resolution",
+   "commits": 6,
+   "edits": 2699,
+   "reverts": 0,
+   "authored_edits": 2699,
+   "authored_reverts": 0,
+   "code_edits": 1567,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "swebench-localization",
+   "commits": 14,
+   "edits": 4392,
+   "reverts": 0,
+   "authored_edits": 3109,
+   "authored_reverts": 0,
+   "code_edits": 1547,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "terminal-agent",
+   "commits": 54,
+   "edits": 35964,
+   "reverts": 17,
+   "authored_edits": 12716,
+   "authored_reverts": 6,
+   "code_edits": 11781,
+   "code_reverts": 6,
+   "code_gaps": [
+    3,
+    4,
+    16,
+    44,
+    44,
+    44
+   ],
+   "code_revert_paths": [
+    "src/terminal_agent/context.py",
+    "src/terminal_agent/policy.py",
+    "src/terminal_agent/sandbox.py",
+    "tests/test_local_suite.py"
+   ]
+  },
+  {
+   "repo": "test-impact-oracle",
+   "commits": 9,
+   "edits": 9696,
+   "reverts": 0,
+   "authored_edits": 9572,
+   "authored_reverts": 0,
+   "code_edits": 1957,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "trace-to-patch",
+   "commits": 5,
+   "edits": 2004,
+   "reverts": 0,
+   "authored_edits": 2004,
+   "authored_reverts": 0,
+   "code_edits": 1340,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "trial-match",
+   "commits": 6,
+   "edits": 1504,
+   "reverts": 0,
+   "authored_edits": 1504,
+   "authored_reverts": 0,
+   "code_edits": 1050,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "urdu-desk",
+   "commits": 6,
+   "edits": 1075,
+   "reverts": 0,
+   "authored_edits": 1075,
+   "authored_reverts": 0,
+   "code_edits": 843,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "urdu-nlp-toolkit",
+   "commits": 48,
+   "edits": 12888,
+   "reverts": 35,
+   "authored_edits": 12088,
+   "authored_reverts": 35,
+   "code_edits": 8529,
+   "code_reverts": 6,
+   "code_gaps": [
+    2,
+    2,
+    3,
+    4,
+    6,
+    23
+   ],
+   "code_revert_paths": [
+    "src/urdunlp/_channel.py",
+    "src/urdunlp/cli.py",
+    "src/urdunlp/translit.py",
+    "tests/test_urdunlp.py"
+   ]
+  },
+  {
+   "repo": "visual-analytics",
+   "commits": 3,
+   "edits": 1787,
+   "reverts": 0,
+   "authored_edits": 765,
+   "authored_reverts": 0,
+   "code_edits": 200,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "web-to-markdown",
+   "commits": 17,
+   "edits": 14912,
+   "reverts": 5,
+   "authored_edits": 4826,
+   "authored_reverts": 0,
+   "code_edits": 4099,
+   "code_reverts": 0,
+   "code_gaps": [],
+   "code_revert_paths": []
+  },
+  {
+   "repo": "worktree-fleet",
+   "commits": 22,
+   "edits": 44086,
+   "reverts": 2,
+   "authored_edits": 24962,
+   "authored_reverts": 2,
+   "code_edits": 24371,
+   "code_reverts": 2,
+   "code_gaps": [
+    3,
+    8
+   ],
+   "code_revert_paths": [
+    "src/worktree_fleet/report.py"
+   ]
+  }
+ ]
+}

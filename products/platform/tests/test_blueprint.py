@@ -1,6 +1,7 @@
 import pytest
 
 from agentplatform import blueprint, graphs
+from agentplatform.llm import Recorded
 
 
 def parts(**over):
@@ -97,3 +98,47 @@ def test_the_pipeline_uses_exactly_two_generations():
     with pytest.raises(graphs.GraphInterruptedError) as caught:
         graphs.run(graph, {})
     assert caught.value.partial.llm_calls == 2
+
+
+def test_the_standard_graph_wires_one_products_agents():
+    """`standard_graph` is the shape nineteen products were each writing out.
+
+    Before this, nineteen `graph.py` were byte-identical below their docstrings -
+    the same `summarise`, `compose` and `build`, 589 lines of it - while the
+    module's own docstring said "what differs is the judgement in agents, not
+    the shape". The shape now lives here once.
+    """
+
+    class Agents:
+        triage = staticmethod(lambda state: {"triaged": True})
+        commit = staticmethod(lambda state: {"sent": True})
+        early_exit = staticmethod(lambda state: bool(state.get("opted_out")))
+        on_exit = staticmethod(lambda state: {"suppressed": True})
+
+        @staticmethod
+        def default_sources():
+            return {"search": lambda state: {"hits": 1}}
+
+    graph = blueprint.standard_graph(Agents, Recorded({}))
+    # The same seven nodes review_pipeline builds, plus the exit branch.
+    assert {blueprint.TRIAGE, blueprint.GATHER, blueprint.SYNTHESISE} <= set(graph.nodes)
+    assert blueprint.APPROVE in graph.nodes
+    assert blueprint.COMMIT in graph.nodes
+
+
+def test_the_summarise_node_names_the_sources_that_died():
+    """A fan-out where one branch failed must not be summarised as complete.
+
+    The failure list goes into the prompt, so the model cannot narrate a whole
+    picture from a partial one - the most expensive wrong answer these products
+    can produce, because it reads as confident.
+    """
+    prompt = "summarise:tender-42|failed:['registry']"
+    node = blueprint.summarise_node(Recorded({prompt: "two of three sources answered"}))
+    out = node({"summary_subject": "tender-42", "branches_failed": ["registry"]})
+    assert out["summary"] == "two of three sources answered"
+
+
+def test_the_summarise_node_asks_the_same_prompt_whatever_the_failure_order():
+    node = blueprint.summarise_node(Recorded({"summarise:x|failed:['a', 'b']": "ok"}))
+    assert node({"summary_subject": "x", "branches_failed": ["b", "a"]})["summary"] == "ok"

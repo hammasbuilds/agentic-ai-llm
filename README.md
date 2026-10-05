@@ -40,7 +40,15 @@ opening two of them side by side should not feel like opening the same tool twic
 
 ## What they found
 
-Every app ships the result it was built from. These are measured numbers, not claims.
+Every number below was measured, not estimated — each is the output of the app above it,
+run locally on `qwen2.5-coder` at 14B and 3B over MBPP, HumanEval, SWE-bench and Devign.
+**The run artifacts are not committed**: reproducing one needs Ollama, both model sizes and
+a GPU, so they are a claim about work done on this machine rather than something this
+repository can show you. What it can show you offline is the measurement code, every
+execution rule it applies, and the eleven tools in [`projects/`](projects) — which do ship
+the data behind their numbers, down to the five JSONs under
+[`projects/01_repo-cartographer`](projects/01_repo-cartographer) that the resolution table
+there is computed from.
 
 - **BM25 collapses from 74.5% to 8.4%** depending only on whether the issue quotes the file
   path. The same 14B model scores 55.8% on that hard half when naming files freely and
@@ -154,9 +162,18 @@ convention. Each one is measured against real data — the full table with every
 | [**09**](products/09_hermes-home) | [**hermes-home**](products/09_hermes-home) | [**19**](products/19_agri-desk) | [**agri-desk**](products/19_agri-desk) |
 | [**10**](products/10_kyc-floor) | [**kyc-floor**](products/10_kyc-floor) | [**20**](products/20_driftwatch) | [**driftwatch**](products/20_driftwatch) |
 
-**The `products/` platform and the `apps/` platform are separate and currently duplicate
-each other** — worth merging or explicitly splitting before either is presented as the house
-architecture.
+**The `products/` platform and the `apps/` platform are separate, and they are not
+duplicates** — a claim this README used to make about itself and which does not survive
+being checked. They share no module name beyond `__init__.py` and exactly one public symbol
+name, `create_app`, which is the FastAPI convention rather than shared code.
+[`apps/_platform`](apps/_platform) is the substrate the ten measurement apps run on: an async
+Ollama client that keeps one GPU at ~98% utilisation instead of 9%, a Redis generation cache
+shared across apps, a Kafka progress bus and ten themes.
+[`products/platform`](products/platform) is the agent runtime: a graph interpreter, the
+seven-node blueprint, the approval gate, write authority, admission control and gated memory,
+with a model interface whose default implementation *refuses* any prompt it was not given so
+a test cannot quietly reach a real model. Different jobs, and merging them would mean one
+package with two unrelated reasons to change.
 
 ## Limits
 

@@ -112,15 +112,22 @@ def test_the_one_real_drift_this_ever_caught():
 
 @pytest.mark.skipif(not ROOT.exists(), reason="no checkouts under REPOS_ROOT")
 def test_across_the_real_portfolio_the_rate_is_believable():
-    # Six headings across 35 repositories state a count, and all six are right
-    # now that the one drift has been fixed upstream. The number that matters is
-    # the denominator: a checker that reported 81% wrong was reporting its own
-    # false positives, and this asserts the rate stays believable rather than
-    # asserting any particular repository is broken.
+    # The number that matters is the denominator. A checker that reported 81%
+    # wrong was reporting its own false positives, and this asserts the rate stays
+    # believable rather than asserting any particular repository is broken.
+    #
+    # Measured across the portfolio: 25 headings read as counts, 11 of them
+    # wrongly (0.440), and of the remaining 14 about half agreed only by accident
+    # - "Result 3" happens to sit above a three-row table. After tightening,
+    # 12 read as counts and none is wrong.
+    #
+    # The floor on `stated` is the important half: precision is trivial to reach
+    # by counting nothing, so a run that finds fewer than ten counted headings in
+    # this portfolio has lost recall and must fail here rather than look perfect.
     repos = scan()
     stated = sum(len(counted_headings(r.readme)) for r in repos)
     wrong = sum(len(broken_headings(r.readme)) for r in repos)
-    assert stated >= 5
+    assert stated >= 10, f"only {stated} headings read as counts; recall has regressed"
     assert wrong / stated < 0.30
 
 
@@ -152,3 +159,68 @@ def test_a_correct_multi_column_readme_is_not_reported_as_drifted():
         encoding="utf-8"
     )
     assert broken_headings(excerpt) == []
+
+
+# Every heading in this fixture is copied from a real README in the portfolio, and
+# every one was reported as drift. They were 11 of 25 counted headings - a checker
+# wrong 44% of the time, which is a checker nobody should believe. The last entry
+# is a real count and must still be read as one.
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Result 3 — the average is carried by four trivial cases",
+        "Finding 5 in detail: how many reads reach the model",
+        "There aren't 200 sources. There are about ten.",
+        "F1 with 95% bootstrap CI",
+        "Failure categories (web2md, all 3,975 pages)",
+        "What it scores, on 47 questions with `qwen2.5-coder:14b`",
+        "04 · The injection that isn't an instruction",
+        "Top 5 findings",
+        "2026-09-16 · qwen2.5-coder:14b added",
+    ],
+)
+def test_a_number_that_counts_nothing_is_not_read_as_a_count(heading):
+    excerpt = (Path(__file__).parent / "fixtures/false_positive_headings.md").read_text(
+        encoding="utf-8"
+    )
+    counted = {c.heading: c for c in counted_headings(excerpt)}
+    assert heading not in counted, f"{heading!r} was read as a count of {counted.get(heading)}"
+
+
+def test_the_one_real_count_in_that_fixture_is_still_found():
+    """The tightening must not have been achieved by counting nothing."""
+    excerpt = (Path(__file__).parent / "fixtures/false_positive_headings.md").read_text(
+        encoding="utf-8"
+    )
+    counted = {c.heading: c for c in counted_headings(excerpt)}
+    assert "Six tabs" in counted
+    assert counted["Six tabs"].holds
+    # And this one, which was a false positive only because "5" was read out of
+    # the model name - the word "three" in it is a real count of three items.
+    assert counted["The model arm: qwen2.5-coder:14b under three prompt shapes"].stated == 3
+
+
+def test_the_whole_fixture_reports_no_drift():
+    excerpt = (Path(__file__).parent / "fixtures/false_positive_headings.md").read_text(
+        encoding="utf-8"
+    )
+    assert broken_headings(excerpt) == []
+
+
+@pytest.mark.parametrize(
+    "heading,stated",
+    [
+        # A number inside a larger number or a model name is not a count.
+        ("Failure categories (all 3,975 pages)", None),
+        ("The model arm: qwen2.5-coder:14b", None),
+        # ...while the plain forms still read.
+        ("The twenty business agents", 20),
+        ("Six tabs", 6),
+        ("Four refusal conditions", 4),
+        ("The three places it can stop safely", 3),
+    ],
+)
+def test_the_number_a_heading_states(heading, stated):
+    from driftwatch.structure import _is_a_count, _stated
+
+    assert (_stated(heading) if _is_a_count(heading) else None) == stated

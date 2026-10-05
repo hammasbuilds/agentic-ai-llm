@@ -83,3 +83,66 @@ def review_pipeline(
         edges[TRIAGE] = lambda state: EXIT if early_exit(state) else GATHER
 
     return Graph(nodes=nodes, entry=TRIAGE, edges=edges)
+
+
+def summarise_node(model) -> Callable:
+    """Summarise what GATHER found, with the failures named.
+
+    ``branches_failed`` goes into the prompt because a fan-out where one source
+    died must not be narrated as a complete picture - the most expensive kind of
+    wrong answer these products can produce, since it reads as confident.
+    """
+
+    def _run(state: dict) -> dict:
+        failed = sorted(state.get("branches_failed", []))
+        prompt = f"summarise:{state.get('summary_subject')}|failed:{failed}"
+        completion = model.generate(prompt)
+        return {"summary": completion.text, "model": completion.model}
+
+    return _run
+
+
+def compose_node(model) -> Callable:
+    """Turn the summary into something a person will read and approve."""
+
+    def _run(state: dict) -> dict:
+        completion = model.generate(f"compose:{state.get('summary', '')}")
+        return {"draft": completion.text, "model": completion.model}
+
+    return _run
+
+
+def standard_graph(agents, model, sources: dict | None = None) -> Graph:
+    """The whole pipeline, wired to one product's ``agents`` module.
+
+    Nineteen of the twenty products' ``graph.py`` were byte-identical below the
+    docstring: the same ``summarise``, the same ``compose``, the same ``build``,
+    written out nineteen times. The module's own docstring already said "what
+    differs is the judgement in agents, not the shape" - so the shape belongs
+    here, and a product's graph module is now the binding and nothing else.
+
+    ``01_revenue-desk`` deliberately does NOT use this. It writes every node out
+    by hand as the worked example the others were copied from, and flattening it
+    into a one-line call would delete the thing it exists to show.
+
+    ``agents`` supplies ``triage``, ``default_sources``, ``commit``,
+    ``early_exit`` and ``on_exit``.
+    """
+    return review_pipeline(
+        triage=agents.triage,
+        gather=sources or agents.default_sources(),
+        synthesise=summarise_node(model),
+        compose=compose_node(model),
+        gate=_state_gate(),
+        commit=agents.commit,
+        early_exit=agents.early_exit,
+        on_exit=agents.on_exit,
+    )
+
+
+def _state_gate() -> Callable:
+    # Imported here rather than at module scope: blueprint is imported by gate's
+    # own consumers and a top-level import would make the cycle real.
+    from . import gate
+
+    return gate.from_state
