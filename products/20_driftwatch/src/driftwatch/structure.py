@@ -100,6 +100,32 @@ def _stated(heading: str) -> int | None:
     return int(raw) if raw.isdigit() else _WORD_NUMBERS.get(raw)
 
 
+def _cells(row: str) -> list[str]:
+    """The cells of a markdown table row, trimmed and lower-cased."""
+    return [c.strip().lower() for c in row.strip().strip("|").split("|")]
+
+
+def _across(header: list[str]) -> int:
+    """How many entities one row of this table holds.
+
+    A wide list is often laid out in several columns to keep it readable, and
+    then its header repeats: `# | Agent | # | Agent` is two entities per row.
+    The repetition is the evidence, so a header that does not repeat gives 1 and
+    nothing changes for an ordinary table.
+    """
+    labels = [c for c in header]
+    width = len(labels)
+    if width < 2 or any(not c for c in labels):
+        return 1
+    # The shortest prefix the whole header is a repetition of.
+    for period in range(1, width // 2 + 1):
+        if width % period:
+            continue
+        if all(labels[i] == labels[i % period] for i in range(width)):
+            return width // period
+    return 1
+
+
 def _count_block(lines: list[str], start: int) -> tuple[str, int]:
     """Rows in the first table, or items in the first list, after ``start``."""
     i = start
@@ -114,6 +140,7 @@ def _count_block(lines: list[str], start: int) -> tuple[str, int]:
         return ("", 0)
 
     if _TABLE_ROW.match(lines[i]):
+        header = _cells(lines[i])
         rows = 0
         seen_rule = False
         while i < len(lines) and _TABLE_ROW.match(lines[i]):
@@ -122,7 +149,11 @@ def _count_block(lines: list[str], start: int) -> tuple[str, int]:
             elif seen_rule:
                 rows += 1
             i += 1
-        return ("table", rows)
+        # A table laid out several entities across counts its entities, not its
+        # rows. `| # | Agent | # | Agent |` holds twenty agents in ten rows, and
+        # counting rows reported this repository's own correct README as drifted
+        # - a checker whose first duty is to not cry wolf.
+        return ("table", rows * _across(header))
 
     # A list item can run over several lines. Continuation lines are indented
     # and are neither an item nor blank, and treating one as the end of the list

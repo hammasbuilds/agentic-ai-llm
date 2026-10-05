@@ -44,6 +44,48 @@ class NoHistoryError(RuntimeError):
     """The repository has no readable history."""
 
 
+# Source. Prose, markup and config are authored but carry no behaviour, so a
+# line of them returning to an earlier value is not a decision being reversed.
+CODE_SUFFIXES = frozenset(
+    {
+        ".py",
+        ".pyi",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".kt",
+        ".c",
+        ".h",
+        ".cc",
+        ".cpp",
+        ".hpp",
+        ".cs",
+        ".rb",
+        ".php",
+        ".sh",
+        ".bash",
+        ".ps1",
+        ".sql",
+        ".scala",
+        ".swift",
+        ".lua",
+        ".r",
+    }
+)
+
+
+def is_code(path: str) -> bool:
+    """Whether this file holds behaviour that an edit could reverse."""
+    if not is_authored(path):
+        return False
+    dot = path.rfind(".")
+    return dot >= 0 and path[dot:].lower() in CODE_SUFFIXES
+
+
 def is_authored(path: str) -> bool:
     """Whether a person wrote this file line by line.
 
@@ -95,6 +137,8 @@ class Summary:
     reverts: list = field(default_factory=list)
     authored_edits: int = 0
     authored_reverts: list = field(default_factory=list)
+    code_edits: int = 0
+    code_reverts: list = field(default_factory=list)
 
     @property
     def revert_rate(self) -> float:
@@ -103,10 +147,33 @@ class Summary:
 
     @property
     def authored_rate(self) -> float:
-        """Over lines a person actually wrote. The honest one."""
+        """Over lines a person actually wrote, prose included."""
         if not self.authored_edits:
             return 0.0
         return len(self.authored_reverts) / self.authored_edits
+
+    @property
+    def code_rate(self) -> float:
+        """Over source lines only. The one the product's claim rests on.
+
+        Splitting this out was forced by a number that moved: as the portfolio
+        grew from 36 repositories to 74, the authored rate more than doubled,
+        from 0.000101 to 0.000234. The cause was not that anyone started
+        undoing their own work twice as often. Of 138 authored reverts, 88 were
+        in Markdown - and a README line returning verbatim while whole tables
+        are rewritten in bulk is a line being re-emitted, not one writer
+        overruling another.
+
+        That is the same confusion this product was built to name, one level
+        in: a generated `results.json` is obviously not judgement, and a
+        regenerated README table is less obviously the same thing. "Authored"
+        separates a person from a script. It does not separate a decision from
+        a restatement, and only code makes that distinction cleanly - a line of
+        prose has no behaviour to undo.
+        """
+        if not self.code_edits:
+            return 0.0
+        return len(self.code_reverts) / self.code_edits
 
 
 def _git(repo: Path, *args: str, timeout: float = 180.0) -> str:
@@ -235,6 +302,7 @@ def survey(
         if not history:
             continue
         authored = [e for e in history if e.authored]
+        code = [e for e in authored if is_code(e.path)]
         out.append(
             Summary(
                 repo=path.name,
@@ -243,6 +311,8 @@ def survey(
                 reverts=find_reverts(history),
                 authored_edits=len(authored),
                 authored_reverts=find_reverts(authored),
+                code_edits=len(code),
+                code_reverts=find_reverts(code),
             )
         )
         if repos and len(out) >= repos:

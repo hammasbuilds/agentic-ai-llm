@@ -19,6 +19,7 @@ its own directory, exactly as it would if that package were cloned alone.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import time
@@ -40,39 +41,51 @@ def suites(trees: tuple[str, ...]) -> list[Path]:
     return found
 
 
-def run(package: Path) -> tuple[str, int, str]:
-    """Return (outcome, test_count, detail) for one package."""
+#: pytest's own counts, from the summary line: "1 failed, 4 passed, 11 skipped in 0.3s".
+_OUTCOME = re.compile(r"(\d+)\s+(passed|failed|error|errors|skipped|xfailed|xpassed)\b")
+
+
+def counts(blob: str) -> dict[str, int]:
+    """Every outcome pytest reported, by name.
+
+    Read with one pattern over the summary line rather than by walking tokens:
+    the old version tracked `passed` and `failed` and never looked at `skipped`,
+    so a suite that skipped every test reported "0 tests ok" and the total went
+    quietly down. A number that can fall without anyone noticing is not a
+    measurement.
+    """
+    found: dict[str, int] = {}
+    for line in blob.splitlines():
+        for value, name in _OUTCOME.findall(line):
+            name = "error" if name == "errors" else name
+            found[name] = max(found.get(name, 0), int(value))
+    return found
+
+
+def run(package: Path) -> tuple[str, dict[str, int], str]:
+    """Return (outcome, pytest's counts, detail) for one package."""
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"],
         cwd=package, capture_output=True, text=True, errors="replace",
         timeout=900, check=False,
     )
     blob = proc.stdout + proc.stderr
-    passed = failed = errors = 0
-    for line in blob.splitlines():
-        # pytest's summary line, e.g. "32 passed in 1.56s" or "1 failed, 4 passed"
-        if " passed" in line or " failed" in line or " error" in line:
-            for token, target in (("passed", "p"), ("failed", "f"), ("error", "e")):
-                if token in line:
-                    for part in line.replace(",", " ").split():
-                        if part.isdigit():
-                            nxt = line.split(part, 1)[1].lstrip().split()[:1]
-                            if nxt and nxt[0].startswith(token):
-                                value = int(part)
-                                if target == "p":
-                                    passed = max(passed, value)
-                                elif target == "f":
-                                    failed = max(failed, value)
-                                else:
-                                    errors = max(errors, value)
+    tally = counts(blob)
     if proc.returncode == 0:
-        return "ok", passed, ""
+        # A suite where everything skipped is not a suite that passed. It exits
+        # 0, and calling that green is how a package stops being tested without
+        # anyone finding out.
+        if tally.get("passed", 0) == 0 and tally.get("skipped", 0):
+            return "SKIPPED", tally, f"{tally['skipped']} skipped, nothing ran"
+        return "ok", tally, ""
     detail = next(
         (ln.strip() for ln in blob.splitlines()
          if "ModuleNotFoundError" in ln or "ImportError" in ln or "Error" in ln),
         f"exit {proc.returncode}",
     )
-    return "FAIL", passed, f"{failed} failed, {errors} errors | {detail[:70]}"
+    return "FAIL", tally, (
+        f"{tally.get('failed', 0)} failed, {tally.get('error', 0)} errors | {detail[:70]}"
+    )
 
 
 def main() -> int:
@@ -83,20 +96,30 @@ def main() -> int:
 
     print(f"{len(packages)} packages with test suites\n")
     started = time.time()
-    total = 0
+    total = skipped = 0
     broken: list[tuple[str, str]] = []
 
     for package in packages:
-        outcome, count, detail = run(package)
+        outcome, tally, detail = run(package)
+        count = tally.get("passed", 0)
         total += count
+        skipped += tally.get("skipped", 0)
         label = f"{package.parent.name}/{package.name}"
-        print(f"  {label:<34}{count:>5} tests   {outcome}"
+        ran = f"{count:>5} ran" + (f" +{tally['skipped']} skip" if tally.get("skipped") else "")
+        print(f"  {label:<34}{ran:>16}   {outcome}"
               + (f"   {detail}" if detail else ""), flush=True)
         if outcome != "ok":
             broken.append((label, detail))
 
     print()
-    print(f"{total:,} tests across {len(packages)} packages in {time.time() - started:.0f}s")
+    # The headline is what RAN. Skips are reported beside it rather than folded
+    # in, because a suite gated on a path that does not exist on this machine
+    # contributes nothing and must not be quoted as though it did.
+    print(
+        f"{total:,} tests ran across {len(packages)} packages in "
+        f"{time.time() - started:.0f}s"
+        + (f", {skipped} skipped" if skipped else "")
+    )
     if broken:
         print(f"\n{len(broken)} package(s) not green:")
         for label, detail in broken:

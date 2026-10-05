@@ -45,6 +45,18 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["apps"]
 
+# The twenty products and the platform they share are one workspace, so
+# `agentplatform` resolves from the checkout rather than from PyPI, where it is
+# not published. Before this, every product declared no dependencies and
+# imported `agentplatform` in its source anyway; the only thing that resolved it
+# was a `pythonpath` entry under `[tool.pytest.ini_options]`, which the built
+# wheel does not carry - so the tests passed and every wheel was broken.
+#
+# `projects/*` are deliberately NOT members. Each is a standalone zero-dependency
+# tool and belongs to nobody's workspace.
+[tool.uv.workspace]
+members = ["products/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

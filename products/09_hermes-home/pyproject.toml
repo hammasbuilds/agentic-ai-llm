@@ -11,7 +11,11 @@ requires-python = ">=3.11"
 # Every dependency this product will eventually need (FastAPI, a Kafka
 # client, redis-py, psycopg) is a deployment concern. The deterministic core
 # below it has none, so the tests run offline with no broker and no model.
-dependencies = []
+dependencies = ["agentplatform"]
+
+# From the workspace, not from an index: it is not published anywhere.
+[tool.uv.sources]
+agentplatform = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.12.12,<0.13.0"]

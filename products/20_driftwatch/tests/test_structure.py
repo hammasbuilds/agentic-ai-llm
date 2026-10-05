@@ -122,3 +122,33 @@ def test_across_the_real_portfolio_the_rate_is_believable():
     wrong = sum(len(broken_headings(r.readme)) for r in repos)
     assert stated >= 5
     assert wrong / stated < 0.30
+
+
+@pytest.mark.parametrize(
+    "heading,found,kind",
+    [
+        # Twenty agents in ten rows, two across. Counting rows reported this
+        # repository's own correct README as drifted - and a drift checker that
+        # cries wolf about its author is worse than no checker.
+        ("The twenty business agents", 20, "table"),
+        # An ordinary one-across table is unaffected.
+        ("The three findings", 3, "table"),
+        # Three across.
+        ("The six tools", 6, "table"),
+    ],
+)
+def test_a_table_laid_out_several_across_counts_entities_not_rows(heading, found, kind):
+    excerpt = (Path(__file__).parent / "fixtures/multi_column_roster.md").read_text(
+        encoding="utf-8"
+    )
+    counted = {c.heading: c for c in counted_headings(excerpt)}
+    assert heading in counted, f"{heading!r} was not read as a count at all"
+    assert (counted[heading].found, counted[heading].kind) == (found, kind)
+    assert counted[heading].holds
+
+
+def test_a_correct_multi_column_readme_is_not_reported_as_drifted():
+    excerpt = (Path(__file__).parent / "fixtures/multi_column_roster.md").read_text(
+        encoding="utf-8"
+    )
+    assert broken_headings(excerpt) == []
