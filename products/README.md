@@ -10,7 +10,7 @@ tools. These are products: several agents, a bus, a store, an approval loop, a U
 **Status: all twenty run end to end.** HTTP in → onto the bus → drained by a worker →
 paused for approval → resumed without regenerating → committed. Each serves an operator
 console at `/`. The full design for each — agent roster, topics, Redis keys, schema, demo
-data — is in its own README and in [`../../PRODUCT-PLAN.md`](../../PRODUCT-PLAN.md).
+data — is in its own README.
 
 ```
 python -m venv .venv && .venv/Scripts/pip install -e platform[api,infra] pytest ruff
