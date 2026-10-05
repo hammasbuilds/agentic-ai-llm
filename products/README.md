@@ -149,6 +149,14 @@ with their TTLs, default-deny write authority, the grounding gate, GPU admission
 contradiction-gated memory, the bus/store/cache ports, model resolution, the LLM interface,
 the graph runtime and the HTTP surface. Build on it rather than rebuilding it twenty times.
 
+Three of those eleven are available rather than wired in. **`memory`** and
+**`admission`** are not imported by any product. **`authority`** is imported by all twenty
+— to build the table — and its `check`, `apply` and `level_for` are called nowhere outside
+`authority.py` itself, so no request is ever refused by it. Each of the three is
+implemented and tested here; none is on a path a request takes. An independent review
+found that by grepping for callers, which is a fair way to read "every product needs", and
+the sentence above is the one that had to change rather than the grep.
+
 Four of its decisions are worth knowing before reading any product:
 
 - **Partitioning uses `zlib.crc32`, not the built-in `hash`,** which Python salts per

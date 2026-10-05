@@ -74,10 +74,7 @@ def from_state(state: dict, min_sources: int = 1) -> dict:
     survived, what did not and why. Identical in all twenty products, because
     "a claim needs a receipt" is not a per-domain decision.
     """
-    claims = [
-        Claim(c["text"], tuple(c.get("receipts", ())))
-        for c in state.get("claims", [])
-    ]
+    claims = [Claim(c["text"], tuple(c.get("receipts", ()))) for c in state.get("claims", [])]
     result = run(claims, set(state.get("issued_receipts", ())), min_sources=min_sources)
     return {
         "kept_claims": [c.text for c in result.kept],

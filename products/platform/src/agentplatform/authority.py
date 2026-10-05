@@ -54,7 +54,11 @@ class Table:
         exact = self._grants.get((agent, field_name))
         if exact is not None:
             return exact
-        # "deal.*" grants everything under deal.
+        # "deal.*" grants everything under deal - the children, not the parent. The
+        # prefix of a dotless name is itself, so a grant on "patch.*" used to answer a
+        # question about bare "patch": "may draft a patch" authorised writing the patch.
+        if "." not in field_name:
+            return Level.NEVER
         prefix = field_name.split(".", 1)[0]
         return self._grants.get((agent, f"{prefix}.*"), Level.NEVER)
 

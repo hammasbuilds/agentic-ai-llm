@@ -42,15 +42,19 @@ class PostgresStore:
         )
 
     def get(self, table: str, key: str) -> dict | None:
-        found = self.conn().execute(
-            "SELECT row FROM agent_rows WHERE tbl = %s AND key = %s", (table, key)
-        ).fetchone()
+        found = (
+            self.conn()
+            .execute("SELECT row FROM agent_rows WHERE tbl = %s AND key = %s", (table, key))
+            .fetchone()
+        )
         return found[0] if found else None
 
     def rows(self, table: str) -> list[dict]:
-        found = self.conn().execute(
-            "SELECT row FROM agent_rows WHERE tbl = %s ORDER BY key", (table,)
-        ).fetchall()
+        found = (
+            self.conn()
+            .execute("SELECT row FROM agent_rows WHERE tbl = %s ORDER BY key", (table,))
+            .fetchall()
+        )
         return [r[0] for r in found]
 
     def reachable(self) -> bool:

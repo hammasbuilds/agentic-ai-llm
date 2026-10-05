@@ -1,7 +1,17 @@
 import pytest
 
 from agentplatform import graphs
-from agentplatform.graphs import END, Graph, GraphInterruptedError, Node
+from agentplatform.graphs import (
+    APPROVED,
+    END,
+    INTERRUPT,
+    RULES,
+    Checkpoint,
+    Graph,
+    GraphInterruptedError,
+    Node,
+    run,
+)
 
 
 def linear_graph(calls):
@@ -17,8 +27,11 @@ def linear_graph(calls):
         },
         entry="route",
         edges={
-            "route": "draft", "draft": "gate", "gate": "approve",
-            "approve": "send", "send": END,
+            "route": "draft",
+            "draft": "gate",
+            "gate": "approve",
+            "approve": "send",
+            "send": END,
         },
     )
 
@@ -81,11 +94,15 @@ def test_a_fanout_reports_the_branch_that_failed():
 
     graph = Graph(
         nodes={
-            "enrich": Node("enrich", graphs.FANOUT, branches={
-                "search": lambda s: ["src_a41", "src_c07"],
-                "registry": lambda s: ["src_b22"],
-                "news": boom,
-            }),
+            "enrich": Node(
+                "enrich",
+                graphs.FANOUT,
+                branches={
+                    "search": lambda s: ["src_a41", "src_c07"],
+                    "registry": lambda s: ["src_b22"],
+                    "news": boom,
+                },
+            ),
         },
         entry="enrich",
         edges={"enrich": END},
@@ -93,7 +110,9 @@ def test_a_fanout_reports_the_branch_that_failed():
     result = graphs.run(graph)
     assert result.state["branches_failed"] == ["news"]
     assert dict(result.state["branch_status"]) == {
-        "search": True, "registry": True, "news": False,
+        "search": True,
+        "registry": True,
+        "news": False,
     }
 
 
@@ -104,8 +123,11 @@ def test_the_next_node_cannot_miss_a_failed_branch():
     graph = Graph(
         nodes={
             "enrich": Node("enrich", graphs.FANOUT, branches={"a": lambda s: 1, "b": _boom}),
-            "synthesise": Node("synthesise", graphs.LLM, lambda s: seen.update(
-                failed=s["branches_failed"]) or {}),
+            "synthesise": Node(
+                "synthesise",
+                graphs.LLM,
+                lambda s: seen.update(failed=s["branches_failed"]) or {},
+            ),
         },
         entry="enrich",
         edges={"enrich": "synthesise", "synthesise": END},
@@ -196,3 +218,59 @@ def test_an_unknown_node_kind_is_refused():
 def test_a_fanout_with_no_branches_is_refused():
     with pytest.raises(ValueError):
         Node("a", graphs.FANOUT)
+
+
+def test_one_signature_opens_one_gate():
+    """Resume starts at the node AFTER the interrupt, so the interrupt's own body —
+    which is where `_approved` was cleared — never ran on a resume, and the flag stayed
+    true for the rest of the graph.
+
+    A draft → approve → commit → approve → pay chain therefore executed the second gate
+    on the first signature, reported `done`, and emitted no approvals event for the gate
+    it skipped. This is the platform's advertised safety primitive; no shipped product
+    builds two interrupts yet, which is why nothing caught it.
+    """
+    log: list[str] = []
+
+    def step(name: str):
+        def go(_state: dict) -> dict:
+            log.append(name)
+            return {name: True}
+
+        return go
+
+    graph = Graph(
+        entry="a",
+        nodes={
+            "a": Node("a", RULES, run=step("a")),
+            "approve1": Node("approve1", INTERRUPT),
+            "b": Node("b", RULES, run=step("b")),
+            "approve2": Node("approve2", INTERRUPT),
+            "pay": Node("pay", RULES, run=step("PAID")),
+        },
+        edges={
+            "a": "approve1",
+            "approve1": "b",
+            "b": "approve2",
+            "approve2": "pay",
+            "pay": END,
+        },
+    )
+
+    signatures: list[str] = []
+    checkpoint = None
+    for _ in range(6):
+        try:
+            run(graph, {} if checkpoint is None else None, checkpoint=checkpoint)
+        except GraphInterruptedError as paused:
+            signatures.append(paused.checkpoint.awaiting)
+            resumed = dict(paused.checkpoint.state)
+            resumed[APPROVED] = True
+            checkpoint = Checkpoint(
+                paused.checkpoint.run_id, paused.checkpoint.next_node, resumed
+            )
+            continue
+        break
+
+    assert signatures == ["approve1", "approve2"], signatures
+    assert log == ["a", "b", "PAID"]

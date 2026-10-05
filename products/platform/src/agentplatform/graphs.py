@@ -146,6 +146,14 @@ def run(
     if checkpoint is not None:
         current = checkpoint.next_node
         working = dict(checkpoint.state)
+        # The approval is consumed by the resume it authorised. Resuming starts at the
+        # node AFTER the interrupt, so the interrupt's own body - which is where the
+        # flag used to be cleared - never runs on a resume, and `_approved` stayed true
+        # for the rest of the graph. A draft -> approve -> commit -> approve -> pay
+        # chain therefore executed the second gate on the first signature, reported
+        # `done`, and emitted no approvals event for the gate it skipped.
+        working.pop(APPROVED, None)
+        working.pop("_interrupt", None)
     else:
         current = graph.entry
         working = dict(state or {})

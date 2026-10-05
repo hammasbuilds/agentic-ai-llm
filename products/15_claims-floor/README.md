@@ -83,8 +83,12 @@ cd 15_claims-floor && python -m pytest tests/test_real_versions.py -q     # 13 p
 
 ## Agents and write authority
 
-Enforced by `agentplatform.authority`, which is default-deny — a field nobody was granted
-is closed, so a column added next month does not quietly become writable.
+`agentplatform.authority` is default-deny, so a field nobody was granted is closed and a
+column added next month does not quietly become writable. **The table is declared here and
+the pipeline does not yet consult it**: no node passes an agent identity, so this is a
+statement of who *should* write what, checked for coherence by a test, not a runtime
+guard. It said "enforced" until an independent review grepped for a caller and found two,
+both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|

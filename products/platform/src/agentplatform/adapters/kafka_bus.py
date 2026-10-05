@@ -99,12 +99,8 @@ class KafkaBus:
         return Message(topic, key, dict(value), meta.partition, meta.offset)
 
     def poll(
-        self,
-        topic: str,
-        group: str,
-        limit: int = 10,
-        timeout_s: float = 8.0) -> list[Message,
-    ]:
+        self, topic: str, group: str, limit: int = 10, timeout_s: float = 8.0
+    ) -> list[Message,]:
         """Fetch up to ``limit`` messages, waiting for group assignment first.
 
         A brand-new consumer group returns nothing on its first poll while the

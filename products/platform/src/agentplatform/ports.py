@@ -49,8 +49,8 @@ class InMemoryBus:
     """Partitioned, ordered, replayable. The three properties that matter."""
 
     partitions: int = 12
-    _log: dict = field(default_factory=dict)          # (topic, partition) -> [Message]
-    _offsets: dict = field(default_factory=dict)      # (topic, group, partition) -> next offset
+    _log: dict = field(default_factory=dict)  # (topic, partition) -> [Message]
+    _offsets: dict = field(default_factory=dict)  # (topic, group, partition) -> next offset
 
     def publish(self, topic: str, key: str, value: dict) -> Message:
         partition = _topics.partition_for(key, self.partitions)

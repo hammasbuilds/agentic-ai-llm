@@ -54,9 +54,11 @@ class Runtime:
         milliseconds while one GPU serves the queue at its own pace.
         """
         key = topics.partition_key(self.domain, entity)
-        self.store.put("runs", run_id, {
-            "run_id": run_id, "entity": entity, "status": PENDING, "visited": []
-        })
+        self.store.put(
+            "runs",
+            run_id,
+            {"run_id": run_id, "entity": entity, "status": PENDING, "visited": []},
+        )
         self.bus.publish(self.topics.tasks, key, {"run_id": run_id, "payload": payload})
         return run_id
 
@@ -109,15 +111,18 @@ class Runtime:
             # The generations that produced the thing being approved are
             # recorded now, not when it resumes. A paused run has already cost
             # something and its row must say so.
-            row.update({
-                "status": AWAITING_APPROVAL,
-                "awaiting": paused.checkpoint.awaiting,
-                "visited": row.get("visited", []) + paused.partial.visited,
-                "llm_calls": row.get("llm_calls", 0) + paused.partial.llm_calls,
-            })
+            row.update(
+                {
+                    "status": AWAITING_APPROVAL,
+                    "awaiting": paused.checkpoint.awaiting,
+                    "visited": row.get("visited", []) + paused.partial.visited,
+                    "llm_calls": row.get("llm_calls", 0) + paused.partial.llm_calls,
+                }
+            )
             self.store.put("runs", run_id, row)
             self.bus.publish(
-                self.topics.approvals, run_id,
+                self.topics.approvals,
+                run_id,
                 {"run_id": run_id, "node": paused.checkpoint.awaiting},
             )
             return row
@@ -127,12 +132,14 @@ class Runtime:
             self.bus.publish(self.topics.dlq, run_id, {"run_id": run_id, "error": str(exc)})
             return row
 
-        row.update({
-            "status": DONE,
-            "visited": row.get("visited", []) + result.visited,
-            "llm_calls": row.get("llm_calls", 0) + result.llm_calls,
-            "result": {k: v for k, v in result.state.items() if not k.startswith("_")},
-        })
+        row.update(
+            {
+                "status": DONE,
+                "visited": row.get("visited", []) + result.visited,
+                "llm_calls": row.get("llm_calls", 0) + result.llm_calls,
+                "result": {k: v for k, v in result.state.items() if not k.startswith("_")},
+            }
+        )
         self.store.put("runs", run_id, row)
         self.bus.publish(self.topics.events, run_id, {"run_id": run_id, "event": "completed"})
         return row
@@ -157,15 +164,17 @@ class Runtime:
         out = []
         for topic in (self.topics.events, self.topics.approvals, self.topics.dlq):
             for message in self.bus.tail(topic, limit):
-                out.append({
-                    "topic": message.topic,
-                    "key": message.key,
-                    "partition": message.partition,
-                    "offset": message.offset,
-                    "event": message.value.get("event")
-                             or message.value.get("node")
-                             or message.value.get("error", ""),
-                })
+                out.append(
+                    {
+                        "topic": message.topic,
+                        "key": message.key,
+                        "partition": message.partition,
+                        "offset": message.offset,
+                        "event": message.value.get("event")
+                        or message.value.get("node")
+                        or message.value.get("error", ""),
+                    }
+                )
         return out[-limit:]
 
 

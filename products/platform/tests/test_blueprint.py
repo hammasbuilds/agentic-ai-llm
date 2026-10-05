@@ -34,9 +34,9 @@ def test_nothing_commits_without_approval():
 
 def test_approval_commits_without_regenerating():
     calls = []
-    graph = blueprint.review_pipeline(**parts(
-        compose=lambda s: calls.append(1) or {"draft": "d"}
-    ))
+    graph = blueprint.review_pipeline(
+        **parts(compose=lambda s: calls.append(1) or {"draft": "d"})
+    )
     with pytest.raises(graphs.GraphInterruptedError) as caught:
         graphs.run(graph, {})
     assert len(calls) == 1
@@ -52,12 +52,14 @@ def test_approval_commits_without_regenerating():
 
 def test_an_early_exit_costs_no_generation():
     calls = []
-    graph = blueprint.review_pipeline(**parts(
-        synthesise=lambda s: calls.append("synth") or {},
-        compose=lambda s: calls.append("compose") or {},
-        early_exit=lambda s: s.get("refuse"),
-        on_exit=lambda s: {"refused": True},
-    ))
+    graph = blueprint.review_pipeline(
+        **parts(
+            synthesise=lambda s: calls.append("synth") or {},
+            compose=lambda s: calls.append("compose") or {},
+            early_exit=lambda s: s.get("refuse"),
+            on_exit=lambda s: {"refused": True},
+        )
+    )
     result = graphs.run(graph, {"refuse": True})
     assert result.state["refused"] is True
     assert calls == []
@@ -65,10 +67,12 @@ def test_an_early_exit_costs_no_generation():
 
 
 def test_the_early_exit_is_not_taken_when_it_does_not_apply():
-    graph = blueprint.review_pipeline(**parts(
-        early_exit=lambda s: s.get("refuse"),
-        on_exit=lambda s: {"refused": True},
-    ))
+    graph = blueprint.review_pipeline(
+        **parts(
+            early_exit=lambda s: s.get("refuse"),
+            on_exit=lambda s: {"refused": True},
+        )
+    )
     with pytest.raises(graphs.GraphInterruptedError):
         graphs.run(graph, {"refuse": False})
 
@@ -84,10 +88,12 @@ def test_a_failed_gather_branch_reaches_synthesis():
     def boom(state):
         raise TimeoutError("source down")
 
-    graph = blueprint.review_pipeline(**parts(
-        gather={"ok": lambda s: 1, "dead": boom},
-        synthesise=lambda s: seen.update(failed=s["branches_failed"]) or {"summary": "s"},
-    ))
+    graph = blueprint.review_pipeline(
+        **parts(
+            gather={"ok": lambda s: 1, "dead": boom},
+            synthesise=lambda s: seen.update(failed=s["branches_failed"]) or {"summary": "s"},
+        )
+    )
     with pytest.raises(graphs.GraphInterruptedError):
         graphs.run(graph, {})
     assert seen["failed"] == ["dead"]
