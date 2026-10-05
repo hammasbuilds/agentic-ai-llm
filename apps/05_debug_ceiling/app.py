@@ -84,7 +84,7 @@ def build_graph():
 
     async def generate(state: DebugState) -> dict:
         raw = await model.generate(FIRST.format(prompt=state["prompt"], test=state["test"]), seed=1)
-        return {"code": extract_code(raw) if raw else "", "round": 1}
+        return {"code": extract_code(model.require(raw, what="first attempt")), "round": 1}
 
     async def repair(state: DebugState) -> dict:
         rnd = state["round"] + 1
@@ -98,7 +98,7 @@ def build_graph():
             # same greedy decode returning the same wrong answer.
             seed=rnd,
         )
-        return {"code": extract_code(raw) if raw else "", "round": rnd}
+        return {"code": extract_code(model.require(raw, what="repair")), "round": rnd}
 
     async def execute(state: DebugState) -> dict:
         loop = asyncio.get_running_loop()

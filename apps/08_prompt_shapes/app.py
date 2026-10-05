@@ -75,7 +75,7 @@ async def runner(params: dict, emit) -> dict:
 
     for shape in SHAPES:
         raws = await model.generate_many([build(shape, t) for t in tasks])
-        codes = [extract_code(r) if r else "" for r in raws]
+        codes = [extract_code(r) for r in model.require_all(raws, what=f"{shape} answer")]
         outs = await asyncio.gather(
             *[
                 loop.run_in_executor(None, run_tests, c, list(t.tests), t.setup)

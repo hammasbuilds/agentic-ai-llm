@@ -58,7 +58,7 @@ async def runner(params: dict, emit) -> dict:
             await emit(_i * total + done, 2 * total, f"{_s}: {done}/{total}")
 
         raws = await model.generate_many(prompts, model=size, on_progress=progress)
-        codes = [extract_code(r) if r else "" for r in raws]
+        codes = [extract_code(r) for r in model.require_all(raws, what=f"{size} answer")]
         outs = await asyncio.gather(
             *[
                 loop.run_in_executor(None, run_tests, c, list(t.tests), t.setup)

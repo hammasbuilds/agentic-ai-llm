@@ -130,7 +130,7 @@ async def runner(params: dict, emit) -> dict:
     raw = await model.generate(LOCATE_PROMPT.format(repo=repo, issue=issue[:6000]), num_predict=256)
     # The model names module paths; matplotlib's package lives under lib/, so resolve
     # against the real listing before comparing. Only unambiguous matches resolve.
-    llm_ranked = resolve(_parse_paths(raw or ""), set(files))
+    llm_ranked = resolve(_parse_paths(model.require(raw, what="ranking")), set(files))
     fabricated = [p for p in llm_ranked if p not in set(files)]
     await emit(4, 5, f"model named {len(llm_ranked)} paths, {len(fabricated)} not in the repo")
 
@@ -144,7 +144,7 @@ async def runner(params: dict, emit) -> dict:
     import re as _re
 
     rerank_ranked: list[str] = []
-    for line in (raw2 or "").splitlines():
+    for line in model.require(raw2, what="rerank").splitlines():
         m = _re.search(r"\d+", line)
         if not m:
             continue

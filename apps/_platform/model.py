@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import Awaitable, Callable
+import time
+from collections.abc import Awaitable, Callable, Sequence
 
 import httpx
 
@@ -26,6 +27,9 @@ from . import cache
 OLLAMA = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 DEFAULT_MODEL = os.environ.get("MODEL", "qwen2.5-coder:14b")
 CONCURRENCY = int(os.environ.get("GEN_CONCURRENCY", "8"))
+#: How long to wait on the reachability probe. A page render asks this question
+#: and nothing else about the model, so it must be cheap to answer.
+PROBE_TIMEOUT = float(os.environ.get("OLLAMA_PROBE_TIMEOUT", "5.0"))
 
 
 async def generate(
@@ -116,10 +120,73 @@ async def embed(texts: list[str], model: str = "nomic-embed-text") -> list[list[
     return out
 
 
-async def available(model: str = DEFAULT_MODEL) -> bool:
+class ModelUnreachable(RuntimeError):
+    """Some generations never happened.
+
+    A generation that did not happen is not a wrong answer, and the difference is the
+    whole product: every app here publishes a rate over model output, and an empty
+    string scored as a failed attempt moves that rate without moving anything real.
+    With the model down from the start, five of the six runners used to return a
+    finished, all-zero measurement with status `done`; with it dying part-way, one app
+    reported a 3B model beating a 14B by 25 points from a run where seven eighths of
+    the calls never reached a model.
+    """
+
+
+def require_all(raws: Sequence[str | None], *, what: str = "generation") -> list[str]:
+    """Every completion, or refuse. Never a blank standing in for one."""
+    lost = sum(1 for raw in raws if raw is None)
+    if lost:
+        raise ModelUnreachable(
+            f"{lost} of {len(raws)} {what}s never reached the model. No rate is "
+            "published from a partial run: a lost generation is not a wrong answer."
+        )
+    return [raw for raw in raws if raw is not None]
+
+
+def require(raw: str | None, *, what: str = "generation") -> str:
+    """One completion, or refuse."""
+    return require_all([raw], what=what)[0]
+
+
+#: How long a failed reachability check is believed. `cache` and `bus` both have one of
+#: these; `model` did not, so `health()` - which every page handler calls - paid the
+#: full connect timeout on every render of every app. Two of three dependencies had the
+#: pattern and the third was the one on the hot path.
+DOWN_FOR = float(os.environ.get("OLLAMA_RETRY_AFTER", "5.0"))
+_down_until = 0.0
+_tags: tuple[str, ...] = ()
+
+
+async def tags() -> tuple[str, ...]:
+    """Every model tag the server holds, as `name:tag`."""
+    global _down_until, _tags
+    if time.monotonic() < _down_until:
+        return ()
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=PROBE_TIMEOUT) as client:
             r = await client.get(f"{OLLAMA}/api/tags")
-            return model.split(":")[0] in r.text
-    except httpx.HTTPError:
+            r.raise_for_status()
+            names = tuple(m["name"] for m in r.json().get("models", []) if m.get("name"))
+    except (httpx.HTTPError, ValueError, KeyError):
+        _down_until = time.monotonic() + DOWN_FOR
+        return ()
+    _down_until = 0.0
+    _tags = names
+    return names
+
+
+async def available(model: str = DEFAULT_MODEL) -> bool:
+    """Whether THIS model is there, not whether something of its family is.
+
+    `"qwen2.5-coder:14b".split(":")[0] in r.text` was true for
+    `qwen2.5-coder:does-not-exist`, so an app comparing a 3B against a 14B showed a
+    green badge and an enabled Run button for a size the server does not hold - and
+    then published the comparison with one arm entirely fabricated.
+    """
+    held = await tags()
+    if not held:
         return False
+    if ":" in model:
+        return model in held or f"{model}:latest" in held
+    return any(name.split(":")[0] == model for name in held)

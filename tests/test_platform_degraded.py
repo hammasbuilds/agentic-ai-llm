@@ -239,10 +239,18 @@ def degraded(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_a_job_submitted_with_no_redis_is_not_thrown_away(degraded):
-    """Submit, follow the redirect, read the result back. The whole click.
+    """Submit, follow the redirect, read the outcome back. The whole click.
 
-    This is the test that would have failed before: the redirect went to a 404 and the
-    result existed nowhere, having been written to a cache that was not there.
+    This is the test that would have failed before the fallback existed: the redirect
+    went to a 404 and the outcome existed nowhere, having been written to a cache that
+    was not there.
+
+    It used to assert `status == "done"` with a truthy `result`, and it passed - the
+    model was at a closed port too, and app 05 returned
+    `{"per_round": [0,0,0,0,0], "final_pass": 0.0}`. An independent review pointed out
+    that this file's own docstring calls that the worst possible outcome, and that the
+    test was certifying it. A run with no model must FAIL and say so; what this test is
+    about is that the failure is recorded and readable, which is the Redis half.
     """
     from fastapi.testclient import TestClient
 
@@ -256,9 +264,10 @@ def test_a_job_submitted_with_no_redis_is_not_thrown_away(degraded):
 
         job = run(cache.get_job(job_id))
         assert job is not None, "the job page would answer 404"
-        assert job["status"] == "done", job
-        assert job["result"], "the measurement ran and its answer went nowhere"
         assert job["transport"] == "inline"  # no Kafka, so no worker took it
+        assert job["status"] == "error", job
+        assert "never reached the model" in job["error"], job["error"]
+        assert not job.get("result"), "a failed run must publish no number"
 
 
 def test_the_progress_stream_ends_instead_of_hanging(degraded):

@@ -84,6 +84,12 @@ def create_app(
 ) -> FastAPI:
     theme = get_theme(slug)
     app = FastAPI(title=theme.name, docs_url="/api/docs", lifespan=_lifespan)
+    # The form and the runner, reachable from the app object. Nothing could get at
+    # either from outside `create_app`, which is why no test had ever called a
+    # runner: the only way in was to POST a form and wait for a real measurement.
+    app.state.fields = fields
+    app.state.runner = runner
+    app.state.slug = slug
 
     # App templates first so a per-app `result.html` wins, then the shared shell.
     tpl = Jinja2Templates(directory=[str(templates_dir), str(HERE / "templates")])

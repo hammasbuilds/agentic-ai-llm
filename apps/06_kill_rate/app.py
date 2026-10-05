@@ -78,7 +78,7 @@ def parse_asserts(raw: str, limit: int = 20) -> list[str]:
     suite rejects the reference" and drop the task from the sample.
     """
     out: list[str] = []
-    for line in extract_code(raw or "").splitlines():
+    for line in extract_code(raw).splitlines():
         line = line.strip()
         if not _ASSERT.match(line) or line in out:
             continue
@@ -110,7 +110,10 @@ async def runner(params: dict, emit) -> dict:
                 for t in tasks
             ],
         )
-        suites = {t.task_id: parse_asserts(r) for t, r in zip(tasks, raws, strict=True)}
+        suites = {
+            t.task_id: parse_asserts(r)
+            for t, r in zip(tasks, model.require_all(raws, what=f"{arm} suite"), strict=True)
+        }
         step += len(tasks)
         await emit(step, total_steps, f"{arm}: {len(tasks)} suites generated")
 

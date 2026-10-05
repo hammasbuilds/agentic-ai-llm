@@ -66,7 +66,10 @@ async def runner(params: dict, emit) -> dict:
     descs_raw = await model.generate_many(
         [DESCRIBE.format(code=t.reference) for t in tasks], on_progress=progress
     )
-    descs = {t.task_id: (r or "").strip() for t, r in zip(tasks, descs_raw, strict=True)}
+    descs = {
+        t.task_id: r.strip()
+        for t, r in zip(tasks, model.require_all(descs_raw, what="description"), strict=True)
+    }
     await emit(n, total, "descriptions written")
 
     arms: dict[str, list[str]] = {}
@@ -80,7 +83,7 @@ async def runner(params: dict, emit) -> dict:
                 for t in tasks
             ]
         )
-        arms[arm] = [extract_code(r) if r else "" for r in raws]
+        arms[arm] = [extract_code(r) for r in model.require_all(raws, what=f"{arm} answer")]
         await emit(n * (idx + 1), total, f"{arm}: implementations written")
 
     passed: dict[str, set[str]] = {}

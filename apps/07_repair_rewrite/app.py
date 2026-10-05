@@ -80,7 +80,7 @@ async def runner(params: dict, emit) -> dict:
         [FIRST.format(prompt=t.prompt, test=t.tests[0]) for t in tasks],
         on_progress=progress,
     )
-    codes = [extract_code(r) if r else "" for r in raws]
+    codes = [extract_code(r) for r in model.require_all(raws, what="first attempt")]
     outs = await asyncio.gather(
         *[
             loop.run_in_executor(None, run_tests, c, list(t.tests), t.setup)
@@ -121,16 +121,21 @@ async def runner(params: dict, emit) -> dict:
     )
     await emit(len(tasks) * 2, len(tasks) * 2, "scoring both retry arms")
 
+    # Both arms, before either is scored: a lost generation in one arm would otherwise
+    # be counted as that arm failing, and the whole point here is which arm wins.
+    repaired = model.require_all(rp, what="repair")
+    rewritten = model.require_all(rw, what="rewrite")
+
     rp_out = await asyncio.gather(
         *[
-            loop.run_in_executor(None, run_tests, extract_code(r or ""), list(t.tests), t.setup)
-            for (t, _, _), r in zip(failed, rp, strict=True)
+            loop.run_in_executor(None, run_tests, extract_code(r), list(t.tests), t.setup)
+            for (t, _, _), r in zip(failed, repaired, strict=True)
         ]
     )
     rw_out = await asyncio.gather(
         *[
-            loop.run_in_executor(None, run_tests, extract_code(r or ""), list(t.tests), t.setup)
-            for (t, _, _), r in zip(failed, rw, strict=True)
+            loop.run_in_executor(None, run_tests, extract_code(r), list(t.tests), t.setup)
+            for (t, _, _), r in zip(failed, rewritten, strict=True)
         ]
     )
 

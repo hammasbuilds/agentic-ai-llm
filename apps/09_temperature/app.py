@@ -75,7 +75,7 @@ async def runner(params: dict, emit) -> dict:
                 seeds.append(None if temp == 0.0 else s)
 
         raws = await model.generate_many(prompts, temperature=temp, seeds=seeds)
-        flat = [extract_code(r) if r else "" for r in raws]
+        flat = [extract_code(r) for r in model.require_all(raws, what=f"sample at {temp}")]
 
         correct, uniq = [], []
         for i, task in enumerate(tasks):

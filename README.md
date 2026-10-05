@@ -54,8 +54,12 @@ there is computed from.
   path. The same 14B model scores 55.8% on that hard half when naming files freely and
   **17.5% when restricted to reranking** — its advantage is knowing the repository, not
   reading the issue. It also invents one path in five.
-- **A 14B coder model scores 50.0% on Devign against a 50.4% majority baseline** — below a
-  classifier that reads nothing and always answers "safe".
+- **Devign's always-SAFE baseline is 54.1%**, against published accuracies around 62% —
+  eight points of headroom, not sixty-two. The model figure this line used to quote was
+  measured against the first 800 rows of the file, which are 49.6% safe rather than 54.1%,
+  and was then compared against the *majority* class on that sample, which is VULNERABLE.
+  The comparison therefore ran the wrong way round. The app now samples the split with a
+  seed and returns both constants; the model number is pending a re-run.
 - **17.6% of single-point mutants survive MBPP's three asserts**, and 442 of them are
   provably wrong. Hand-verification does not fix it: the sanitized split scores 16.0%.
 - **Self-debug rounds 1–2 captured 100% of the gain**; rounds 3–5 added zero tasks for 60%
