@@ -96,7 +96,7 @@ def split_statements(sql: str) -> list[str]:
         if word_match:
             keyword = word_match.group(1).upper()
             # A bare `BEGIN;` is a transaction, not a block.
-            following = text[i + len(word_match.group(0)):].lstrip()
+            following = text[i + len(word_match.group(0)) :].lstrip()
             if keyword == "BEGIN" and not following.startswith(";"):
                 depth += 1
             elif keyword == "END":
@@ -215,8 +215,7 @@ def snapshot(conn: sqlite3.Connection) -> Snapshot:
     indexes = frozenset(
         row[0]
         for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' "
-            "AND name NOT LIKE 'sqlite_%'"
+            "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
         )
     )
     return Snapshot(tables=tables, indexes=indexes)

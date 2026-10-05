@@ -15,7 +15,7 @@ does. It is the evidence behind `migration-pilot` refusing to apply the
 from __future__ import annotations
 
 import warnings
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 def session_expired_old(last_seen: datetime) -> bool:
@@ -28,7 +28,7 @@ def session_expired_old(last_seen: datetime) -> bool:
 
 def session_expired_fixed(last_seen: datetime) -> bool:
     """The same function after the documented replacement is applied."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return (now - last_seen) > timedelta(hours=1)
 
 

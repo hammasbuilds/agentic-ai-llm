@@ -30,8 +30,15 @@ def _():
     from csvanalyst.profile import parse_number, profile_csv
 
     return (
-        Path, bars, column_summary, contamination_findings, histogram,
-        load, mo, parse_number, profile_csv,
+        Path,
+        bars,
+        column_summary,
+        contamination_findings,
+        histogram,
+        load,
+        mo,
+        parse_number,
+        profile_csv,
     )
 
 
@@ -92,8 +99,9 @@ def _(mo, prof):
     contaminated = prof.contaminated
     mo.stop(
         not contaminated,
-        mo.callout("No column is partially numeric. Nothing would be silently dropped.",
-                   kind="success"),
+        mo.callout(
+            "No column is partially numeric. Nothing would be silently dropped.", kind="success"
+        ),
     )
     rows = "\n".join(
         f"| `{c.name}` | {c.parse_rate:.1%} | {c.present - c.parsed:,} | "
@@ -148,7 +156,8 @@ def _(column_summary, contamination_findings, load, mo, picker, prof, row_cap):
 def _(bars, histogram, mo, parse_number, picker, prof, row_cap):
     import csv as _csv
 
-    text = open(picker.value, encoding="utf-8", errors="replace").read()
+    with open(picker.value, encoding="utf-8", errors="replace") as handle:
+        text = handle.read()
     reader = _csv.reader(text.splitlines(), delimiter=prof.delimiter)
     next(reader, None)
     sample = [r for _, r in zip(range(row_cap.value), reader, strict=False)]
@@ -161,8 +170,9 @@ def _(bars, histogram, mo, parse_number, picker, prof, row_cap):
             panels.append(mo.Html(histogram(nums, f"{col.name} (n={len(nums):,})")))
         elif col.top_values:
             panels.append(
-                mo.Html(bars([(v, float(n)) for v, n in col.top_values],
-                             f"{col.name}: most common"))
+                mo.Html(
+                    bars([(v, float(n)) for v, n in col.top_values], f"{col.name}: most common")
+                )
             )
     mo.vstack(panels) if panels else mo.md("*No chartable columns.*")
     return

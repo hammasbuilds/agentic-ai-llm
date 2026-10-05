@@ -13,7 +13,13 @@ import pytest
 from driftwatch.domain import MECHANICAL, Claim, broken, verifiable_share, verify
 from driftwatch.repos import ROOT, facts_for, scan, sentences
 
-pytestmark = pytest.mark.skipif(not ROOT.exists(), reason="no checkouts under REPOS_ROOT")
+# A tree of checkouts, not merely a path that exists. The guard used to be
+# `.exists()`, so an existing-but-empty REPOS_ROOT - a fresh clone on any other
+# machine, or CI - ran these and FAILED instead of skipping, which is the loudest
+# possible way to report that the corpus is absent.
+pytestmark = pytest.mark.skipif(
+    not any(ROOT.glob('*/.git')), reason="REPOS_ROOT is not a tree of git checkouts"
+)
 
 
 @pytest.fixture(scope="module")

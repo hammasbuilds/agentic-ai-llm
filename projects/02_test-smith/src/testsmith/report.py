@@ -8,7 +8,6 @@ a coverage report cannot.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 from .runner import RunReport
@@ -61,8 +60,10 @@ def render_text(report: RunReport) -> str:
     cov = report.coverage
 
     add("=" * w)
-    add(f"  {report.repo}  -  {len(report.results)} mutants run "
-        f"of {report.total_mutants} available")
+    add(
+        f"  {report.repo}  -  {len(report.results)} mutants run "
+        f"of {report.total_mutants} available"
+    )
     add("=" * w)
     add("")
     add(f"  suite passes in {report.baseline_seconds}s before mutation")
@@ -73,13 +74,14 @@ def render_text(report: RunReport) -> str:
     add(f"    killed    {report.killed:4d}")
     add(f"    survived  {report.survived:4d}")
     add(f"    timeout   {report.timed_out:4d}   (counted as caught)")
-    add(f"    error     {report.errored:4d}   (excluded - broke the import, "
-        f"proves nothing)")
+    add(f"    error     {report.errored:4d}   (excluded - broke the import, proves nothing)")
     add("")
     add("  SCORE")
     add(f"    overall            {report.score:.0%}  over {report.scored} scored mutants")
-    add(f"    on executed lines  {report.covered_score:.0%}  over "
-        f"{report.covered_mutants} mutants")
+    add(
+        f"    on executed lines  {report.covered_score:.0%}  over "
+        f"{report.covered_mutants} mutants"
+    )
 
     survivors = report.survivors_on_covered_lines
     add("")
@@ -106,7 +108,9 @@ def render_text(report: RunReport) -> str:
     if by_op:
         add("")
         add("  BY OPERATOR  (caught / scored)")
-        for op, (caught, scored) in sorted(by_op.items(), key=lambda kv: kv[1][1], reverse=True):
+        for op, (caught, scored) in sorted(
+            by_op.items(), key=lambda kv: kv[1][1], reverse=True
+        ):
             rate = caught / scored if scored else 0
             add(f"    {op:10s} {caught:3d}/{scored:<3d}  {rate:.0%}")
 

@@ -21,7 +21,7 @@ from pathlib import Path
 
 # Injected into the workspace and run instead of pytest directly. Kept as a
 # string so the package ships one file rather than a data file it must locate.
-_TRACER = '''
+_TRACER = """
 import json, os, sys, threading
 
 TARGET_ROOT = os.path.abspath(sys.argv[1])
@@ -56,7 +56,7 @@ with open(OUT, "w", encoding="utf-8") as fh:
     json.dump({k: sorted(v) for k, v in covered.items()}, fh)
 
 raise SystemExit(int(code))
-'''
+"""
 
 
 @dataclass
@@ -76,7 +76,9 @@ class Coverage:
         return sum(len(v) for v in self.lines.values())
 
 
-def measure(interpreter: str, workspace: Path, env: dict[str, str], timeout: float = 600) -> Coverage:
+def measure(
+    interpreter: str, workspace: Path, env: dict[str, str], timeout: float = 600
+) -> Coverage:
     """Run the suite once under a tracer and collect executed lines.
 
     Returns empty coverage rather than raising if tracing fails - the mutation

@@ -15,9 +15,21 @@ from .rules import ALL_RULES, DEFAULT_RULES, MECHANICAL, RULE_KIND, scan_source
 
 SKIP_DIRS = frozenset(
     {
-        ".git", ".venv", ".venvs", "venv", "env", "__pycache__", ".pytest_cache",
-        ".ruff_cache", ".mypy_cache", "node_modules", "build", "dist", ".tox",
-        ".eggs", "site-packages",
+        ".git",
+        ".venv",
+        ".venvs",
+        "venv",
+        "env",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+        "node_modules",
+        "build",
+        "dist",
+        ".tox",
+        ".eggs",
+        "site-packages",
     }
 )
 
@@ -26,7 +38,8 @@ def _python_files(target: Path) -> list[Path]:
     if target.is_file():
         return [target]
     return sorted(
-        p for p in target.rglob("*.py")
+        p
+        for p in target.rglob("*.py")
         if not any(part in SKIP_DIRS for part in p.relative_to(target).parts)
     )
 
@@ -139,7 +152,9 @@ def _apply_command(args: argparse.Namespace) -> int:
                 diff = difflib.unified_diff(
                     source.splitlines(keepends=True),
                     result.splitlines(keepends=True),
-                    fromfile=str(path), tofile=str(path), n=1,
+                    fromfile=str(path),
+                    tofile=str(path),
+                    n=1,
                 )
                 sys.stdout.writelines(diff)
 
@@ -168,7 +183,9 @@ def _rules_command(_: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="migration-pilot",
-        description="Modernise Python mechanically, and refuse to when it would change meaning.",
+        description=(
+            "Modernise Python mechanically, and refuse to when it would change meaning."
+        ),
     )
     sub = p.add_subparsers(dest="command", required=True)
 

@@ -22,17 +22,41 @@ from .coverage import Coverage, measure
 from .mutate import Mutant, generate
 
 __all__ = [
-    "ERROR", "KILLED", "SURVIVED", "TIMEOUT",
-    "MutantResult", "RunReport", "find_interpreter", "operator_summary",
-    "run", "source_files",
+    "ERROR",
+    "KILLED",
+    "SURVIVED",
+    "TIMEOUT",
+    "MutantResult",
+    "RunReport",
+    "find_interpreter",
+    "operator_summary",
+    "run",
+    "source_files",
 ]
 
 SKIP_DIRS = frozenset(
     {
-        ".git", ".venv", "venv", "env", "__pycache__", ".pytest_cache",
-        ".ruff_cache", ".mypy_cache", "node_modules", "build", "dist",
-        ".tox", ".eggs", "site-packages", "workdirs", "vendor", "third_party",
-        ".testsmith", "htmlcov", ".idea", ".vscode",
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+        "node_modules",
+        "build",
+        "dist",
+        ".tox",
+        ".eggs",
+        "site-packages",
+        "workdirs",
+        "vendor",
+        "third_party",
+        ".testsmith",
+        "htmlcov",
+        ".idea",
+        ".vscode",
     }
 )
 
@@ -77,17 +101,13 @@ class RunReport:
         A coverage report marks these lines green. They are not tested; they are
         merely visited.
         """
-        return [
-            r for r in self.results
-            if r.outcome == SURVIVED and self._on_covered_line(r)
-        ]
+        return [r for r in self.results if r.outcome == SURVIVED and self._on_covered_line(r)]
 
     @property
     def survivors_on_uncovered_lines(self) -> list[MutantResult]:
         """Survivors no test ever reached. A coverage problem, not a test-quality one."""
         return [
-            r for r in self.results
-            if r.outcome == SURVIVED and not self._on_covered_line(r)
+            r for r in self.results if r.outcome == SURVIVED and not self._on_covered_line(r)
         ]
 
     @property
@@ -97,19 +117,14 @@ class RunReport:
         This is the honest measure of test *strength*. The unrestricted score
         conflates "we never ran this code" with "we ran it and did not check it".
         """
-        pool = [
-            r for r in self.results
-            if r.outcome != ERROR and self._on_covered_line(r)
-        ]
+        pool = [r for r in self.results if r.outcome != ERROR and self._on_covered_line(r)]
         if not pool:
             return 0.0
         return sum(1 for r in pool if r.caught) / len(pool)
 
     @property
     def covered_mutants(self) -> int:
-        return sum(
-            1 for r in self.results if r.outcome != ERROR and self._on_covered_line(r)
-        )
+        return sum(1 for r in self.results if r.outcome != ERROR and self._on_covered_line(r))
 
     @property
     def killed(self) -> int:
@@ -211,7 +226,9 @@ def _pytest_env(workspace: Path) -> dict[str, str]:
     env = dict(os.environ)
     roots = [str(workspace / "src"), str(workspace)]
     existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = os.pathsep.join([*roots, existing]) if existing else os.pathsep.join(roots)
+    env["PYTHONPATH"] = (
+        os.pathsep.join([*roots, existing]) if existing else os.pathsep.join(roots)
+    )
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return env
 

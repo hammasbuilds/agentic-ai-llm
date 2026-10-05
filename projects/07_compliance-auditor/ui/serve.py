@@ -44,7 +44,8 @@ class Handler(BaseHTTPRequestHandler):
             if not target.is_dir():
                 self._send(
                     json.dumps({"error": f"not a directory: {target}"}).encode(),
-                    "application/json", 400,
+                    "application/json",
+                    400,
                 )
                 return
             audit = audit_folder(target)
@@ -62,9 +63,7 @@ class Handler(BaseHTTPRequestHandler):
         if not target.is_file() or HERE not in target.parents:
             self._send(b"not found", "text/plain", 404)
             return
-        self._send(
-            target.read_bytes(), TYPES.get(target.suffix, "application/octet-stream")
-        )
+        self._send(target.read_bytes(), TYPES.get(target.suffix, "application/octet-stream"))
 
 
 def main() -> int:

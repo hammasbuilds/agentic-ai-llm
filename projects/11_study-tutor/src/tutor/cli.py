@@ -92,8 +92,10 @@ def _compare_command(args: argparse.Namespace) -> int:
         print(f"  {name:5s} {lapse_recovery(name)}")
     print()
     results = compare(days=args.days, cards=args.cards)
-    print(f"{'scheduler':10s} {'reviews':>9s} {'lapses':>8s} "
-          f"{'recall@review':>14s} {'final recall':>13s}")
+    print(
+        f"{'scheduler':10s} {'reviews':>9s} {'lapses':>8s} "
+        f"{'recall@review':>14s} {'final recall':>13s}"
+    )
     for name, row in results.items():
         print(
             f"{name:10s} {row['reviews']:9.0f} {row['lapses']:8.0f} "

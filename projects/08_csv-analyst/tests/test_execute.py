@@ -135,7 +135,9 @@ def test_contamination_finding_names_the_offending_values(retail: Path):
 def test_narration_mentions_contamination_and_claims_no_model(retail: Path):
     profile = profile_csv(retail)
     conn = load(retail, profile)
-    text = narrate(profile, column_summary(conn, profile) + contamination_findings(conn, profile))
+    text = narrate(
+        profile, column_summary(conn, profile) + contamination_findings(conn, profile)
+    )
     assert "Invoice" in text
     assert "numeric cast" in text
     assert "No number here was written by a language model." in text

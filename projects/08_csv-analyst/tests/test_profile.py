@@ -13,12 +13,12 @@ from pathlib import Path
 import pytest
 
 from csvanalyst.profile import (
+    _name_tokens,
     detect_date_format,
     honest_mean,
     naive_mean,
     parse_number,
     profile_csv,
-    _name_tokens,
 )
 
 
@@ -38,9 +38,16 @@ def column(profile, name: str):
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("42", 42.0), ("-3.5", -3.5), ("1,234", 1234.0),
-        (" 7 ", 7.0), ("1e3", 1000.0),
-        ("N/A", None), ("", None), ("12abc", None), ("C489449", None), ("--", None),
+        ("42", 42.0),
+        ("-3.5", -3.5),
+        ("1,234", 1234.0),
+        (" 7 ", 7.0),
+        ("1e3", 1000.0),
+        ("N/A", None),
+        ("", None),
+        ("12abc", None),
+        ("C489449", None),
+        ("--", None),
     ],
 )
 def test_number_parsing(raw: str, expected):

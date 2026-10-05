@@ -24,8 +24,14 @@ from tutor.simulate import lapse_recovery  # noqa: E402
 
 DECK = [
     Card("What does FSRS optimise for?", "A target recall probability at review time."),
-    Card("Why must an LLM not pick the interval?", "It has no memory model and is not reproducible."),
-    Card("What does SM-2 do on a lapse?", "Resets the interval to one day, discarding the history."),
+    Card(
+        "Why must an LLM not pick the interval?",
+        "It has no memory model and is not reproducible.",
+    ),
+    Card(
+        "What does SM-2 do on a lapse?",
+        "Resets the interval to one day, discarding the history.",
+    ),
 ]
 
 
@@ -79,7 +85,8 @@ def index() -> rx.Component:
             rx.text(
                 "The scheduler is arithmetic over a memory model. The model writes "
                 "questions and never chooses an interval.",
-                color_scheme="gray", size="2",
+                color_scheme="gray",
+                size="2",
             ),
             rx.cond(
                 State.finished,
@@ -99,19 +106,26 @@ def index() -> rx.Component:
                                     grade_button("Easy", EASY, "blue"),
                                     spacing="2",
                                 ),
-                                spacing="3", align="start", width="100%",
+                                spacing="3",
+                                align="start",
+                                width="100%",
                             ),
                             rx.button("Reveal", on_click=State.reveal, size="3"),
                         ),
-                        spacing="4", align="start", width="100%",
+                        spacing="4",
+                        align="start",
+                        width="100%",
                     ),
                     width="100%",
                 ),
             ),
             rx.cond(
                 State.last_interval > 0,
-                rx.text(f"Scheduled {State.last_interval} day(s) out.", size="2",
-                        color_scheme="gray"),
+                rx.text(
+                    f"Scheduled {State.last_interval} day(s) out.",
+                    size="2",
+                    color_scheme="gray",
+                ),
             ),
             rx.divider(),
             rx.heading("Why the scheduler is not a prompt", size="3"),
@@ -120,9 +134,11 @@ def index() -> rx.Component:
                 f"SM-2: {lapse_recovery('sm2')[0]} day, "
                 f"FSRS: {lapse_recovery('fsrs')[0]} days. "
                 "SM-2 discards the card's entire history; FSRS reduces its stability.",
-                size="2", color_scheme="gray",
+                size="2",
+                color_scheme="gray",
             ),
-            spacing="4", width="100%",
+            spacing="4",
+            width="100%",
         ),
         size="2",
     )

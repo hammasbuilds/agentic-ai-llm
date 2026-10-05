@@ -17,7 +17,6 @@ finding, and the sentence is carried into the report so a reader can disagree.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
 from .segment import Clause, locate, normalise, segment
@@ -121,11 +120,14 @@ OBLIGATIONS: dict[str, tuple[str, str, tuple[str, ...]]] = {
 # classifier reads the whole file as GPL. Putting PSF first fixes the cause;
 # the disqualifier below catches the same shape elsewhere.
 FAMILIES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("PSF", (
-        "this license agreement is between the python software foundation",
-        "psf license version",
-        "psf hereby grants",
-    )),
+    (
+        "PSF",
+        (
+            "this license agreement is between the python software foundation",
+            "psf license version",
+            "psf hereby grants",
+        ),
+    ),
     ("AGPL-3.0", ("gnu affero general public license",)),
     ("LGPL", ("gnu lesser general public license", "lesser general public license")),
     ("MPL-2.0", ("mozilla public license",)),
@@ -252,8 +254,11 @@ def read(path: str, raw: str) -> Reading:
                 continue
             family = name
             family_citation = Citation(
-                phrase=phrase, start=span[0], end=span[1],
-                sentence=sentence[:300], clause=_clause_at(clauses, span[0]),
+                phrase=phrase,
+                start=span[0],
+                end=span[1],
+                sentence=sentence[:300],
+                clause=_clause_at(clauses, span[0]),
             )
             matched = True
             break
@@ -277,16 +282,23 @@ def read(path: str, raw: str) -> Reading:
                     description=description,
                     risk=risk,
                     citation=Citation(
-                        phrase=phrase, start=span[0], end=span[1],
-                        sentence=sentence[:300], clause=_clause_at(clauses, span[0]),
+                        phrase=phrase,
+                        start=span[0],
+                        end=span[1],
+                        sentence=sentence[:300],
+                        clause=_clause_at(clauses, span[0]),
                     ),
                 )
             )
             break
 
     return Reading(
-        path=path, family=family, family_citation=family_citation,
-        findings=findings, clauses=clauses, rejected=rejected,
+        path=path,
+        family=family,
+        family_citation=family_citation,
+        findings=findings,
+        clauses=clauses,
+        rejected=rejected,
     )
 
 

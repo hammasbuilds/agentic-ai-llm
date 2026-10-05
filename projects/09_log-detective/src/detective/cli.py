@@ -30,10 +30,14 @@ def _templates_command(args: argparse.Namespace) -> int:
         return 2
     result = extract(lines, threshold=args.threshold)
 
-    print(f"{result.lines:,} lines -> {len(result.templates)} templates "
-          f"({result.compression:.1f}x) at threshold {result.threshold}")
-    print(f"  {len(result.merged_templates)} template(s) merged distinct messages; "
-          f"{result.distinct_messages_lost} distinction(s) lost")
+    print(
+        f"{result.lines:,} lines -> {len(result.templates)} templates "
+        f"({result.compression:.1f}x) at threshold {result.threshold}"
+    )
+    print(
+        f"  {len(result.merged_templates)} template(s) merged distinct messages; "
+        f"{result.distinct_messages_lost} distinction(s) lost"
+    )
     print()
     for template in result.templates[: args.limit]:
         flag = " MERGED" if template.merged else ""
@@ -50,8 +54,10 @@ def _cost_command(args: argparse.Namespace) -> int:
     if not lines:
         return 2
     print(f"{len(lines):,} lines\n")
-    print(f"{'thresh':>7s} {'templates':>10s} {'compression':>12s} "
-          f"{'merged':>7s} {'distinct lost':>14s} {'singletons':>11s}")
+    print(
+        f"{'thresh':>7s} {'templates':>10s} {'compression':>12s} "
+        f"{'merged':>7s} {'distinct lost':>14s} {'singletons':>11s}"
+    )
     rows = sweep(lines)
     for result in rows:
         print(
@@ -92,11 +98,11 @@ def _rare_command(args: argparse.Namespace) -> int:
         return 2
     result = extract(lines, threshold=args.threshold)
     rare = result.rarest(args.limit)
-    print(f"{len(result.singletons)} template(s) seen exactly once, "
-          f"of {len(result.templates)}\n")
+    print(
+        f"{len(result.singletons)} template(s) seen exactly once, of {len(result.templates)}\n"
+    )
     for template in rare:
-        print(f"  {template.count:4d}x  line {template.first_line:6d}  "
-              f"{template.text[:88]}")
+        print(f"  {template.count:4d}x  line {template.first_line:6d}  {template.text[:88]}")
     return 0
 
 

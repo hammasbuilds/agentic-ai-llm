@@ -36,9 +36,7 @@ for name, plan, _ in rows:
 ran = [p for _, p, _ in rows if p.trip is not None]
 failed = [p for _, p, _ in rows if p.trip is None]
 lossy = [p for p in ran if not p.trip.data_restored]
-schema_ok_data_lost = [
-    p for p in ran if p.trip.schema_equivalent and not p.trip.data_restored
-]
+schema_ok_data_lost = [p for p in ran if p.trip.schema_equivalent and not p.trip.data_restored]
 reordered = [p for p in ran if p.trip.columns_reordered]
 fully = [p for p in ran if p.safe]
 
@@ -49,14 +47,18 @@ print(f"  refused to run              : {len(failed)}")
 print(f"  fully reversible            : {len(fully)}")
 print(f"  lost data                   : {len(lossy)}")
 print(f"  columns silently reordered  : {len(reordered)}")
-print(f"  SCHEMA MATCHES, DATA LOST   : {len(schema_ok_data_lost)}"
-      f"  <- invisible to a schema-only check")
+print(
+    f"  SCHEMA MATCHES, DATA LOST   : {len(schema_ok_data_lost)}"
+    f"  <- invisible to a schema-only check"
+)
 
 print()
 print("the ones that pass a schema check and still lose data:")
 for p in schema_ok_data_lost:
-    print(f"  - {p.name}: {', '.join(p.trip.changed_tables())} altered, "
-          f"{p.trip.rows_lost} row(s) lost")
+    print(
+        f"  - {p.name}: {', '.join(p.trip.changed_tables())} altered, "
+        f"{p.trip.rows_lost} row(s) lost"
+    )
 
 disagreements = [(p.name, d) for _, p, _ in rows for d in p.disagreements]
 if disagreements:

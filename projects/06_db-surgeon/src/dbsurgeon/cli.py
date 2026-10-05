@@ -41,8 +41,7 @@ def _check_command(args: argparse.Namespace) -> int:
             "columns_lost": trip.columns_lost if trip else [],
             "rows_lost": trip.rows_lost if trip else None,
             "up": [
-                {"kind": o.kind, "category": o.category, "target": o.target,
-                 "reason": o.reason}
+                {"kind": o.kind, "category": o.category, "target": o.target, "reason": o.reason}
                 for o in plan.up_operations
             ],
             "disagreements": plan.disagreements,
@@ -94,9 +93,11 @@ def _corpus_command(args: argparse.Namespace) -> int:
             f"{'ok' if trip.data_restored else 'LOST':>6s}  {plan.verdict}"
         )
     print("-" * 82)
-    print(f"{len(plans)} migrations, {len(ran)} ran, "
-          f"{sum(1 for p in ran if p.safe)} fully reversible, "
-          f"{len(hidden)} match on schema and lose data")
+    print(
+        f"{len(plans)} migrations, {len(ran)} ran, "
+        f"{sum(1 for p in ran if p.safe)} fully reversible, "
+        f"{len(hidden)} match on schema and lose data"
+    )
     return 0
 
 

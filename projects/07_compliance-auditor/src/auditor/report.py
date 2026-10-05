@@ -94,8 +94,12 @@ _SYMBOL = {PASS: "ok  ", FAIL: "FAIL", INCONCLUSIVE: "??  ", NOT_APPLICABLE: "- 
 
 def render_repo(repo: RepoAudit) -> str:
     policies = {c.id: c.policy for c in CONTROLS}
-    out = ["=" * 78, f"  {repo.name}  -  {repo.passed}/{len(repo.counted)} "
-           f"({repo.rate:.0%})", "=" * 78, ""]
+    out = [
+        "=" * 78,
+        f"  {repo.name}  -  {repo.passed}/{len(repo.counted)} ({repo.rate:.0%})",
+        "=" * 78,
+        "",
+    ]
     for result in repo.results:
         out.append(f"  [{_SYMBOL[result.status]}] {result.control}")
         out.append(f"          policy: {policies.get(result.control, '')}")
@@ -108,13 +112,19 @@ def render_repo(repo: RepoAudit) -> str:
 
 
 def render_folder(audit: Audit) -> str:
-    out = ["=" * 78, f"  {len(audit.repos)} repositories  -  "
-           f"{audit.passed}/{audit.counted} controls passed ({audit.rate:.0%})",
-           "=" * 78, ""]
+    out = [
+        "=" * 78,
+        f"  {len(audit.repos)} repositories  -  "
+        f"{audit.passed}/{audit.counted} controls passed ({audit.rate:.0%})",
+        "=" * 78,
+        "",
+    ]
 
     totals = audit.totals
-    out.append(f"  pass {totals[PASS]}   fail {totals[FAIL]}   "
-               f"inconclusive {totals[INCONCLUSIVE]}   n/a {totals[NOT_APPLICABLE]}")
+    out.append(
+        f"  pass {totals[PASS]}   fail {totals[FAIL]}   "
+        f"inconclusive {totals[INCONCLUSIVE]}   n/a {totals[NOT_APPLICABLE]}"
+    )
     out.append("  Inconclusive and n/a are excluded from the rate, never counted as passes.")
     out.append("")
 
@@ -144,7 +154,9 @@ def to_json(audit: Audit) -> str:
             "controls_passed": audit.passed,
             "controls_counted": audit.counted,
             "rate": round(audit.rate, 4),
-            "by_control": {k: {"passed": p, "of": t} for k, (p, t) in audit.by_control().items()},
+            "by_control": {
+                k: {"passed": p, "of": t} for k, (p, t) in audit.by_control().items()
+            },
             "repos": [
                 {
                     "name": repo.name,

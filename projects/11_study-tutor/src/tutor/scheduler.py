@@ -87,8 +87,23 @@ def sm2(state: CardState, grade: int, today: date) -> CardState:
 # Published default weights for FSRS-4.5. Not tuned here: tuning them without
 # a real review log would be inventing a memory model.
 W = (
-    0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031,
-    1.6474, 0.1367, 1.0461, 2.1072, 0.0793, 0.3246, 1.587, 0.2272, 2.8755,
+    0.4872,
+    1.4003,
+    3.7145,
+    13.8206,
+    5.1618,
+    1.2298,
+    0.8975,
+    0.031,
+    1.6474,
+    0.1367,
+    1.0461,
+    2.1072,
+    0.0793,
+    0.3246,
+    1.587,
+    0.2272,
+    2.8755,
 )
 
 DESIRED_RETENTION = 0.9
@@ -139,7 +154,9 @@ def _interval_for(stability: float, retention: float = DESIRED_RETENTION) -> int
     return max(1, round(9 * stability * (1 / retention - 1)))
 
 
-def fsrs(state: CardState, grade: int, today: date, elapsed_days: float | None = None) -> CardState:
+def fsrs(
+    state: CardState, grade: int, today: date, elapsed_days: float | None = None
+) -> CardState:
     """FSRS-4.5 with published weights."""
     if grade not in GRADES:
         raise ValueError(f"grade must be one of {GRADES}, got {grade}")
@@ -188,4 +205,4 @@ class Card:
 def due_cards(cards: list[Card], today: date) -> list[Card]:
     """Cards due on or before today, most overdue first."""
     due = [c for c in cards if c.state.due is None or c.state.due <= today]
-    return sorted(due, key=lambda c: (c.state.due or date.min))
+    return sorted(due, key=lambda c: c.state.due or date.min)

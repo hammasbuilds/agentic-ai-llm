@@ -105,11 +105,11 @@ two-line diff:
 
 ```python
 def f(
-    a: Optional[str],   # keep this comment
+    a: Optional[str],  # keep this comment
     b: int = 3,
 ) -> List[int]:
-    '''Docstring stays.'''
-    return [1,  2]
+    """Docstring stays."""
+    return [1, 2]
 ```
 
 becomes `a: str | None` and `-> list[int]`, with the comment, the docstring and the odd

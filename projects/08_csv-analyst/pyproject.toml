@@ -7,6 +7,9 @@ authors = [
     { name = "Muhammad Hammas", email = "214618908+hammasbuilds@users.noreply.github.com" }
 ]
 requires-python = ">=3.11"
+# SPDX form, not { text = ... }: uv_build rejects license-files beside the table
+# form, and the expression is what an index and a trust index actually read.
+license = "MIT"
 
 # csv reads, sqlite3 queries, statistics summarises, and the charts are SVG
 # written by hand. DuckDB and pandas were the planned stack and neither is
@@ -43,3 +46,15 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# N818 wants an Error suffix. These names are public API, imported by name from
+# other packages, and `raise NotAGitRepository(...)` reads better than
+# `NotAGitRepositoryError(...)`. Renaming them would be a breaking change made
+# for a naming convention.
+"src/csvanalyst/execute.py" = ["N818"]
+# marimo's notebook format, not style choices this project made. A cell receives its
+# dependencies as parameters named after the globals they are - so a cell that uses
+# `Path` takes an argument called `Path` - and a bare expression at the end of a cell is
+# how marimo renders a widget.
+"ui/notebook.py" = ["N803", "B018"]

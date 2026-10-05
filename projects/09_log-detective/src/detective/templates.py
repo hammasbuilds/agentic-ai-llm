@@ -27,7 +27,10 @@ _MASKS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?"), "<TIME>"),
     (re.compile(r"^\d{4}-\d{2}-\d{2}$"), "<DATE>"),
     (re.compile(r"^\d{2}:\d{2}:\d{2}(?:[.,]\d+)?$"), "<TIME>"),
-    (re.compile(r"^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$", re.I), "<UUID>"),
+    (
+        re.compile(r"^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$", re.I),
+        "<UUID>",
+    ),
     (re.compile(r"^[0-9a-f]{7,40}$", re.I), "<HASH>"),
     (re.compile(r"^\d+(?:\.\d+)?%$"), "<PCT>"),
     (re.compile(r"^[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?$", re.I), "<NUM>"),
@@ -167,10 +170,13 @@ def extract(lines: list[str], threshold: float = 0.6) -> Extraction:
 
     templates = [t for bucket in buckets.values() for t in bucket]
     templates.sort(key=lambda t: -t.count)
-    return Extraction(templates=templates, lines=sum(t.count for t in templates),
-                      threshold=threshold)
+    return Extraction(
+        templates=templates, lines=sum(t.count for t in templates), threshold=threshold
+    )
 
 
-def sweep(lines: list[str], thresholds: tuple[float, ...] = (0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3)) -> list[Extraction]:
+def sweep(
+    lines: list[str], thresholds: tuple[float, ...] = (0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3)
+) -> list[Extraction]:
     """The same log at several thresholds, to show what compression costs."""
     return [extract(lines, t) for t in thresholds]

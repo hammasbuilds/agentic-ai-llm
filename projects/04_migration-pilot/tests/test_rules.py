@@ -46,7 +46,9 @@ def test_annotations_are_modernised(before: str, after: str):
 
 
 def test_nested_generics_unwind_completely():
-    assert run("x: Dict[str, List[Optional[int]]]\n").strip() == "x: dict[str, list[int | None]]"
+    assert (
+        run("x: Dict[str, List[Optional[int]]]\n").strip() == "x: dict[str, list[int | None]]"
+    )
 
 
 def test_surrounding_formatting_is_preserved():

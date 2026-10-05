@@ -56,6 +56,12 @@ packages = ["apps"]
 # tool and belongs to nobody's workspace.
 [tool.uv.workspace]
 members = ["products/*"]
+# products/ also holds data, docs and scripts, which are directories and not packages.
+# A bare glob claimed them as workspace members and uv refused the whole workspace -
+# so `uv sync`, `uv lock` and `uv build --package` all failed with an error naming an
+# internal layout problem. That made a stranger's first command worse than before the
+# workspace existed, which is the opposite of the point.
+exclude = ["products/data", "products/docs", "products/scripts"]
 
 [tool.ruff]
 line-length = 100

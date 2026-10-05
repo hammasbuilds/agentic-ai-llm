@@ -7,6 +7,9 @@ authors = [
     { name = "Muhammad Hammas", email = "214618908+hammasbuilds@users.noreply.github.com" }
 ]
 requires-python = ">=3.11"
+# SPDX form, not { text = ... }: uv_build rejects license-files beside the table
+# form, and the expression is what an index and a trust index actually read.
+license = "MIT"
 
 # sqlite3 is the shadow engine and it is in the standard library. sqlglot and
 # Alembic were the planned stack; neither is needed to execute a migration and
@@ -36,3 +39,10 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# N818 wants an Error suffix. These names are public API, imported by name from
+# other packages, and `raise NotAGitRepository(...)` reads better than
+# `NotAGitRepositoryError(...)`. Renaming them would be a breaking change made
+# for a naming convention.
+"src/dbsurgeon/shadow.py" = ["N818"]

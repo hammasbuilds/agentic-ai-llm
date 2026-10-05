@@ -48,7 +48,10 @@ def test_a_document_with_no_headings_is_one_clause():
 
 
 def test_numbered_headings_split_into_clauses():
-    text = "Preamble here.\n\n1. Definitions\n\nWords mean things.\n\n2. Grant\n\nYou may use it.\n"
+    text = (
+        "Preamble here.\n\n1. Definitions\n\nWords mean things.\n\n"
+        "2. Grant\n\nYou may use it.\n"
+    )
     headings = [c.heading for c in segment(text)]
     assert "1. Definitions" in headings
     assert "2. Grant" in headings
@@ -186,7 +189,10 @@ def test_phrases_inside_disclaiming_sentences_do_not_count(sentence: str):
 
 
 def test_apache_style_patent_grant_is_found():
-    text = "Apache License\n\n3. Grant of Patent License. Each Contributor grants you a patent licence."
+    text = (
+        "Apache License\n\n3. Grant of Patent License. "
+        "Each Contributor grants you a patent licence."
+    )
     reading = read("LICENSE", text)
     assert reading.family == "Apache-2.0"
     assert PATENT_GRANT in reading.obligations

@@ -20,13 +20,17 @@ def write(root: Path, rel: str, body: str) -> None:
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "demo"
-    write(root, "pyproject.toml", """
+    write(
+        root,
+        "pyproject.toml",
+        """
         [project]
         name = "demo"
         dependencies = ["httpx>=0.27", "rich"]
         [project.optional-dependencies]
         ui = ["nicegui>=2.0"]
-    """)
+    """,
+    )
     write(root, "README.md", "# demo\n\n## What it does NOT do\n\nnothing\n")
     write(root, "src/demo/core.py", "import httpx\nfrom rich import print\n")
     write(root, "tests/test_core.py", "def test_x():\n    assert True\n")

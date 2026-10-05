@@ -45,7 +45,8 @@ class Handler(BaseHTTPRequestHandler):
             if not root.exists():
                 self._send(
                     json.dumps({"error": f"no such path: {root}"}).encode(),
-                    "application/json", 400,
+                    "application/json",
+                    400,
                 )
                 return
 

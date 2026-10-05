@@ -120,7 +120,9 @@ def test_a_convenience_cut_has_no_reliable_direction(frozen):
     twelve = frozen[:12]
     assert len(twelve) == 12
     assert rate(twelve, "reverts", "edits") < rate(frozen, "reverts", "edits") / 2
-    assert rate(twelve, "code_reverts", "code_edits") < rate(frozen, "code_reverts", "code_edits")
+    assert rate(twelve, "code_reverts", "code_edits") < rate(
+        frozen, "code_reverts", "code_edits"
+    )
 
 
 def test_most_repositories_contain_no_authored_revert_at_all(frozen):
@@ -141,7 +143,13 @@ def test_no_real_revert_happens_within_a_single_commit(frozen):
 # --- the live corpus ------------------------------------------------------------------
 
 
-@pytest.mark.skipif(not REPOS.exists(), reason="no checkouts under REPOS_ROOT")
+# A tree of checkouts, not merely a path that exists. The guard used to be
+# `.exists()`, so an existing-but-empty REPOS_ROOT - a fresh clone on any other
+# machine, or CI - ran these and FAILED instead of skipping, which is the loudest
+# possible way to report that the corpus is absent.
+@pytest.mark.skipif(
+    not any(REPOS.glob("*/.git")), reason="REPOS_ROOT is not a tree of git checkouts"
+)
 def test_the_tool_still_runs_on_the_live_corpus():
     """That it reads a real disk at all. Deliberately the only live assertion.
 
@@ -231,3 +239,33 @@ def test_trivial_lines_are_not_corrections():
 
 def test_an_empty_history_yields_nothing():
     assert find_reverts([]) == []
+
+
+# --- the README is checked against the fixture it describes ---------------------------
+
+
+def test_the_readme_quotes_this_fixture_and_not_an_older_survey(frozen):
+    """Eleven numbers in this README were wrong against the fixture beside it.
+
+    Every one came from an earlier, smaller survey, and nothing connected the prose to
+    the data — so freezing the corpus fixed the tests and left the README describing a
+    measurement the code no longer performs. A reader who checked would conclude the
+    fixture had been backfilled to whatever the disk said.
+    """
+    # Whitespace-collapsed: the prose wraps, so "74 checkouts" is split across a line
+    # break in the file and a literal search for it fails on a README that is correct.
+    raw = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+    readme = " ".join(raw.split())
+    must_appear = [
+        f"{len(frozen)} checkouts",
+        f"{sum(r['commits'] for r in frozen):,} commits",
+        f"{sum(r['edits'] for r in frozen):,} line edits",
+        f"{sum(r['code_edits'] for r in frozen):,}",  # the code denominator
+        f"{sum(r['code_reverts'] for r in frozen)} reverts in",  # the code numerator
+    ]
+    missing = [claim for claim in must_appear if claim not in readme]
+    assert not missing, f"README does not quote the fixture: {missing}"
+
+    # And the numbers from the survey this replaced must be gone.
+    for stale in ("714,164", "267,192", "one in 9,896", "29 of the 35", "maximum 23"):
+        assert stale not in readme, f"README still quotes the old survey: {stale}"

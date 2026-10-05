@@ -11,8 +11,13 @@ from pathlib import Path
 from .obligations import OBLIGATIONS, Reading, conflicts, read
 
 LICENCE_NAMES = {
-    "LICENSE", "LICENSE.TXT", "LICENSE.MD", "LICENCE", "LICENCE.TXT",
-    "COPYING", "LICENSE.RST",
+    "LICENSE",
+    "LICENSE.TXT",
+    "LICENSE.MD",
+    "LICENCE",
+    "LICENCE.TXT",
+    "COPYING",
+    "LICENSE.RST",
 }
 SKIP = {".venv", ".venvs", "node_modules", "__pycache__", ".git", ".tox"}
 
@@ -57,7 +62,7 @@ def _read_command(args: argparse.Namespace) -> int:
     if reading.family_citation:
         c = reading.family_citation
         print(f'    because chars {c.start}-{c.end} say "{c.phrase}"')
-        print(f'    in clause: {c.clause}')
+        print(f"    in clause: {c.clause}")
     print(f"  {len(reading.clauses)} clause(s)")
     print()
     print("  OBLIGATIONS  (each with the span that proves it)")

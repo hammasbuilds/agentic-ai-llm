@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from detective.templates import WILDCARD, extract, mask, sweep, tokenise
-
+from detective.templates import extract, mask, sweep, tokenise
 
 # -- masking ---------------------------------------------------------------
 
@@ -37,7 +36,11 @@ def test_variable_tokens_are_masked(token: str, expected: str):
 
 def test_words_survive_masking():
     assert tokenise("connection refused after 3 retries") == [
-        "connection", "refused", "after", "<NUM>", "retries",
+        "connection",
+        "refused",
+        "after",
+        "<NUM>",
+        "retries",
     ]
 
 
@@ -100,9 +103,7 @@ def test_a_merged_template_keeps_its_members():
 
 
 def test_distinct_messages_lost_counts_the_damage():
-    result = extract(
-        ["alpha one two", "beta one two", "gamma one two"], threshold=0.5
-    )
+    result = extract(["alpha one two", "beta one two", "gamma one two"], threshold=0.5)
     assert len(result.templates) == 1
     assert result.distinct_messages_lost == 2
 

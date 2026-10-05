@@ -32,6 +32,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest
+      - run: pip install pytest ruff
+      # Lint them too. CI checked only `apps tests`, so 56 errors accumulated in
+      # projects/ unseen - including unused imports in shipped CLI modules. Each
+      # package has its own ruff config and ruff honours the nearest one, so this is
+      # eleven plus twenty-one separate rule sets being enforced at once.
+      - name: Lint every sub-package
+        run: ruff check projects products
       - name: Every sub-package
         run: python scripts/test_all.py

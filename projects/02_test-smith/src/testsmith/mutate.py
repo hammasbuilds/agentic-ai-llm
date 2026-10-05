@@ -152,12 +152,25 @@ def _describe(operator: str, node: ast.AST, slot: int) -> tuple[str, str]:
 
 
 _OPNAMES = {
-    ast.Lt: "<", ast.LtE: "<=", ast.Gt: ">", ast.GtE: ">=",
-    ast.Eq: "==", ast.NotEq: "!=", ast.In: "in", ast.NotIn: "not in",
-    ast.Is: "is", ast.IsNot: "is not",
-    ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.Div: "/",
-    ast.FloorDiv: "//", ast.Mod: "%", ast.Pow: "**",
-    ast.And: "and", ast.Or: "or",
+    ast.Lt: "<",
+    ast.LtE: "<=",
+    ast.Gt: ">",
+    ast.GtE: ">=",
+    ast.Eq: "==",
+    ast.NotEq: "!=",
+    ast.In: "in",
+    ast.NotIn: "not in",
+    ast.Is: "is",
+    ast.IsNot: "is not",
+    ast.Add: "+",
+    ast.Sub: "-",
+    ast.Mult: "*",
+    ast.Div: "/",
+    ast.FloorDiv: "//",
+    ast.Mod: "%",
+    ast.Pow: "**",
+    ast.And: "and",
+    ast.Or: "or",
 }
 
 

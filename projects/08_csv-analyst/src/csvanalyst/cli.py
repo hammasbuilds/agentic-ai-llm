@@ -57,7 +57,7 @@ def _charts_command(args: argparse.Namespace) -> int:
 
     text = path.read_text(encoding="utf-8", errors="replace")
     reader = _csv.reader(text.splitlines(), delimiter=profile.delimiter)
-    header = next(reader, [])
+    next(reader, [])  # advance past the header row; its contents are not used here
     rows = list(reader)[: args.limit] if args.limit else list(reader)
 
     written = 0
@@ -110,9 +110,7 @@ def _coercion_command(args: argparse.Namespace) -> int:
         if naive is None:
             continue
         note = "silently drops a category" if column.is_contaminated else ""
-        print(
-            f"{column.name[:18]:18s} {naive:15,.3f} {used:9,d} {dropped:9,d}  {note}"
-        )
+        print(f"{column.name[:18]:18s} {naive:15,.3f} {used:9,d} {dropped:9,d}  {note}")
     return 0
 
 

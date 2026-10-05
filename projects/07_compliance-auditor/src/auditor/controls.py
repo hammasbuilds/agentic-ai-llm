@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from .evidence import Evidence
 
@@ -60,7 +60,9 @@ def _readme_section(ev: Evidence, cid: str, patterns: tuple[str, ...], label: st
         if any(re.search(p, heading, re.IGNORECASE) for p in patterns):
             return _result(cid, PASS, f"heading: {heading!r}", ev.readme_path or "")
     return _result(
-        cid, FAIL, f"no heading matching {label} among {len(ev.headings)} headings",
+        cid,
+        FAIL,
+        f"no heading matching {label} among {len(ev.headings)} headings",
         ev.readme_path or "",
     )
 
@@ -78,7 +80,8 @@ def readme_exists(ev: Evidence) -> Result:
 
 def readme_limits(ev: Evidence) -> Result:
     return _readme_section(
-        ev, "readme-limits",
+        ev,
+        "readme-limits",
         (r"does\s*not\s*do", r"\blimitations?\b", r"not\s+included", r"out\s+of\s+scope"),
         "'what it does NOT do'",
     )
@@ -86,7 +89,8 @@ def readme_limits(ev: Evidence) -> Result:
 
 def readme_problems(ev: Evidence) -> Result:
     return _readme_section(
-        ev, "readme-problems",
+        ev,
+        "readme-problems",
         (r"problems?\s+hit", r"\bproblems?\b", r"what\s+went\s+wrong", r"mistakes"),
         "'problems hit while building this'",
     )
@@ -96,10 +100,13 @@ def readme_io(ev: Evidence) -> Result:
     if ev.readme is None:
         return _result("readme-io", INCONCLUSIVE, "no README found")
     has_in = re.search(r"\*\*In:\*\*|^\s*#+\s*Input", ev.readme, re.IGNORECASE | re.MULTILINE)
-    has_out = re.search(r"\*\*Out:\*\*|^\s*#+\s*Output", ev.readme, re.IGNORECASE | re.MULTILINE)
+    has_out = re.search(
+        r"\*\*Out:\*\*|^\s*#+\s*Output", ev.readme, re.IGNORECASE | re.MULTILINE
+    )
     if has_in and has_out:
-        return _result("readme-io", PASS, "states what goes in and what comes out",
-                       ev.readme_path or "")
+        return _result(
+            "readme-io", PASS, "states what goes in and what comes out", ev.readme_path or ""
+        )
     missing = [n for n, v in (("In", has_in), ("Out", has_out)) if not v]
     return _result("readme-io", FAIL, f"missing: {', '.join(missing)}", ev.readme_path or "")
 
@@ -181,8 +188,9 @@ def declared_deps_are_used(ev: Evidence) -> Result:
         return _result(
             cid, FAIL, f"declared but never imported: {', '.join(unused)}", ev.pyproject_path
         )
-    return _result(cid, PASS, f"all {len(declared)} declared dependencies are imported",
-                   ev.pyproject_path)
+    return _result(
+        cid, PASS, f"all {len(declared)} declared dependencies are imported", ev.pyproject_path
+    )
 
 
 def imports_are_declared(ev: Evidence) -> Result:
@@ -200,14 +208,15 @@ def imports_are_declared(ev: Evidence) -> Result:
     declared = _declared_names(ev)
 
     undeclared = sorted(
-        m for m in ev.imported_modules
-        if m not in _STDLIB_ISH
-        and m not in local
-        and not (_provides(m) & declared)
+        m
+        for m in ev.imported_modules
+        if m not in _STDLIB_ISH and m not in local and not (_provides(m) & declared)
     )
     if undeclared:
         return _result(
-            cid, FAIL, f"imported but not declared: {', '.join(undeclared[:8])}",
+            cid,
+            FAIL,
+            f"imported but not declared: {', '.join(undeclared[:8])}",
             ev.pyproject_path,
         )
     return _result(cid, PASS, "every third-party import is declared", ev.pyproject_path)
@@ -228,14 +237,17 @@ def has_tests(ev: Evidence) -> Result:
         return _result(cid, FAIL, f"{len(ev.source_files)} source files, no test files")
     ratio = len(ev.test_files) / max(1, len(ev.source_files))
     return _result(
-        cid, PASS, f"{len(ev.test_files)} test files for {len(ev.source_files)} "
-        f"source files ({ratio:.2f} ratio)"
+        cid,
+        PASS,
+        f"{len(ev.test_files)} test files for {len(ev.source_files)} "
+        f"source files ({ratio:.2f} ratio)",
     )
 
 
 def has_licence(ev: Evidence) -> Result:
     return _result(
-        "licence", PASS if ev.has_license else FAIL,
+        "licence",
+        PASS if ev.has_license else FAIL,
         "LICENSE present" if ev.has_license else "no LICENSE file",
     )
 
@@ -256,7 +268,8 @@ def no_tracked_junk(ev: Evidence) -> Result:
         return _result(cid, NOT_APPLICABLE, "not a git repository")
     if ev.tracked_junk:
         return _result(
-            cid, FAIL,
+            cid,
+            FAIL,
             f"{len(ev.tracked_junk)} junk file(s) tracked, e.g. {ev.tracked_junk[0]}",
         )
     return _result(cid, PASS, "no caches, venvs, logs or .env tracked")
@@ -264,12 +277,18 @@ def no_tracked_junk(ev: Evidence) -> Result:
 
 CONTROLS: tuple[Control, ...] = (
     Control("readme-exists", "Every repository has a README of substance.", readme_exists),
-    Control("readme-limits", "Every README has a 'what it does NOT do' section.", readme_limits),
-    Control("readme-problems", "Every README has 'problems hit while building this'.",
-            readme_problems),
+    Control(
+        "readme-limits", "Every README has a 'what it does NOT do' section.", readme_limits
+    ),
+    Control(
+        "readme-problems",
+        "Every README has 'problems hit while building this'.",
+        readme_problems,
+    ),
     Control("readme-io", "Every README states what goes in and what comes out.", readme_io),
-    Control("deps-used", "Every declared dependency is actually imported.",
-            declared_deps_are_used),
+    Control(
+        "deps-used", "Every declared dependency is actually imported.", declared_deps_are_used
+    ),
     Control("imports-declared", "Every third-party import is declared.", imports_are_declared),
     Control("tests-exist", "Every repository with source has tests.", has_tests),
     Control("licence", "Every repository has a LICENSE.", has_licence),

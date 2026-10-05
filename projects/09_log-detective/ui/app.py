@@ -50,16 +50,19 @@ def scoreboard(folder: str, value: float):
         pn.indicators.Number(
             name="lines", value=result.lines, format="{value:,}", font_size="28pt"
         ),
+        pn.indicators.Number(name="templates", value=len(result.templates), font_size="28pt"),
         pn.indicators.Number(
-            name="templates", value=len(result.templates), font_size="28pt"
+            name="compression",
+            value=result.compression,
+            format="{value:.1f}x",
+            font_size="28pt",
+            colors=[(3, "green"), (100, "orange")],
         ),
         pn.indicators.Number(
-            name="compression", value=result.compression, format="{value:.1f}x",
-            font_size="28pt", colors=[(3, "green"), (100, "orange")],
-        ),
-        pn.indicators.Number(
-            name="distinctions lost", value=result.distinct_messages_lost,
-            font_size="28pt", colors=[(0, "green"), (10_000, "red")],
+            name="distinctions lost",
+            value=result.distinct_messages_lost,
+            font_size="28pt",
+            colors=[(0, "green"), (10_000, "red")],
         ),
     )
 

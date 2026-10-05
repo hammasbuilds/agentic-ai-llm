@@ -19,9 +19,24 @@ from pathlib import Path
 
 SKIP_DIRS = frozenset(
     {
-        ".git", ".venv", "venv", "env", "__pycache__", ".pytest_cache", ".ruff_cache",
-        ".mypy_cache", "node_modules", "build", "dist", ".tox", ".eggs",
-        "site-packages", "workdirs", "vendor", "third_party", "htmlcov",
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+        "node_modules",
+        "build",
+        "dist",
+        ".tox",
+        ".eggs",
+        "site-packages",
+        "workdirs",
+        "vendor",
+        "third_party",
+        "htmlcov",
     }
 )
 
@@ -103,10 +118,9 @@ def _top_level_imports(text: str) -> set[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 found.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            # level > 0 is a relative import: local, never a dependency.
-            if (node.level or 0) == 0 and node.module:
-                found.add(node.module.split(".")[0])
+        # level > 0 is a relative import: local, never a dependency.
+        elif isinstance(node, ast.ImportFrom) and (node.level or 0) == 0 and node.module:
+            found.add(node.module.split(".")[0])
     return {m for m in found if m and not m.startswith("_")}
 
 
@@ -114,7 +128,9 @@ def _git(root: Path, *args: str) -> str | None:
     try:
         proc = subprocess.run(
             ["git", "-C", str(root), *args],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -216,8 +232,7 @@ def collect(root: Path) -> Evidence:
         ev.has_remote = bool((_git(root, "remote") or "").strip())
         tracked = _git(root, "ls-files") or ""
         ev.tracked_junk = [
-            line for line in tracked.splitlines()
-            if any(p.search(line) for p in JUNK_PATTERNS)
+            line for line in tracked.splitlines() if any(p.search(line) for p in JUNK_PATTERNS)
         ]
 
     ev.has_license = any((root / n).is_file() for n in ("LICENSE", "LICENSE.md", "LICENCE"))

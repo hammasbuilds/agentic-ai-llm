@@ -28,8 +28,10 @@ REPOS = [
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 40
 ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
-print(f"{'repo':26s} {'mut':>4s} {'kill':>4s} {'live':>4s} {'err':>4s} "
-      f"{'score':>6s} {'cov-score':>9s} {'live/cov':>8s}")
+print(
+    f"{'repo':26s} {'mut':>4s} {'kill':>4s} {'live':>4s} {'err':>4s} "
+    f"{'score':>6s} {'cov-score':>9s} {'live/cov':>8s}"
+)
 print("-" * 78)
 
 rows = []
@@ -57,8 +59,10 @@ if rows:
     scores = [r.score for _, r in rows]
     cov_scores = [r.covered_score for _, r in rows]
     total_live_cov = sum(len(r.survivors_on_covered_lines) for _, r in rows)
-    print(f"repos={len(rows)}  median score={statistics.median(scores):.0%}  "
-          f"median covered-line score={statistics.median(cov_scores):.0%}")
+    print(
+        f"repos={len(rows)}  median score={statistics.median(scores):.0%}  "
+        f"median covered-line score={statistics.median(cov_scores):.0%}"
+    )
     print(f"survivors on executed lines, total = {total_live_cov}")
 
     by_op: dict[str, list[int]] = {}

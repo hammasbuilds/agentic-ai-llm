@@ -141,7 +141,8 @@ function captain(){return{
     if(!this.repo) return;
     this.busy = true; this.result = null;
     try{
-      const r = await fetch(`/api/gate?repo=${encodeURIComponent(this.repo)}&since=${this.since}`);
+      const q = `repo=${encodeURIComponent(this.repo)}&since=${this.since}`;
+      const r = await fetch(`/api/gate?${q}`);
       this.result = await r.json();
     } finally { this.busy = false; }
   }
@@ -176,9 +177,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/repos":
             names = [
-                d.name
-                for d in sorted(self.root.iterdir())
-                if d.is_dir() and is_repository(d)
+                d.name for d in sorted(self.root.iterdir()) if d.is_dir() and is_repository(d)
             ]
             self._json(names)
             return
@@ -229,8 +228,9 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> int:
     parser = argparse.ArgumentParser(description="Web view for release-captain")
     default_root = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
-    parser.add_argument("folder", nargs="?", default=str(default_root),
-                        help="folder containing git checkouts")
+    parser.add_argument(
+        "folder", nargs="?", default=str(default_root), help="folder containing git checkouts"
+    )
     parser.add_argument("--port", type=int, default=8090)
     args = parser.parse_args()
 

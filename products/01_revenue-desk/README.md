@@ -16,58 +16,86 @@ one, the same *mechanism* is measured on the largest real corpus of dated edits 
 A revert is a line that went A, then B, then back to A. Not a rewrite, not churn — one edit
 undoing another, which is exactly what `detect_reverts` looks for on a deal record.
 
-**Measured over every repository in a real folder of checkouts, full history** — 36 checkouts, 429
-commits, 714,164 line edits. This is a live disk: the totals move as other work lands on it,
-which turns out to be the point.
+**Measured over every repository in a real folder of checkouts, full history** — 74
+checkouts, 1,222 commits, 1,601,517 line edits, frozen on 2026-10-05 as
+[`tests/fixtures/portfolio_survey.json`](tests/fixtures/portfolio_survey.json). Every number
+below is read from that fixture and asserted in
+[`tests/test_real_reverts.py`](tests/test_real_reverts.py), so the two cannot drift apart.
 
-| | Naive | **Honest** |
-|---|---:|---:|
-| Line edits counted | 714,164 | **267,192** |
-| Reverts found | 869 | **27** |
-| **Revert rate** | 0.1217% | **0.0101%** |
-| | | *one in 9,896* |
+It used to be measured live, and that is why the fixture exists. The disk is a working
+machine several sessions commit to, so the totals moved under the tests: `authored_reverts
+== 27` broke first, then the median revert gap, then the share of repositories with none,
+then the rate band itself. Each break was a property of the disk that afternoon rather than
+of the method, and widening a band every time is a moving target, not a measurement.
 
-**The same history, read two ways, differs by an order of magnitude.** The gap is not a
-detail of the corpus — it is two decisions about what counts as an edit, and both of them
-are decisions this product has to make on a CRM where agents and people write into the same
-records.
+| | Naive | Authored | **Code** |
+|---|---:|---:|---:|
+| Line edits counted | 1,601,517 | 589,024 | **372,794** |
+| Reverts found | 1,850 | 138 | **46** |
+| **Revert rate** | 0.1155% | 0.0425% | **0.0123%** |
+| | | | *one in 8,104* |
 
-**1. Machine-written files are most of the edits and 97% of the reverts.** Committed datasets
-and regenerated `results.json` files are not somebody's judgement. Every one of the 1,457
-reverts in JSON came from 13 result files — `mcp-lab/projects/03_bfcl_tool_calling/results.json`
-alone contributed 553. A number returning to a previous value across re-runs is a script
-re-emitting its own output, not one writer undoing another. Committed CSV, TXT, LOG and
-GenBank data contributed **over 300,000 edits and zero reverts**, quietly diluting the
-denominator at the same time.
+**The same history, read three ways, differs by an order of magnitude** — 9.36× between the
+first column and the last. The gap is not a detail of the corpus. It is two decisions about
+what counts as an edit, and both are decisions this product has to make on a CRM where
+agents and people write into the same records.
+
+**1. Machine-written files are most of the edits and 92.5% of the reverts.** Committed
+datasets and regenerated `results.json` files are not somebody's judgement. A number
+returning to a previous value across re-runs is a script re-emitting its own output, not one
+writer undoing another. Committed CSV, TXT, LOG and GenBank data dilute the denominator from
+the other end at the same time.
 
 **2. A line removed and restored inside one commit never moved.** With `-U0` git reports a
 line that shifted within a file as a remove/add pair. Reading that as a revert accounted for
 **86%** of what remained. Undoing is a relationship *between* commits, so same-commit pairs
-now cancel and the three events must land on three increasing commits.
+cancel and the three events must land on three increasing commits.
 
-What survives is small and real: **27 reverts in 267,192 hand-written line edits**, median
-gap one commit, maximum 23. **29 of the 35 substantial repositories contain none at all.**
-That is the floor a medium with diffs, atomic commits and review achieves — and it is the
-useful number precisely because a CRM field has none of them. No diff is shown, no commit is
-atomic, nothing is reviewed, and the writer is often a process rather than a person.
+**3. "Authored" was not a fine enough cut, and finding that out is the newest result here.**
+As the corpus grew from 36 repositories to 74 the authored rate more than doubled, 0.0101%
+to 0.0234% — and nobody started undoing their own work twice as often. 92 of the 138 authored
+reverts are **prose**: a README line returning verbatim while whole tables are rewritten in
+bulk is a line being restated, not one writer overruling another. `is_authored` separates a
+person from a script; it does not separate a decision from a restatement, and only code makes
+that distinction cleanly, because a line of prose has no behaviour to undo. The prose rate is
+0.0425%, three and a half times the code rate.
 
-### The distinction proved itself by accident
-
-Halfway through this work, `agri-desk`'s corpus was replaced with a 7.5 MB GenBank file
-committed to this repository — about **127,000 new line edits**, none of them written by a
+What survives is small and real: **46 reverts in 372,794 lines of hand-written code**, median
+gap 6 commits, maximum 44, and **42 of the 59 repositories with substantial code contain none
+at all**. The code rate also sat inside the band measured at half this corpus size, which is
+the only reason to believe it: the claim survived the portfolio doubling once the denominator
+was right. That is the floor a medium with diffs, atomic commits and review achieves — and it
+is the useful number precisely because a CRM field has none of them. No diff is shown, no
+commit is atomic, nothing is reviewed, and the writer is often a process rather than a
 person.
 
-| | Before | After the commit | After a 36th repo appeared |
-|---|---:|---:|---:|
-| Naive rate | 0.1489% | 0.1222% | **0.1217%** |
-| Honest rate | 0.0102% | 0.0102% | **0.0101%** |
-| Authored reverts | 27 | 27 | **27** |
+### The distinction proved itself by accident, twice
 
-**An 18% swing in the headline, caused by no change in how anybody edits anything** — and
-then a whole new repository arrived and the honest rate still did not move. The
-authored rate did not move at all. A metric that reacts to someone committing a dataset is
-not measuring editing behaviour, and on a CRM the equivalent commit — a bulk enrichment
-import — happens weekly. There is a test pinning both halves of this.
+**At 36 repositories.** Halfway through this work, `agri-desk`'s corpus was replaced with a
+7.5 MB GenBank file committed to this repository — about **127,000 new line edits**, none of
+them written by a person.
+
+| Reading taken at 36 repos | Before | After the commit | After a 36th repo appeared |
+|---|---:|---:|---:|
+| Naive rate | 0.1489% | 0.1222% | 0.1217% |
+| Authored rate | 0.0102% | 0.0102% | 0.0101% |
+| Authored reverts | 27 | 27 | 27 |
+
+An 18% swing in the headline, caused by no change in how anybody edits anything, while the
+authored rate did not move at all.
+
+**At 74 repositories, it happened again and went further.** The corpus doubled, and this time
+the *authored* rate moved too — 0.0101% to 0.0234% — because the portfolio's Markdown grew
+faster than its code and 92 of 138 authored reverts are prose. The **code** rate landed at
+0.0123%, inside the band measured at half the size. So the same argument had to be made one
+level in: separating a person from a script was not enough, and separating a decision from a
+restatement was.
+
+A metric that reacts to someone committing a dataset is not measuring editing behaviour, and
+on a CRM the equivalent commit — a bulk enrichment import — happens weekly. The current
+numbers are in the table at the top of this file, read from the frozen fixture; the two
+readings above are kept because the *drift* is the finding, and deleting them would delete
+the evidence for the distinction the product rests on.
 
 ### What is not claimed
 

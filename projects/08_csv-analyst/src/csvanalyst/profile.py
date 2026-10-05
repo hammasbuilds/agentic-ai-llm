@@ -33,9 +33,17 @@ NULL_TOKENS = frozenset(
 SENTINELS = (-999, -9999, -99, -1, 999, 9999)
 
 _DATE_FORMATS = (
-    "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d", "%d-%m-%Y",
-    "%d/%m/%y", "%m/%d/%y", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S",
-    "%d/%m/%Y %H:%M", "%m/%d/%Y %H:%M",
+    "%Y-%m-%d",
+    "%d/%m/%Y",
+    "%m/%d/%Y",
+    "%Y/%m/%d",
+    "%d-%m-%Y",
+    "%d/%m/%y",
+    "%m/%d/%y",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%dT%H:%M:%S",
+    "%d/%m/%Y %H:%M",
+    "%m/%d/%Y %H:%M",
 )
 
 _NUMERIC_RE = re.compile(r"^-?[\d,]*\.?\d+([eE][-+]?\d+)?$")
@@ -230,9 +238,7 @@ def _classify(name: str, index: int, values: list[str]) -> ColumnProfile:
     if date_fmt is None:
         dates_ok = []
     else:
-        dates_ok = [
-            d for d in (parse_date(v, (date_fmt,)) for v in present) if d is not None
-        ]
+        dates_ok = [d for d in (parse_date(v, (date_fmt,)) for v in present) if d is not None]
     date_rate = len(dates_ok) / len(present)
 
     if numeric_rate >= 0.75:

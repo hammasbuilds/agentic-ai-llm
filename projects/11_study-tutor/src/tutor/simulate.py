@@ -17,7 +17,7 @@ import random
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from .scheduler import AGAIN, EASY, GOOD, HARD, Card, CardState, SCHEDULERS
+from .scheduler import AGAIN, EASY, GOOD, HARD, SCHEDULERS, Card, CardState
 
 
 @dataclass
@@ -35,7 +35,9 @@ class Outcome:
 
     @property
     def mean_recall(self) -> float:
-        return sum(self.recall_samples) / len(self.recall_samples) if self.recall_samples else 0.0
+        return (
+            sum(self.recall_samples) / len(self.recall_samples) if self.recall_samples else 0.0
+        )
 
 
 def _true_recall(true_stability: float, elapsed: float) -> float:

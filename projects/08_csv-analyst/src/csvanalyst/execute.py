@@ -171,9 +171,7 @@ def column_summary(conn: sqlite3.Connection, profile: TableProfile) -> list[Find
     return out
 
 
-def contamination_findings(
-    conn: sqlite3.Connection, profile: TableProfile
-) -> list[Finding]:
+def contamination_findings(conn: sqlite3.Connection, profile: TableProfile) -> list[Finding]:
     """For each contaminated column, what the non-numeric values actually are.
 
     This is the point of the whole tool. A loader that coerced the column would

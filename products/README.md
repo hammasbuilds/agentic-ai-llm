@@ -14,8 +14,8 @@ data — is in its own README.
 
 ```
 python -m venv .venv && .venv/Scripts/pip install -e platform[api,infra] pytest ruff
-cd platform        && python -m pytest -q     # 132 passed
-cd 01_revenue-desk && python -m pytest -q     #  34 passed
+cd platform        && python -m pytest -q     # 126 passed, 9 skipped
+cd 01_revenue-desk && python -m pytest -q     #  36 passed
 
 python scripts/capture.py       # runs all 20 for real, writes scripts/runs.json
 python scripts/smoke_serve.py   # boots all 20 on uvicorn, writes scripts/served.json
@@ -27,8 +27,12 @@ python scripts/screenshots.py   # real captures of the running console
 Every Input/Output section in the twenty READMEs is written from `scripts/runs.json`,
 which is a real intake → drain → approve cycle. None of those figures were typed by hand.
 
-**742 tests, all passing, zero skipped.** Every product reads a real dataset; the
-contract tests ran against real Kafka, real Redis and real Postgres. The datasets are
+**Every suite green, and the skips are reported rather than folded in.** On a machine
+with Kafka, Redis and Postgres running, the nine contract tests in `platform` execute
+against them; without those services they skip and say so, which is why a count quoted
+here would be a different number on your machine than on mine. `python ../scripts/test_all.py`
+prints what ran and what skipped, and refuses to call an all-skipped suite green.
+Every product reads a real dataset. The datasets are
 committed under [`data/`](data) — OFAC's sanctions lists, Loghub, Synthea, AMI, LoCoMo,
 OSV, HotpotQA, eCFR, TSPLIB, NCBI GenBank, UCI Online Retail II and seventeen RFCs.
 
@@ -49,7 +53,7 @@ figure below was typed by hand; each is asserted by a test that runs the code ov
 
 | # | Product | Real data | What it measured |
 |---|---|---|---|
-| [01](01_revenue-desk) | [**revenue-desk**](01_revenue-desk) | 714,164 line edits, every git repo on disk | Generated files are **97% of reverts**; the honest rate is 12x lower and doesn't drift |
+| [01](01_revenue-desk) | [**revenue-desk**](01_revenue-desk) | 1,601,517 line edits across 74 git repos, frozen as a fixture | Generated files are **92.5% of reverts**; the code rate is **9.36x** lower, and prose turned out to need separating from code too |
 | [02](02_ward-sync) | [**ward-sync**](02_ward-sync) | 3,850 Synthea prescriptions | **93% of prescriptions end**; a "current list" is **5.5x too long** for 104 of 105 patients |
 | [03](03_one-desk) | [**one-desk**](03_one-desk) | 300 AMI summaries + 48 real 14B generations | The human baseline is **0.073 wide** (p<0.0001); four variants differ as much as two people do |
 | [04](04_ledger-brain) | [**ledger-brain**](04_ledger-brain) | 54,716 real invoices | **Half** share an amount with another; matcher accuracy on that half is **33.7%** |

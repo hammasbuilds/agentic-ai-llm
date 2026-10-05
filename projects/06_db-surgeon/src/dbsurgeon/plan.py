@@ -52,9 +52,7 @@ class Plan:
         return [op for op in self.up_operations if op.is_lossy]
 
 
-def build(
-    name: str, schema: str, seed: str, up: str, down: str
-) -> Plan:
+def build(name: str, schema: str, seed: str, up: str, down: str) -> Plan:
     """Analyse one migration pair statically, then prove it on a shadow database."""
     up_ops = classify_script(up)
     down_ops = classify_script(down)
@@ -66,7 +64,9 @@ def build(
     except MigrationFailed as exc:
         error = str(exc)
 
-    plan = Plan(name=name, up_operations=up_ops, down_operations=down_ops, trip=trip, error=error)
+    plan = Plan(
+        name=name, up_operations=up_ops, down_operations=down_ops, trip=trip, error=error
+    )
 
     if trip is not None:
         predicted = plan.predicted_lossy

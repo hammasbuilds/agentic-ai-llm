@@ -76,8 +76,7 @@ class Handler(BaseHTTPRequestHandler):
                 "retracted": review.retracted,
                 "retraction_rate": round(review.retraction_rate, 4),
                 "by_rule": {
-                    k: {"proposed": p, "confirmed": c}
-                    for k, (p, c) in review.by_rule().items()
+                    k: {"proposed": p, "confirmed": c} for k, (p, c) in review.by_rule().items()
                 },
                 "files": [
                     {

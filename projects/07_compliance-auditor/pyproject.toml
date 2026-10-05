@@ -5,6 +5,9 @@ description = "Check stated policy against collected evidence. No inferred compl
 readme = "README.md"
 authors = [{ name = "Muhammad Hammas", email = "214618908+hammasbuilds@users.noreply.github.com" }]
 requires-python = ">=3.11"
+# SPDX form, not { text = ... }: uv_build rejects license-files beside the table
+# form, and the expression is what an index and a trust index actually read.
+license = "MIT"
 dependencies = []
 
 [project.scripts]

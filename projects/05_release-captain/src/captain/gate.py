@@ -87,9 +87,7 @@ def evaluate(
     result = GateResult(repo=history.repo, commits_considered=len(commits))
 
     if not commits:
-        result.checks.append(
-            Check("nothing to release", BLOCK, "no commits in range", 0, 1)
-        )
+        result.checks.append(Check("nothing to release", BLOCK, "no commits in range", 0, 1))
         return result
 
     scored = sorted(
@@ -156,9 +154,7 @@ def evaluate(
             )
         )
     else:
-        result.checks.append(
-            Check("commits far above this repo's median", PASS, "none", 0, 0)
-        )
+        result.checks.append(Check("commits far above this repo's median", PASS, "none", 0, 0))
 
     return result
 

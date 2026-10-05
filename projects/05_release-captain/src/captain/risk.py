@@ -65,7 +65,7 @@ def _log_scale(value: float, midpoint: float) -> float:
     return min(1.0, math.log1p(value) / (2 * math.log1p(midpoint)))
 
 
-def score_commit(commit: Commit, baseline: "Baseline | None" = None) -> RiskFactors:
+def score_commit(commit: Commit, baseline: Baseline | None = None) -> RiskFactors:
     """Risk factors for one commit, relative to what is normal for this repo."""
     b = baseline or Baseline.default()
 
@@ -146,10 +146,7 @@ def rank_disagreement(history: History, top: int = 10) -> dict[str, float]:
     if len(history.commits) < 2:
         return {}
     top = min(top, len(history.commits))
-    sets = {
-        k: {c.sha for c in rank_by(history, k)[:top]}
-        for k in ("churn", "files", "spread")
-    }
+    sets = {k: {c.sha for c in rank_by(history, k)[:top]} for k in ("churn", "files", "spread")}
     out: dict[str, float] = {}
     pairs = [("churn", "files"), ("churn", "spread"), ("files", "spread")]
     for a, b in pairs:

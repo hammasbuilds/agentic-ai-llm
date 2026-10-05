@@ -5,6 +5,9 @@ description = "Modernise Python mechanically, and refuse to when it would change
 readme = "README.md"
 authors = [{ name = "Muhammad Hammas", email = "214618908+hammasbuilds@users.noreply.github.com" }]
 requires-python = ">=3.11"
+# SPDX form, not { text = ... }: uv_build rejects license-files beside the table
+# form, and the expression is what an index and a trust index actually read.
+license = "MIT"
 dependencies = []
 
 [project.scripts]
@@ -30,3 +33,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# N815/N818: `visit_AsyncFunctionDef` is the method name ast.NodeVisitor
+# dispatches on - renaming it silently stops the visit - and the exception name
+# is public API that reads better without the suffix.
+"src/pilot/apply.py" = ["N815", "N818"]

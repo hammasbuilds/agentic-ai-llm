@@ -7,7 +7,6 @@ CLI should not be the thing that introduces one.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -88,7 +87,9 @@ def _compare_command(args: argparse.Namespace) -> int:
             continue
         rows.append((d.name, report_from_graph(graph, top=1), None))
 
-    print(f"{'repo':28s} {'mods':>5s} {'defs':>6s} {'lines':>8s} {'repo-calls':>11s}  core module")
+    print(
+        f"{'repo':28s} {'mods':>5s} {'defs':>6s} {'lines':>8s} {'repo-calls':>11s}  core module"
+    )
     print("-" * 96)
     for name, rep, err in rows:
         if err:

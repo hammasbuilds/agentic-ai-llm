@@ -174,9 +174,10 @@ def test_the_simulation_is_reproducible():
 
 
 def test_a_different_seed_gives_a_different_run():
-    assert simulate("fsrs", days=60, cards=5, seed=1).reviews != simulate(
-        "fsrs", days=60, cards=5, seed=99
-    ).reviews
+    assert (
+        simulate("fsrs", days=60, cards=5, seed=1).reviews
+        != simulate("fsrs", days=60, cards=5, seed=99).reviews
+    )
 
 
 def test_recall_at_review_lands_near_the_target():

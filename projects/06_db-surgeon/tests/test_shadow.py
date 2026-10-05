@@ -54,10 +54,7 @@ def test_block_comments_are_removed():
 
 
 def test_a_trigger_body_stays_one_statement():
-    sql = (
-        "CREATE TRIGGER t AFTER INSERT ON users BEGIN "
-        "UPDATE users SET nickname='x'; END;"
-    )
+    sql = "CREATE TRIGGER t AFTER INSERT ON users BEGIN UPDATE users SET nickname='x'; END;"
     assert len(split_statements(sql)) == 1
 
 
@@ -128,9 +125,7 @@ def test_a_re_added_middle_column_comes_back_at_the_end():
     column that was already last happens to restore the original order, which
     is why the first version of this test passed against the wrong fixture.
     """
-    schema = (
-        "CREATE TABLE t (id INTEGER PRIMARY KEY, middle TEXT, last TEXT);"
-    )
+    schema = "CREATE TABLE t (id INTEGER PRIMARY KEY, middle TEXT, last TEXT);"
     seed = "INSERT INTO t VALUES (1,'m','l');"
     trip = round_trip(
         schema,

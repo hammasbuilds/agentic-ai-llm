@@ -103,7 +103,7 @@ def test_return_none_is_not_mutated():
 # -- structural guarantees ------------------------------------------------
 
 
-def test_every_mutant_is_valid_python(  ):
+def test_every_mutant_is_valid_python():
     src = """
         def score(values, threshold=10):
             total = 0

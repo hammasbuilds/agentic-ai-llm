@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from nicegui import ui  # noqa: E402
 
-from testsmith.runner import run, source_files  # noqa: E402
+from testsmith.runner import run  # noqa: E402
 
 DEFAULT_ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 
@@ -43,18 +43,16 @@ def index() -> None:
 
     with ui.header().classes("items-center justify-between"):
         ui.label("test-smith").classes("text-lg font-semibold")
-        ui.label("Did the test check the line, or merely run it?").classes(
-            "text-sm opacity-70"
-        )
+        ui.label("Did the test check the line, or merely run it?").classes("text-sm opacity-70")
 
     with ui.column().classes("w-full max-w-5xl mx-auto p-6 gap-4"):
         with ui.row().classes("w-full items-end gap-3"):
             root_input = ui.input("Checkout folder", value=str(DEFAULT_ROOT)).classes(
                 "flex-grow"
             )
-            repo_select = ui.select(
-                discover_repos(DEFAULT_ROOT), label="Repository"
-            ).classes("w-64")
+            repo_select = ui.select(discover_repos(DEFAULT_ROOT), label="Repository").classes(
+                "w-64"
+            )
             limit_input = ui.number("Mutant cap", value=40, min=1, max=2000).classes("w-32")
             run_button = ui.button("Run")
 
@@ -81,10 +79,9 @@ def index() -> None:
             scores.visible = True
 
             def card(value: str, caption: str, colour: str = "") -> None:
-                with scores:
-                    with ui.card().classes("p-4 min-w-36"):
-                        ui.label(value).classes(f"text-2xl font-semibold {colour}")
-                        ui.label(caption).classes("text-xs opacity-60")
+                with scores, ui.card().classes("p-4 min-w-36"):
+                    ui.label(value).classes(f"text-2xl font-semibold {colour}")
+                    ui.label(caption).classes("text-xs opacity-60")
 
             card(f"{report.score:.0%}", "overall score")
             card(
@@ -116,7 +113,12 @@ def index() -> None:
                             {"name": "path", "label": "File", "field": "path", "align": "left"},
                             {"name": "line", "label": "Line", "field": "line"},
                             {"name": "op", "label": "Operator", "field": "op", "align": "left"},
-                            {"name": "change", "label": "Change", "field": "change", "align": "left"},
+                            {
+                                "name": "change",
+                                "label": "Change",
+                                "field": "change",
+                                "align": "left",
+                            },
                         ],
                         rows=[
                             {
@@ -152,9 +154,7 @@ def index() -> None:
                                 "scored": s,
                                 "rate": f"{c / s:.0%}" if s else "-",
                             }
-                            for op, (c, s) in sorted(
-                                by_op.items(), key=lambda kv: -kv[1][1]
-                            )
+                            for op, (c, s) in sorted(by_op.items(), key=lambda kv: -kv[1][1])
                         ],
                         row_key="op",
                     ).classes("w-full")
@@ -182,9 +182,7 @@ def index() -> None:
                 status.text = f"[{i}/{n}] {outcome}: {mutant.label}"
 
             try:
-                report = await asyncio.to_thread(
-                    run, repo, limit, 6.0, 20.0, None, progress_cb
-                )
+                report = await asyncio.to_thread(run, repo, limit, 6.0, 20.0, None, progress_cb)
             except RuntimeError as exc:
                 ui.notify(str(exc)[:200], type="negative", multi_line=True)
                 status.text = "The suite does not pass before mutation - nothing to measure."

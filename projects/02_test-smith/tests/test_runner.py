@@ -36,7 +36,9 @@ def make_repo(tmp_path: Path, code: str, tests: str) -> Path:
 
 def test_test_files_are_not_mutated(tmp_path: Path):
     """A mutated assertion fails its own test and scores as a kill, proving nothing."""
-    root = make_repo(tmp_path, "def f(a):\n    return a + 1\n", "def test_x():\n    assert True\n")
+    root = make_repo(
+        tmp_path, "def f(a):\n    return a + 1\n", "def test_x():\n    assert True\n"
+    )
     write(root, "conftest.py", "")
     picked = {p.name for p in source_files(root)}
     assert "core.py" in picked
@@ -157,6 +159,8 @@ def test_import_errors_are_excluded_rather_than_counted_as_kills(tmp_path: Path)
 def test_score_is_zero_when_nothing_was_scored():
     from testsmith.runner import RunReport
 
-    empty = RunReport(repo="x", interpreter=sys.executable, baseline_seconds=0.1, total_mutants=0)
+    empty = RunReport(
+        repo="x", interpreter=sys.executable, baseline_seconds=0.1, total_mutants=0
+    )
     assert empty.score == 0.0
     assert empty.covered_score == 0.0

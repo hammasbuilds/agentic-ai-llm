@@ -110,7 +110,13 @@ def test_the_one_real_drift_this_ever_caught():
     assert "heading says 10" in found.detail
 
 
-@pytest.mark.skipif(not ROOT.exists(), reason="no checkouts under REPOS_ROOT")
+# A tree of checkouts, not merely a path that exists. The guard used to be
+# `.exists()`, so an existing-but-empty REPOS_ROOT - a fresh clone on any other
+# machine, or CI - ran these and FAILED instead of skipping, which is the loudest
+# possible way to report that the corpus is absent.
+@pytest.mark.skipif(
+    not any(ROOT.glob("*/.git")), reason="REPOS_ROOT is not a tree of git checkouts"
+)
 def test_across_the_real_portfolio_the_rate_is_believable():
     # The number that matters is the denominator. A checker that reported 81%
     # wrong was reporting its own false positives, and this asserts the rate stays
