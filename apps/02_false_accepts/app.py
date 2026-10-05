@@ -38,8 +38,10 @@ async def runner(params: dict, emit) -> dict:
     limit = int(params.get("limit", 60))
     per_problem = int(params.get("per_problem", 8))
 
-    tasks = load("mbpp", limit)
-    await emit(0, limit, f"{len(tasks)} MBPP problems, up to {per_problem} mutants each")
+    split = params.get("split") or "mbpp"
+    tasks = load(split, limit)
+    which = "sanitized MBPP" if split.endswith("sanitized") else "MBPP"
+    await emit(0, limit, f"{len(tasks)} {which} problems, up to {per_problem} mutants each")
 
     rows: list[dict] = []
     kinds: dict[str, list[int]] = {}
@@ -158,6 +160,17 @@ app = create_app(
             min=5,
             max=400,
             hint="MBPP problems to mutate; each runs its own tests many times",
+        ),
+        Field(
+            "split",
+            "Split",
+            kind="select",
+            default="mbpp",
+            options=[
+                ("mbpp", "the whole benchmark"),
+                ("mbpp-sanitized", "the hand-verified subset"),
+            ],
+            hint="the sanitized split is the 427 problems the authors re-checked by hand",
         ),
         Field(
             "per_problem",

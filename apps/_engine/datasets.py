@@ -56,12 +56,43 @@ def _find(pattern: str) -> Path | None:
     return None
 
 
-def load_mbpp(limit: int | None = None) -> list[Task]:
-    path = _find("datasets--Muennighoff--mbpp/snapshots/*/data/mbpp.jsonl")
-    if path is None:
-        raise FileNotFoundError("MBPP not in the local Hugging Face cache")
+def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
+    """MBPP, or its hand-verified subset.
+
+    `sanitized` is the 427 problems the authors re-checked by hand, and it ships in the
+    same snapshot as a JSON array rather than JSON Lines. Three places in this repository
+    quoted a number for that split while nothing could load it: the app's docstring, its
+    About panel and the root README. The data was there the whole time.
+    """
+    if split not in {"full", "sanitized"}:
+        raise ValueError(f"unknown MBPP split {split!r}; expected full or sanitized")
+    if split == "sanitized":
+        path = _find("datasets--Muennighoff--mbpp/snapshots/*/data/sanitized-mbpp.json")
+        if path is None:
+            raise FileNotFoundError("the sanitized MBPP split is not in the local cache")
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        # The sanitized rows call the problem statement `prompt` and carry their imports
+        # in `test_imports`, where the full split uses `text` and `test_setup_code`.
+        lines = [
+            json.dumps(
+                {
+                    "task_id": r["task_id"],
+                    "text": r.get("prompt", ""),
+                    "code": r["code"],
+                    "test_list": r["test_list"],
+                    "test_setup_code": chr(10).join(r.get("test_imports") or []),
+                }
+            )
+            for r in rows
+        ]
+    else:
+        path = _find("datasets--Muennighoff--mbpp/snapshots/*/data/mbpp.jsonl")
+        if path is None:
+            raise FileNotFoundError("MBPP not in the local Hugging Face cache")
+        lines = path.read_text(encoding="utf-8").splitlines()
+
     out: list[Task] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in lines:
         if not line.strip():
             continue
         r = json.loads(line)
@@ -71,7 +102,7 @@ def load_mbpp(limit: int | None = None) -> list[Task]:
             continue
         out.append(
             Task(
-                benchmark="mbpp",
+                benchmark="mbpp" if split == "full" else "mbpp-sanitized",
                 task_id=f"mbpp/{r['task_id']}",
                 prompt=r["text"],
                 reference=r["code"],
@@ -114,6 +145,10 @@ def load_humaneval(limit: int | None = None) -> list[Task]:
 def load(benchmark: str = "mbpp", limit: int | None = None) -> list[Task]:
     if benchmark == "mbpp":
         return load_mbpp(limit)
+    if benchmark == "mbpp-sanitized":
+        return load_mbpp(limit, split="sanitized")
     if benchmark == "humaneval":
         return load_humaneval(limit)
-    raise ValueError(f"unknown benchmark {benchmark!r}; expected mbpp or humaneval")
+    raise ValueError(
+        f"unknown benchmark {benchmark!r}; expected mbpp, mbpp-sanitized or humaneval"
+    )

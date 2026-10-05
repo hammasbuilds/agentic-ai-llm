@@ -323,7 +323,7 @@ def run(
                     outcome = TIMEOUT
                 elif code == 0:
                     outcome = SURVIVED
-                elif _looks_like_collection_error(output):
+                elif _looks_like_collection_error(output, code):
                     outcome = ERROR
                 else:
                     outcome = KILLED
@@ -339,21 +339,36 @@ def run(
         shutil.rmtree(workspace_root, ignore_errors=True)
 
 
-def _looks_like_collection_error(output: str) -> bool:
+#: What pytest prints when it could not collect, rather than when a test failed. Bare
+#: "ImportError" and "ModuleNotFoundError" used to be in here, matched against the WHOLE
+#: output - so a test whose own assertion message contained the word, or a suite that
+#: deliberately asserts on a raised ImportError, had its mutant excluded. The exclusion
+#: is only ever applied to a mutant that would otherwise be KILLED and removes it from
+#: both numerator and denominator, so a false positive can only push the score UP. On a
+#: constructed repo whose test message said "ImportError", the tool reported 100%.
+_COLLECTION_MARKERS = (
+    "ERROR collecting",
+    "error during collection",
+    "INTERNALERROR",
+    "Interrupted: ",
+)
+
+
+def _looks_like_collection_error(output: str, code: int | None = None) -> bool:
     """Distinguish "the tests caught it" from "the code stopped importing".
 
-    A mutant that breaks collection never reached a single assertion, so it is
-    not evidence that the suite is good. Counting these as kills is how
-    mutation scores get quietly inflated.
+    A mutant that breaks collection never reached a single assertion, so it is not
+    evidence that the suite is good. Counting these as kills is how mutation scores get
+    quietly inflated - and counting a kill as one of these inflates them the same way.
+
+    pytest's own markers only. An import error that stopped collection always produces
+    one of them; an import error merely mentioned inside a failure report does not.
     """
-    markers = (
-        "ERROR collecting",
-        "ImportError",
-        "ModuleNotFoundError",
-        "INTERNALERROR",
-        "error during collection",
-    )
-    return any(m in output for m in markers)
+    if any(m in output for m in _COLLECTION_MARKERS):
+        return True
+    # pytest exits 2 when it was interrupted, which is what a collection failure does,
+    # and 1 when tests ran and failed. An import error with exit 1 is a test result.
+    return code == 2 and ("ImportError" in output or "ModuleNotFoundError" in output)
 
 
 def _interleave(per_file: list[list[Mutant]], limit: int | None) -> list[Mutant]:

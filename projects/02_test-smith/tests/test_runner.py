@@ -164,3 +164,53 @@ def test_score_is_zero_when_nothing_was_scored():
     )
     assert empty.score == 0.0
     assert empty.covered_score == 0.0
+
+
+# --- the exclusion that can only move the score up ------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        ("import nonexistent_module_xyz\n\n\ndef test_x():\n    assert True\n", True),
+        (
+            "def test_x():\n    assert 'a' == 'ImportError: no such module', 'ImportError'\n",
+            False,
+        ),
+        (
+            "import pytest\n\n\n"
+            "def test_x():\n"
+            "    with pytest.raises(ModuleNotFoundError):\n"
+            "        import nonexistent_inner_xyz\n"
+            "    assert 1 == 2\n",
+            False,
+        ),
+        ("def test_x():\n    assert 1 == 2\n", False),
+    ],
+)
+def test_only_a_real_collection_failure_is_excluded(tmp_path: Path, source, expected):
+    """`ImportError` was substring-matched against the whole pytest output.
+
+    The exclusion is applied only to a mutant that would otherwise be KILLED, and
+    `RunReport.scored` drops it from numerator *and* denominator — so a false positive
+    can only push the score up. A suite whose own assertion message contains the word,
+    or which asserts on a raised ImportError, had its kills quietly removed: on a
+    constructed repo the tool reported 100% over one scored mutant.
+
+    Driven through real pytest rather than a hand-written string, because the question
+    is what pytest actually prints.
+    """
+    import subprocess
+    import sys as _sys
+
+    from testsmith.runner import _looks_like_collection_error
+
+    (tmp_path / "test_it.py").write_text(source, encoding="utf-8")
+    done = subprocess.run(
+        [_sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    output = done.stdout + done.stderr
+    assert _looks_like_collection_error(output, done.returncode) is expected, output[-400:]

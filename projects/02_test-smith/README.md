@@ -125,6 +125,15 @@ suite. Counting collection errors as kills is the standard way a mutation score 
 quietly inflated - `pak-law-assistant` had 6 of these and `doc-intelligence-api` 1, and
 scoring them as wins would have added several points to both for nothing.
 
+The exclusion runs the other way too, and used to. It is applied only to a mutant that
+would otherwise be a kill, and it removes that mutant from the numerator *and* the
+denominator - so a false positive can only move the score **up**. It was decided by
+substring-matching `ImportError` against the whole of pytest's output, which is also
+what pytest prints when a test *fails* with that word in its message. A suite that
+asserts on a raised `ImportError` had its kills quietly removed; on a repository built
+to show it, this tool reported 100% over one scored mutant. It now takes only pytest's
+own collection markers, or that word together with pytest's interrupted exit code.
+
 **Timeouts are counted as caught.** A mutant that sends the suite into an infinite loop
 did not slip through silently, and the suite did notice. This is the conservative
 direction: it makes the tool look *less* impressive, not more.
