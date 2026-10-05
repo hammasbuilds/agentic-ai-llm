@@ -177,9 +177,7 @@ def _remember(job_id: str, fields: dict[str, str]) -> None:
 
 
 def _encode(fields: dict[str, Any]) -> dict[str, str]:
-    return {
-        k: (json.dumps(v) if isinstance(v, dict | list) else str(v)) for k, v in fields.items()
-    }
+    return {k: (json.dumps(v) if isinstance(v, dict | list) else str(v)) for k, v in fields.items()}
 
 
 def _decode(data: dict[str, str]) -> dict:

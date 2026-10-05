@@ -36,6 +36,11 @@ class Witness:
     ref: str = ""
     mut: str = ""
     reason: str = ""
+    #: Inputs the probe actually evaluated and ran on both programs. Zero means this
+    #: mutant was never separated because it was never tried - which is not evidence
+    #: that it is equivalent, and used to be reported the same way.
+    cases_run: int = 0
+    candidates: int = 0
 
 
 def call_args(test: str) -> list[ast.expr] | None:
@@ -142,11 +147,13 @@ def _call(f, args):
         return ("exc", type(e).__name__)
 
 CASES = {cases!r}
+_ran = 0
 for src in CASES:
     try:
         args = eval("(" + src + ",)")
     except Exception:
         continue
+    _ran += 1
     a = _call(f_ref, args)
     b = _call(f_mut, args)
     # Two different exception types still separate the programs, but two identical
@@ -155,6 +162,10 @@ for src in CASES:
     if a != b:
         print(json.dumps({{"args": src, "ref": str(a), "mut": str(b)}}))
         break
+# Always last, so the caller can tell "ran forty inputs and none separated them" from
+# "every candidate failed to eval and nothing was ever run". Those are the same verdict
+# and not the same evidence.
+print(json.dumps({{"ran": _ran, "candidates": len(CASES)}}))
 """
 
 
@@ -182,14 +193,38 @@ def find_witness(
             return Witness(False, reason="timeout")
         except OSError as exc:
             return Witness(False, reason=f"spawn failed: {exc}")
-    line = (r.stdout or "").strip().splitlines()
-    if not line:
-        return Witness(False, reason="no separating input found")
+    lines = (r.stdout or "").strip().splitlines()
+    if not lines:
+        # The probe did not even reach its summary: the reference or the mutant failed
+        # to exec, or the process died.
+        return Witness(False, reason=f"probe produced nothing (exit {r.returncode})")
     try:
-        d = json.loads(line[-1])
-    except json.JSONDecodeError:
+        summary = json.loads(lines[-1])
+        ran, candidates = int(summary["ran"]), int(summary["candidates"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         return Witness(False, reason="unparsable probe output")
-    return Witness(True, args=d["args"], ref=d["ref"], mut=d["mut"])
+
+    for raw in lines[:-1]:
+        try:
+            d = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if "args" in d:
+            return Witness(
+                True,
+                args=d["args"],
+                ref=d["ref"],
+                mut=d["mut"],
+                cases_run=ran,
+                candidates=candidates,
+            )
+
+    reason = (
+        f"no input was runnable ({candidates} candidate(s), none evaluated)"
+        if ran == 0
+        else f"no separating input found in {ran} of {candidates} candidate(s)"
+    )
+    return Witness(False, reason=reason, cases_run=ran, candidates=candidates)
 
 
 def find_many(jobs: list[tuple], workers: int = 8) -> list[Witness]:

@@ -82,6 +82,12 @@ async def runner(params: dict, emit) -> dict:
                         "witness": (
                             {"args": w.args, "ref": w.ref, "mut": w.mut} if w.found else None
                         ),
+                        # An unproven survivor is either equivalent or merely not
+                        # separated by what was tried, and those were indistinguishable
+                        # here because only `found` was kept. A survivor on which zero
+                        # inputs ran is not evidence of anything.
+                        "cases_run": w.cases_run,
+                        "unproven_because": "" if w.found else w.reason,
                     }
                 )
             elif out.status in killed_how:
@@ -95,6 +101,11 @@ async def runner(params: dict, emit) -> dict:
     survived = sum(v[1] for v in kinds.values())
     proven = [r for r in rows if r["proven"]]
     killed = total - survived
+    # The denominator behind "unproven". A survivor that no input was ever run against
+    # sits in the same bucket as one that forty inputs failed to separate, and only one
+    # of those is evidence about the mutant.
+    unproven = [r for r in rows if not r["proven"]]
+    never_tried = [r for r in unproven if r["cases_run"] == 0]
 
     return {
         "problems": len(tasks),
@@ -104,6 +115,9 @@ async def runner(params: dict, emit) -> dict:
         "proven": len(proven),
         "proven_share_of_survivors": len(proven) / survived if survived else 0.0,
         "proven_share_of_all": len(proven) / total if total else 0.0,
+        "unproven": len(unproven),
+        "unproven_never_tried": len(never_tried),
+        "unproven_tried_and_not_separated": len(unproven) - len(never_tried),
         "killed_how": killed_how,
         "caught_by_crash": (killed_how["error"] + killed_how["timeout"]) / killed
         if killed

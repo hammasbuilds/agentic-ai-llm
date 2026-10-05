@@ -263,9 +263,11 @@ def test_history_lists_a_job_that_only_exists_locally(degraded):
     from fastapi.testclient import TestClient
 
     with TestClient(degraded) as client:
-        job_id = client.post("/run", data={"limit": 1}, follow_redirects=False).headers[
-            "location"
-        ].rsplit("/", 1)[-1]
+        job_id = (
+            client.post("/run", data={"limit": 1}, follow_redirects=False)
+            .headers["location"]
+            .rsplit("/", 1)[-1]
+        )
         assert job_id in client.get("/history").text
 
 

@@ -162,3 +162,42 @@ def test_an_outcome_knows_whether_it_passed():
     assert Outcome("pass").passed
     for status in ("fail", "error", "timeout"):
         assert not Outcome(status).passed
+
+
+# ---- what "unproven" actually means ---------------------------------------------------
+
+
+def test_a_mutant_no_input_ran_against_is_not_reported_like_one_that_was_tried():
+    """Both are unproven. Only one of them is evidence about the mutant.
+
+    The probe skips any candidate argument that will not `eval`, which is right - but
+    when every candidate is skipped it used to return the same `Witness(found=False)`
+    as a mutant that forty inputs failed to separate. The caller kept only `found`, so
+    a survivor nothing ever ran against was counted as "either equivalent or not
+    separated", which is a claim nothing supported.
+    """
+    from apps._engine.differential import find_witness
+
+    reference = "def f(n):\n    return n + 1\n"
+    mutant = "def f(n):\n    return n + 2\n"
+
+    separated = find_witness(reference, mutant, "f", ("assert f(1) == 2",))
+    assert separated.found
+    assert separated.cases_run >= 1
+
+    equivalent = find_witness(
+        reference, "def f(n):\n    return 1 + n\n", "f", ("assert f(1) == 2",)
+    )
+    assert not equivalent.found
+    assert equivalent.cases_run >= 1
+    assert "no separating input found" in equivalent.reason
+
+    # The argument names something that does not exist, so nothing evaluates.
+    untried = find_witness(reference, mutant, "f", ("assert f(undefined_name) == 2",))
+    assert not untried.found
+    assert untried.cases_run == 0
+    assert "none evaluated" in untried.reason
+    assert untried.candidates >= 1
+
+    # And the three are distinguishable from the outside, which is the point.
+    assert len({(w.found, w.cases_run == 0) for w in (separated, equivalent, untried)}) == 3
