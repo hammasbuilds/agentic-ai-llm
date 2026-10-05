@@ -61,10 +61,26 @@ CANDIDATES:
 
 
 def _repos() -> list[tuple[str, str]]:
+    """The repositories whose file listings are on disk, for the picker.
+
+    `cached_repos` returns {} rather than raising when `data/trees` is absent, so this
+    used to render an empty picker and say nothing - a form with nothing to choose and
+    no reason given, on the one app whose first control is the choice. The caller shows
+    the hint, and the hint says what is missing.
+    """
     try:
         return [(r, r) for r in sorted(cached_repos())]
     except Exception:
         return []
+
+
+def _repo_hint(options: list[tuple[str, str]]) -> str:
+    if options:
+        return f"{len(options)} repositories, file listings cached from the GitHub Trees API"
+    return (
+        "no file listings found in data/trees - run the fetch script before this app can "
+        "localise anything"
+    )
 
 
 def _parse_paths(text: str, k: int = 10) -> list[str]:
@@ -187,8 +203,8 @@ app = create_app(
             "Repository",
             kind="select",
             default="django/django",
-            options=_repos(),
-            hint="file listings cached from the GitHub Trees API",
+            options=(_REPOS := _repos()),
+            hint=_repo_hint(_REPOS),
         ),
         Field(
             "issue",

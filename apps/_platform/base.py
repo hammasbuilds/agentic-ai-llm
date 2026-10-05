@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -27,10 +26,10 @@ from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
 from . import bus, cache
+from . import model as model_client
 from .themes import get as get_theme
 
 HERE = Path(__file__).resolve().parent
-OLLAMA = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
 
 @dataclass
@@ -52,15 +51,17 @@ Emit = Callable[[int, int, str], Awaitable[None]]
 Runner = Callable[[dict, Emit], Awaitable[dict]]
 
 
-async def _model_up(model: str) -> bool:
-    import httpx
+async def _model_up(name: str) -> bool:
+    """Whether the model the apps generate with is there.
 
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            r = await c.get(f"{OLLAMA}/api/tags")
-            return model.split(":")[0] in r.text
-    except Exception:
-        return False
+    Asked of `model`, which is the module that does the generating. This had its own
+    `OLLAMA = os.environ.get("OLLAMA_URL", ...)` and its own copy of the same request -
+    two constants for one setting, so pointing the client somewhere else left the health
+    badge talking to the old server. The badge and the generator have to agree about
+    which Ollama they mean, and the only way to guarantee that is one of them asking the
+    other.
+    """
+    return await model_client.available(name)
 
 
 @asynccontextmanager

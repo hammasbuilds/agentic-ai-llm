@@ -193,6 +193,22 @@ def test_the_bus_retries_after_a_cooldown_rather_than_never(monkeypatch):
 
 
 @pytest.fixture
+def degraded_platform(monkeypatch: pytest.MonkeyPatch):
+    """Redis, Kafka and the model all at a closed port, and the fallback stores empty."""
+    from apps._platform import model
+
+    monkeypatch.setattr(cache, "_client", None)
+    monkeypatch.setattr(cache, "REDIS_URL", "redis://127.0.0.1:1/0")
+    monkeypatch.setattr(cache, "_down_until", 0.0)
+    monkeypatch.setattr(cache, "_LOCAL_JOBS", {})
+    monkeypatch.setattr(cache, "_LOCAL_WAITERS", {})
+    monkeypatch.setattr(bus, "_producer", None)
+    monkeypatch.setattr(bus, "_available", False)
+    monkeypatch.setattr(bus, "BOOTSTRAP", "127.0.0.1:1", raising=False)
+    monkeypatch.setattr(model, "OLLAMA", "http://127.0.0.1:1")
+
+
+@pytest.fixture
 def degraded(monkeypatch: pytest.MonkeyPatch):
     """One app, with Redis, Kafka and the model all pointed at a closed port.
 
@@ -388,3 +404,101 @@ def test_the_breaker_lets_go_once_redis_answers(local_only, monkeypatch):
     monkeypatch.setattr(local_only, "_down_until", 0.0)
     run(local_only.call(answers))
     assert local_only._down_until == 0.0
+
+
+# ---- all ten apps, not just the one -------------------------------------------------
+#
+# The claim is about the apps, plural. Only `05_debug_ceiling` was ever opened, and the
+# defect that made this file necessary - a submitted job landing on a 404 - lived in the
+# shared platform, so it was in all ten at once. The pages are checked for every app and
+# the full submit cycle for one, because a cycle runs a real measurement and ten of them
+# would put two minutes into the suite for the same answer.
+
+APPS = sorted(p.name for p in (ROOT / "apps").iterdir() if (p / "app.py").is_file())
+
+
+_LOADED: dict[str, object] = {}
+
+
+def load_app(name: str):
+    """Each app module, imported once per session.
+
+    Importing one pulls in langgraph and the engine, which is most of what these tests
+    cost; two tests over ten apps was twenty imports for ten apps. The app object is
+    stateless between requests - its state is in Redis, or in the fallback the fixture
+    clears - so sharing it across tests shares nothing that matters.
+    """
+    if name not in _LOADED:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            f"app_{name}", ROOT / "apps" / name / "app.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _LOADED[name] = module.app
+    return _LOADED[name]
+
+
+def test_there_are_ten_apps_to_check():
+    """A parametrised test over an empty list passes."""
+    assert len(APPS) == 10, APPS
+
+
+@pytest.mark.parametrize("name", APPS)
+def test_every_app_serves_its_pages_with_nothing_running_behind_it(name, degraded_platform):
+    """Redis, Kafka and the model all pointed at a closed port.
+
+    `/healthz` is 503 without a model, which is right - these apps measure models, and
+    one with no model to measure is not healthy. Every other page is 200, because the
+    README's promise is that the demo opens.
+    """
+    from fastapi.testclient import TestClient
+
+    with TestClient(load_app(name)) as client:
+        for path in ("/", "/about", "/history"):
+            response = client.get(path)
+            assert response.status_code == 200, (name, path, response.status_code)
+            assert response.text.strip(), (name, path, "empty body")
+        assert client.get("/healthz").status_code == 503, name
+
+
+@pytest.mark.parametrize("name", APPS)
+def test_every_app_offers_a_control_someone_can_actually_set(name, degraded_platform):
+    """A form with no usable control is a submit button that measures nothing.
+
+    A `<select>` counts only if it has options: `01_localizer` chooses a repository
+    from a list, and that list is built by a function that returns `[]` on any failure,
+    so an empty one would render as a form with nothing to choose and no explanation.
+    """
+    import re
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(load_app(name)) as client:
+        page = client.get("/").text
+        assert "<form" in page, name
+        inputs = len(re.findall(r"<input", page))
+        options = len(re.findall(r"<option", page))
+        assert inputs or options, (name, "a form with nothing to set")
+
+
+def test_the_repository_picker_says_why_it_is_empty():
+    """`cached_repos` returns {} when data/trees is absent, rather than raising.
+
+    So the one app whose first control is a choice rendered an empty picker and said
+    nothing - a form with nothing to choose and no reason given. The hint carries the
+    reason now, and carries the count when there is one.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "localizer_app", ROOT / "apps" / "01_localizer" / "app.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert "no file listings found" in module._repo_hint([])
+    assert "data/trees" in module._repo_hint([])
+    populated = module._repo_hint([("a/b", "a/b"), ("c/d", "c/d")])
+    assert populated.startswith("2 repositories")
