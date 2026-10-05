@@ -158,6 +158,7 @@ def test_a_degraded_call_costs_well_under_a_second(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr(cache, "_client", None)
     monkeypatch.setattr(cache, "REDIS_URL", "redis://127.0.0.1:1/0")
+    monkeypatch.setattr(cache, "_down_until", 0.0)  # not already short-circuited
     started = time.perf_counter()
     assert run(cache.get_generation("m", "p", 0.0, None)) is None
     assert time.perf_counter() - started < 2.0
@@ -177,3 +178,211 @@ def test_the_bus_retries_after_a_cooldown_rather_than_never(monkeypatch):
     monkeypatch.setattr(bus, "RETRY_AFTER", 0.0)
     assert run(bus.producer()) is None  # past it: tries again, still absent
     assert bus._last_attempt > 0.0
+
+
+# ---- the submit path, which is the one a visitor actually clicks ---------------------
+#
+# Everything above tests the platform's functions. None of it opened an endpoint, and
+# that is exactly where the hole was: with Redis absent, `create_job` was a suppressed
+# no-op, so `/run` redirected to a job page that answered 404 while the measurement ran
+# to completion in the background and wrote its result through the same suppressed call.
+# The answer was computed and thrown away, nothing was logged, and `/`, `/about`,
+# `/history` and `/healthz` all kept returning 200 - which is what made it look fine.
+#
+# The README says "if Redis is down the apps still run". These tests are that sentence.
+
+
+@pytest.fixture
+def degraded(monkeypatch: pytest.MonkeyPatch):
+    """One app, with Redis, Kafka and the model all pointed at a closed port.
+
+    The port matters. Pointing the model at "whatever is running" is how a test of the
+    degraded path ends up generating on this machine's 14B - which is both slow and the
+    opposite of what is being tested.
+    """
+    import importlib.util
+
+    from apps._platform import model
+
+    monkeypatch.setattr(cache, "_client", None)
+    monkeypatch.setattr(cache, "REDIS_URL", "redis://127.0.0.1:1/0")
+    monkeypatch.setattr(cache, "_down_until", 0.0)
+    monkeypatch.setattr(cache, "_LOCAL_JOBS", {})
+    monkeypatch.setattr(cache, "_LOCAL_WAITERS", {})
+    monkeypatch.setattr(bus, "_producer", None)
+    monkeypatch.setattr(bus, "_available", False)
+    monkeypatch.setattr(bus, "BOOTSTRAP", "127.0.0.1:1", raising=False)
+    monkeypatch.setattr(model, "OLLAMA", "http://127.0.0.1:1")
+
+    spec = importlib.util.spec_from_file_location(
+        "degraded_app", ROOT / "apps" / "05_debug_ceiling" / "app.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.app
+
+
+def test_a_job_submitted_with_no_redis_is_not_thrown_away(degraded):
+    """Submit, follow the redirect, read the result back. The whole click.
+
+    This is the test that would have failed before: the redirect went to a 404 and the
+    result existed nowhere, having been written to a cache that was not there.
+    """
+    from fastapi.testclient import TestClient
+
+    with TestClient(degraded) as client:
+        posted = client.post("/run", data={"limit": 1}, follow_redirects=False)
+        assert posted.status_code == 303
+        job_id = posted.headers["location"].rsplit("/", 1)[-1]
+
+        assert client.get(f"/job/{job_id}").status_code == 200
+        assert client.get(f"/job/{job_id}/result").status_code == 200
+
+        job = run(cache.get_job(job_id))
+        assert job is not None, "the job page would answer 404"
+        assert job["status"] == "done", job
+        assert job["result"], "the measurement ran and its answer went nowhere"
+        assert job["transport"] == "inline"  # no Kafka, so no worker took it
+
+
+def test_the_progress_stream_ends_instead_of_hanging(degraded):
+    """Progress is Redis pub/sub, so with no Redis the stream used to raise inside the
+    generator and the page sat on "stream closed" for ever - on a job that had already
+    finished. A stream that never ends is how a working run looks like a hung one."""
+    from fastapi.testclient import TestClient
+
+    with TestClient(degraded) as client:
+        posted = client.post("/run", data={"limit": 1}, follow_redirects=False)
+        job_id = posted.headers["location"].rsplit("/", 1)[-1]
+        stream = client.get(f"/job/{job_id}/stream")
+        assert stream.status_code == 200
+        assert "event: done" in stream.text
+
+
+def test_history_lists_a_job_that_only_exists_locally(degraded):
+    from fastapi.testclient import TestClient
+
+    with TestClient(degraded) as client:
+        job_id = client.post("/run", data={"limit": 1}, follow_redirects=False).headers[
+            "location"
+        ].rsplit("/", 1)[-1]
+        assert job_id in client.get("/history").text
+
+
+# ---- the fallback store on its own ---------------------------------------------------
+
+
+@pytest.fixture
+def local_only(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(cache, "_client", None)
+    monkeypatch.setattr(cache, "REDIS_URL", "redis://127.0.0.1:1/0")
+    monkeypatch.setattr(cache, "_down_until", 0.0)
+    monkeypatch.setattr(cache, "_LOCAL_JOBS", {})
+    monkeypatch.setattr(cache, "_LOCAL_WAITERS", {})
+    return cache
+
+
+def test_a_job_written_with_no_redis_can_be_read_back(local_only):
+    run(local_only.create_job("j1", "05_debug_ceiling", {"limit": 3}))
+    run(local_only.update_job("j1", status="done", result={"solved": 2}))
+    job = run(local_only.get_job("j1"))
+    assert job["app"] == "05_debug_ceiling"
+    assert job["status"] == "done"
+    assert job["result"] == {"solved": 2}  # decoded, as the Redis path decodes it
+    assert job["params"] == {"limit": 3}
+
+
+def test_an_unknown_job_is_still_none(local_only):
+    """The fallback must not turn every id into a job; 404 is right for a wrong id."""
+    assert run(local_only.get_job("never-created")) is None
+
+
+def test_the_fallback_does_not_grow_without_limit(local_only):
+    """A server that runs for a month must not hold every job it ever ran."""
+    for n in range(local_only._LOCAL_MAX + 40):
+        run(local_only.create_job(f"j{n}", "app", {}))
+    assert len(local_only._LOCAL_JOBS) == local_only._LOCAL_MAX
+    assert run(local_only.get_job("j0")) is None  # oldest evicted
+    assert run(local_only.get_job(f"j{local_only._LOCAL_MAX + 39}")) is not None
+
+
+def test_recent_jobs_only_returns_the_app_asked_for(local_only):
+    run(local_only.create_job("a", "01_localizer", {}))
+    run(local_only.create_job("b", "05_debug_ceiling", {}))
+    assert [j["job_id"] for j in run(local_only.recent_jobs("05_debug_ceiling"))] == ["b"]
+
+
+def test_progress_published_with_no_redis_reaches_a_listener(local_only):
+    """The queue path, which the end-to-end test above skips: there, the job finishes
+    before the browser connects, so the stream answers from the job's status."""
+
+    async def scenario():
+        run_id = "j-live"
+        await local_only.create_job(run_id, "app", {})
+        ticks = []
+
+        async def listen():
+            async for payload in local_only.subscribe_progress(run_id):
+                ticks.append(payload)
+                if payload.get("status") in ("done", "error"):
+                    return
+
+        listener = asyncio.ensure_future(listen())
+        while not local_only._LOCAL_WAITERS.get(run_id):
+            await asyncio.sleep(0.01)  # until the subscription is registered
+        await local_only.publish_progress(run_id, {"done": 1, "total": 2, "status": "running"})
+        await local_only.publish_progress(run_id, {"status": "done"})
+        await asyncio.wait_for(listener, timeout=5)
+        return ticks
+
+    ticks = run(scenario())
+    assert ticks == [{"done": 1, "total": 2, "status": "running"}, {"status": "done"}]
+    assert cache._LOCAL_WAITERS == {}, "the listener left its queue behind"
+
+
+def test_a_listener_arriving_after_the_job_finished_is_not_left_waiting(local_only):
+    """The race the fallback has to survive: an inline run with limit=1 can be over
+    before the browser has loaded the page that opens the stream."""
+
+    async def scenario():
+        await local_only.create_job("j-late", "app", {})
+        await local_only.update_job("j-late", status="done")
+        out = []
+        async for payload in local_only.subscribe_progress("j-late"):
+            out.append(payload)
+            break
+        return out
+
+    assert run(asyncio.wait_for(scenario(), timeout=5)) == [{"status": "done", "note": ""}]
+
+
+def test_an_absent_redis_is_discovered_once_rather_than_per_call(local_only):
+    """The connect timeout is 0.5s. Three hundred of them is two and a half minutes.
+
+    Shortening the timeout fixed what one call costs; this is about how many calls pay
+    it. A job page reads state, reads history and publishes a tick, and every one of
+    those used to wait for the same absent server all over again.
+    """
+    import time as clock
+
+    started = clock.perf_counter()
+    for n in range(300):
+        run(local_only.create_job(f"many{n}", "app", {}))
+    elapsed = clock.perf_counter() - started
+    assert elapsed < 5.0, f"300 writes to an absent Redis took {elapsed:.1f}s"
+
+
+def test_the_breaker_lets_go_once_redis_answers(local_only, monkeypatch):
+    """A cooldown that never expired would mean an app started before `docker compose
+    up` stayed degraded until it was restarted - the bug the bus already had."""
+
+    async def answers(*_a, **_kw):
+        return {}
+
+    run(local_only.get_job("whatever"))  # fails, so the breaker closes
+    assert local_only._down_until > 0.0
+
+    monkeypatch.setattr(local_only, "DOWN_FOR", 0.0)
+    monkeypatch.setattr(local_only, "_down_until", 0.0)
+    run(local_only.call(answers))
+    assert local_only._down_until == 0.0

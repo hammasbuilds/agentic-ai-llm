@@ -16,16 +16,25 @@ from there.
 **Pub/sub.** Progress ticks fan out to however many browsers have the page open. Kafka
 carries the job; Redis pub/sub carries the "43 of 250 done" that the UI redraws on.
 
-Everything degrades: if Redis is down the apps still run, just without caching or live
-progress. A measurement tool that cannot run without its cache is a worse tool.
+Everything degrades: if Redis is down the apps still run, just without caching across
+processes. A measurement tool that cannot run without its cache is a worse tool.
+
+Degrading is not the same as discarding. Job state and progress have an in-process
+fallback below, because without it an absent Redis did not slow the apps down - it
+threw their answers away. `create_job` was a silent no-op, so `/run` redirected to a
+job page that 404ed, while the measurement ran to completion in the background and
+reported its result through the same suppressed write. The page said "No such job"
+and nothing was logged.
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
 import time
+from collections.abc import AsyncIterator
 from contextlib import suppress
 from typing import Any
 
@@ -50,6 +59,32 @@ _client: aioredis.Redis | None = None
 CONNECT_TIMEOUT = float(os.environ.get("REDIS_CONNECT_TIMEOUT", "0.5"))
 OP_TIMEOUT = float(os.environ.get("REDIS_OP_TIMEOUT", "2.0"))
 
+# Shortening the timeout fixed the cost of one call. This fixes the number of them.
+# Rendering a job page reads state, reads history and publishes a tick, and submitting
+# a run writes twice - so on a machine with no Redis the page still paid the connect
+# timeout several times over, serially. Once a connection has just failed, the next
+# calls take the fallback immediately and one attempt per interval goes back to check.
+DOWN_FOR = float(os.environ.get("REDIS_RETRY_AFTER", "5.0"))
+_down_until = 0.0
+
+
+class Unavailable(Exception):
+    """Redis was found missing a moment ago; this call did not wait to find out again."""
+
+
+async def call(op, *args: Any, **kwargs: Any) -> Any:
+    """One Redis operation, with a short memory of having just failed."""
+    global _down_until
+    if time.monotonic() < _down_until:
+        raise Unavailable(REDIS_URL)
+    try:
+        result = await op(*args, **kwargs)
+    except Exception:
+        _down_until = time.monotonic() + DOWN_FOR
+        raise
+    _down_until = 0.0  # it answered, so stop short-circuiting
+    return result
+
 
 def client() -> aioredis.Redis:
     global _client
@@ -65,7 +100,7 @@ def client() -> aioredis.Redis:
 
 async def ping() -> bool:
     try:
-        return bool(await client().ping())
+        return bool(await call(client().ping))
     except Exception:
         return False
 
@@ -84,7 +119,7 @@ async def get_generation(
     model: str, prompt: str, temperature: float, seed: int | None
 ) -> str | None:
     try:
-        return await client().get(gen_key(model, prompt, temperature, seed))
+        return await call(client().get, gen_key(model, prompt, temperature, seed))
     except Exception:
         return None  # a cold cache is slow, not broken
 
@@ -93,13 +128,13 @@ async def put_generation(
     model: str, prompt: str, temperature: float, seed: int | None, response: str
 ) -> None:
     with suppress(Exception):
-        await client().set(gen_key(model, prompt, temperature, seed), response, ex=GEN_TTL)
+        await call(client().set, gen_key(model, prompt, temperature, seed), response, ex=GEN_TTL)
 
 
 async def cache_stats() -> dict[str, Any]:
     try:
         r = client()
-        info = await r.info("stats")
+        info = await call(r.info, "stats")
         hits = int(info.get("keyspace_hits", 0))
         misses = int(info.get("keyspace_misses", 0))
         total = hits + misses
@@ -113,64 +148,108 @@ async def cache_stats() -> dict[str, Any]:
         return {"generations": 0, "hit_rate": 0.0, "hits": 0, "misses": 0}
 
 
+# --- the fallback for when Redis is not there -----------------------------------------
+#
+# Redis holds job state because a worker in another process runs the job. But a worker
+# in another process only exists when Kafka is up to carry the job to it, and the same
+# `docker compose up` brings up both - so on a machine with no Redis there is no worker
+# either, and `base._run_inline` runs the job in this process. An in-process dict is
+# therefore not a degraded substitute for the cross-process store: in that exact
+# configuration it is the whole population.
+#
+# Bounded, because a long-lived process would otherwise accumulate every job it ever
+# ran. Oldest-first eviction, which for job state is also least-interesting-first.
+# These do not survive a restart, which is the honest limit of the fallback and is why
+# Redis is still the thing to run.
+
+_LOCAL_JOBS: dict[str, dict[str, str]] = {}
+_LOCAL_MAX = 256
+_LOCAL_WAITERS: dict[str, set[asyncio.Queue]] = {}
+_TERMINAL = ("done", "error")
+_POLL = 0.25  # how often a local subscriber re-checks for a result it may have missed
+
+
+def _remember(job_id: str, fields: dict[str, str]) -> None:
+    job = _LOCAL_JOBS.setdefault(job_id, {})
+    job.update(fields)
+    while len(_LOCAL_JOBS) > _LOCAL_MAX:
+        _LOCAL_JOBS.pop(next(iter(_LOCAL_JOBS)))
+
+
+def _encode(fields: dict[str, Any]) -> dict[str, str]:
+    return {
+        k: (json.dumps(v) if isinstance(v, dict | list) else str(v)) for k, v in fields.items()
+    }
+
+
+def _decode(data: dict[str, str]) -> dict:
+    data = dict(data)
+    for key in ("params", "result"):
+        # A field written before it was JSON, or written as a plain string, stays a
+        # string rather than failing the whole lookup.
+        if key in data:
+            with suppress(json.JSONDecodeError, TypeError):
+                data[key] = json.loads(data[key])
+    return data
+
+
 # --- job state -----------------------------------------------------------------------
 
 
 async def create_job(job_id: str, app: str, params: dict) -> None:
-    with suppress(Exception):
-        await client().hset(
-            f"{JOB_PREFIX}{job_id}",
-            mapping={
-                "app": app,
-                "status": "queued",
-                "params": json.dumps(params),
-                "created": str(time.time()),
-                "progress": "0",
-                "total": str(params.get("limit", 0)),
-            },
-        )
-        await client().expire(f"{JOB_PREFIX}{job_id}", RESULT_TTL)
+    fields = {
+        "app": app,
+        "status": "queued",
+        "params": json.dumps(params),
+        "created": str(time.time()),
+        "progress": "0",
+        "total": str(params.get("limit", 0)),
+    }
+    try:
+        await call(client().hset, f"{JOB_PREFIX}{job_id}", mapping=fields)
+        await call(client().expire, f"{JOB_PREFIX}{job_id}", RESULT_TTL)
+    except Exception:
+        # Not suppressed: a job nobody recorded is a job whose result has nowhere to go.
+        _remember(job_id, fields)
 
 
 async def update_job(job_id: str, **fields: Any) -> None:
-    with suppress(Exception):
-        await client().hset(
-            f"{JOB_PREFIX}{job_id}",
-            mapping={
-                k: (json.dumps(v) if isinstance(v, dict | list) else str(v))
-                for k, v in fields.items()
-            },
-        )
+    encoded = _encode(fields)
+    try:
+        await call(client().hset, f"{JOB_PREFIX}{job_id}", mapping=encoded)
+    except Exception:
+        _remember(job_id, encoded)
 
 
 async def get_job(job_id: str) -> dict | None:
-    try:
-        data = await client().hgetall(f"{JOB_PREFIX}{job_id}")
-        if not data:
-            return None
-        for key in ("params", "result"):
-            # A field written before it was JSON, or written as a plain string, stays
-            # a string rather than failing the whole lookup.
-            if key in data:
-                with suppress(json.JSONDecodeError, TypeError):
-                    data[key] = json.loads(data[key])
-        return data
-    except Exception:
-        return None
+    data: dict[str, str] = {}
+    with suppress(Exception):
+        data = await call(client().hgetall, f"{JOB_PREFIX}{job_id}") or {}
+    # Local fields win where both have one: Redis can go down mid-run, leaving a job
+    # created there and finished here, and the later writes are the ones worth reading.
+    local = _LOCAL_JOBS.get(job_id)
+    if local:
+        data = {**data, **local}
+    return _decode(data) if data else None
 
 
 async def recent_jobs(app: str, limit: int = 12) -> list[dict]:
     """Most recent runs for one app, newest first."""
     out = []
-    try:
+    seen = set()
+    with suppress(Exception):
         r = client()
+        await call(r.ping)  # one attempt, so a missing Redis costs one timeout not a scan
         async for key in r.scan_iter(f"{JOB_PREFIX}*", count=500):
             data = await r.hgetall(key)
             if data.get("app") == app:
-                data["job_id"] = key.removeprefix(JOB_PREFIX)
+                job_id = key.removeprefix(JOB_PREFIX)
+                data["job_id"] = job_id
+                seen.add(job_id)
                 out.append(data)
-    except Exception:
-        return []
+    for job_id, data in _LOCAL_JOBS.items():
+        if data.get("app") == app and job_id not in seen:
+            out.append({**data, "job_id": job_id})
     out.sort(key=lambda d: float(d.get("created", 0)), reverse=True)
     return out[:limit]
 
@@ -179,14 +258,54 @@ async def recent_jobs(app: str, limit: int = 12) -> list[dict]:
 
 
 async def publish_progress(job_id: str, payload: dict) -> None:
-    with suppress(Exception):
-        await client().publish(PROGRESS_CHANNEL.format(job_id=job_id), json.dumps(payload))
+    try:
+        await call(client().publish, PROGRESS_CHANNEL.format(job_id=job_id), json.dumps(payload))
+    except Exception:
+        for queue in _LOCAL_WAITERS.get(job_id, ()):
+            queue.put_nowait(payload)
 
 
-async def subscribe_progress(job_id: str):
+async def _local_progress(job_id: str) -> AsyncIterator[dict]:
+    """The same stream, carried by a queue instead of by Redis.
+
+    The subscriber arrives after the job was submitted - the browser has to load the
+    page first - so a short run can finish before anyone is listening, and a worker
+    that died never sends anything at all. Waiting on the queue alone would hang the
+    page on a job that is already complete, which is the failure this whole fallback
+    exists to remove, so each wait is bounded and the job's own status is the authority
+    on whether it is over.
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+    _LOCAL_WAITERS.setdefault(job_id, set()).add(queue)
+    try:
+        while True:
+            try:
+                yield await asyncio.wait_for(queue.get(), timeout=_POLL)
+                continue
+            except TimeoutError:
+                pass
+            status = (_LOCAL_JOBS.get(job_id) or {}).get("status")
+            if status in _TERMINAL:
+                yield {"status": status, "note": (_LOCAL_JOBS[job_id].get("error") or "")}
+                return
+    finally:
+        waiters = _LOCAL_WAITERS.get(job_id)
+        if waiters:
+            waiters.discard(queue)
+            if not waiters:
+                _LOCAL_WAITERS.pop(job_id, None)
+
+
+async def subscribe_progress(job_id: str) -> AsyncIterator[dict]:
     """Yield progress payloads until the job reports itself finished."""
-    pubsub = client().pubsub()
-    await pubsub.subscribe(PROGRESS_CHANNEL.format(job_id=job_id))
+    try:
+        pubsub = client().pubsub()
+        await call(pubsub.subscribe, PROGRESS_CHANNEL.format(job_id=job_id))
+    except Exception:
+        # No Redis: the job is running in this process, so its progress is here too.
+        async for payload in _local_progress(job_id):
+            yield payload
+        return
     try:
         async for message in pubsub.listen():
             if message.get("type") != "message":
@@ -196,5 +315,7 @@ async def subscribe_progress(job_id: str):
             except (json.JSONDecodeError, TypeError):
                 continue
     finally:
-        await pubsub.unsubscribe(PROGRESS_CHANNEL.format(job_id=job_id))
-        await pubsub.aclose()
+        with suppress(Exception):
+            await pubsub.unsubscribe(PROGRESS_CHANNEL.format(job_id=job_id))
+        with suppress(Exception):
+            await pubsub.aclose()

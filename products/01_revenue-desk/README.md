@@ -32,7 +32,7 @@ of the method, and widening a band every time is a moving target, not a measurem
 |---|---:|---:|---:|
 | Line edits counted | 1,601,517 | 589,024 | **372,794** |
 | Reverts found | 1,850 | 138 | **46** |
-| **Revert rate** | 0.1155% | 0.0425% | **0.0123%** |
+| **Revert rate** | 0.1155% | 0.0234% | **0.0123%** |
 | | | | *one in 8,104* |
 
 **The same history, read three ways, differs by an order of magnitude** — 9.36× between the

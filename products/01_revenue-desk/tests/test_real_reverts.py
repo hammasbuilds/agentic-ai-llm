@@ -269,3 +269,37 @@ def test_the_readme_quotes_this_fixture_and_not_an_older_survey(frozen):
     # And the numbers from the survey this replaced must be gone.
     for stale in ("714,164", "267,192", "one in 9,896", "29 of the 35", "maximum 23"):
         assert stale not in readme, f"README still quotes the old survey: {stale}"
+
+
+# --- the README's table, recomputed ----------------------------------------------------
+
+
+def test_the_readme_table_is_what_the_fixture_says(frozen):
+    """Every cell of the headline table, read back out of the README.
+
+    The authored column carried 0.0425% — the prose rate, which appears correctly two
+    paragraphs further down and is three and a half times larger. Nothing caught it,
+    because the tests asserted each rate on its own and nobody asserted that the table
+    printed the rate it was labelled with. A number in a README is a claim, and this is
+    the fourth time one drifted from the code; the only fix that holds is to compute it.
+    """
+    import re
+
+    readme = (Path(__file__).parent.parent / "README.md").read_text(encoding="utf-8")
+    row = {}
+    for line in readme.splitlines():
+        cells = [c.strip().strip("*") for c in line.strip().strip("|").split("|")]
+        if len(cells) == 4 and cells[0] in ("Line edits counted", "Reverts found", "Revert rate"):
+            row[cells[0]] = cells[1:]
+    assert set(row) == {"Line edits counted", "Reverts found", "Revert rate"}, row
+
+    total = lambda key: sum(r[key] for r in frozen)  # noqa: E731
+    columns = [("edits", "reverts"), ("authored_edits", "authored_reverts"), ("code_edits", "code_reverts")]
+    for n, (edits, reverts) in enumerate(columns):
+        assert row["Line edits counted"][n] == f"{total(edits):,}"
+        assert row["Reverts found"][n] == f"{total(reverts):,}"
+        assert row["Revert rate"][n] == f"{total(reverts) / total(edits):.4%}"
+
+    # and the multiple quoted in the sentence under it
+    ratio = (total("reverts") / total("edits")) / (total("code_reverts") / total("code_edits"))
+    assert f"{ratio:.2f}\u00d7" in readme or f"{ratio:.2f}x" in readme

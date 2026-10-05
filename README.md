@@ -108,8 +108,14 @@ round cap as a recursion limit — because that is what a self-debug loop is. Th
 reads a real assertion outcome, not a model's opinion of its own work.
 
 Everything degrades. If Kafka is down the job runs in-process and the UI says so; if Redis
-is down the apps still work without caching or live progress. A demo that only runs with the
-full stack up is a demo nobody runs.
+is down the apps still work, holding job state and progress in the process that is running
+the job — which is the same process, because no Kafka means no worker. The generation cache
+is the only thing genuinely lost, and jobs do not survive a restart. A demo that only runs
+with the full stack up is a demo nobody runs.
+
+[`tests/test_platform_degraded.py`](tests/test_platform_degraded.py) is that paragraph as a
+test: it submits a run and reads the result back with Redis, Kafka and the model all pointed
+at a closed port.
 
 ## Running it
 
