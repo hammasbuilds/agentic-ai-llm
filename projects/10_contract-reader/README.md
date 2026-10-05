@@ -147,7 +147,7 @@ it would have added forty megabytes to parse nothing.
 ## Run it
 
 ```bash
-uv run pytest -q                                   # 27 tests
+uv run pytest -q                                   # 33 tests
 uv run contract-reader survey ~/code
 uv run contract-reader read <path/to/LICENSE> -v
 uv run python ui/serve.py                          # :8115, nothing to install
@@ -161,5 +161,5 @@ src/contractreader/
     obligations.py  families, obligations, the context check, compatibility
     cli.py          argparse
 ui/                 one HTML file served by http.server
-tests/test_reading.py   27 tests
+tests/test_reading.py   33 tests
 ```

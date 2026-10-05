@@ -236,8 +236,12 @@ CORPUS = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
 @pytest.mark.skipif(not CORPUS.exists(), reason="local checkout not present")
 def test_the_python_licence_in_the_corpus_is_not_read_as_gpl():
     path = (
-        CORPUS / "gan-diffusion-projects" / "pylibs"
-        / "typing_extensions-4.16.0.dist-info" / "licenses" / "LICENSE"
+        CORPUS
+        / "gan-diffusion-projects"
+        / "pylibs"
+        / "typing_extensions-4.16.0.dist-info"
+        / "licenses"
+        / "LICENSE"
     )
     if not path.is_file():
         pytest.skip("that package is not vendored here")
@@ -325,3 +329,34 @@ def test_a_virtualenv_is_skipped_by_its_marker_not_its_name(tmp_path: Path):
     (tmp_path / "LICENSE").write_text("Permission is hereby granted, free of charge", "utf-8")
     found = _find(tmp_path)
     assert [p.parent.name for p in found] == [tmp_path.name]
+
+
+def test_the_readme_counts_the_tests_this_file_holds():
+    """It said 27 while the file held 32, in two places.
+
+    A count in a README is a claim, and this one moves every time a test is added -
+    which is exactly when nobody rereads the README. Asked of pytest rather than
+    counted with a regex, because `def test_` and parametrize cases are not the same
+    number and the regex version of this test was wrong about its own file.
+    """
+    import re
+    import subprocess
+    import sys
+
+    package = Path(__file__).resolve().parent.parent
+    readme = (package / "README.md").read_text(encoding="utf-8")
+    claimed = {int(n) for n in re.findall(r"(\d+) tests\b", readme)}
+    assert claimed, "the README no longer states a test count"
+
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--collect-only", "-p", "no:cacheprovider"],
+        cwd=str(package),
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    found = re.search(r"(\d+) tests? collected", collected.stdout)
+    assert found, collected.stdout[-500:]
+    assert claimed == {int(found.group(1))}, (
+        f"README says {sorted(claimed)}; pytest collects {found.group(1)}"
+    )
