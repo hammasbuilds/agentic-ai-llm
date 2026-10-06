@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-35-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-42-success" alt="tests">
   <img src="https://img.shields.io/badge/repos%20measured-28-orange" alt="repos">
 </p>
 
@@ -63,28 +63,29 @@ reported anywhere, because it is not readable.
 **Out:**
 
 ```
-$ captain gate ~/code/mcp-lab --since 8
+$ captain gate ~/code/rag-forge --since 8
 
 ==============================================================================
-  mcp-lab  -  NO-GO
+  rag-forge  -  NO-GO
 ==============================================================================
 
-  8 commit(s) assessed
+  8 commit(s) assessed; 4 of 4 checks measured something
 
   CHECKS
     [STOP] source changes without tests
-           3 of 3 source-changing commits changed no test file
+           2 of 2 source-changing commits changed no test file
     [ok  ] riskiest commit
-           44.3 - bd2a6df3 Replace three results viewers with Input/Output evidence
+           38.7 - ab5c97b9 Drop the build diary
     [ok  ] areas touched
-           4 top-level areas: (root), docs, projects, scripts
-    [warn] commits far above this repo's median
-           1 commit(s) over 14780 lines (20x the 739-line median)
+           3 top-level areas: (root), deploy, docs
+    [ok  ] commits far above this repo's median
+           none
 
   RISKIEST COMMITS  (composite: spread, files, untested, volume, deletion)
-     47.8  5a1c9e02    5442L  693f 3dir  Add project 01: MCP red-team platform
-     44.3  bd2a6df3     418L   11f 3dir  Replace three results viewers with Inp
-     38.6  8f43c84f    2831L   18f 3dir  Add project 04: SWE-bench coding agent
+     38.7  ab5c97b9     279L    2f 2dir  Drop the build diary
+     38.1  53e4dea5      90L    4f 2dir  Add a runnable demo and Input/Output section
+     29.0  52cce596      35L    1f 1dir  Tidy demo.py: ruff clean and formatted
+     25.5  fb67c6d7      32L    1f 1dir  Reword project notes as implementation and r
 ==============================================================================
 ```
 
@@ -93,31 +94,68 @@ Also:
 ```
 $ captain explain <repo> <sha>     # the factor breakdown behind one score
 $ captain rank <repo> --by churn   # or files, spread, risk - see them disagree
-$ captain compare ~/code        # the agreement table above
+$ captain sweep ~/code             # gate every checkout - the table below
+$ captain compare ~/code           # do single metrics agree, above chance?
 $ captain gate <repo> --strict     # exit 1 when blocked, for CI
 ```
 
 ## Applied to the portfolio
 
-Running the gate over the last 8 commits of all 28 repositories:
+`captain sweep <folder> --since 8` over every checkout in one folder, which is where this
+table comes from. It used to be quoted over a chosen 28 repositories and no command here
+produced it, so it could not go stale visibly - and it had, naming `mcp-lab` as blocked
+when `mcp-lab` now reads GO.
 
 | Verdict | Repositories |
 |---|---|
-| GO | 3 |
-| GO WITH WARNINGS | 20 |
-| NO-GO | 5 |
+| GO | 17 |
+| GO WITH WARNINGS | 44 |
+| NO-GO | 14 |
+| **measured** | **75** |
 
-The five blocked - `classical-computer-vision`, `context-bench`, `langgraph-lab`,
-`mcp-lab`, `sql-analyst-agent` - are all blocked by the same check: **every recent
-source-changing commit changed no test file.** Not a subtle signal, and not one a
-line-count threshold would have produced.
+**13 of the 14 blocked are blocked by the same check: every recent source-changing commit
+changed no test file.** The other three blocks are a single commit scoring past 65. Not a
+subtle signal, and not one a line-count threshold would have produced.
+
+### A check that measured nothing is not a check that passed
+
+**6 of those 17 clean GO verdicts rest on a check that had nothing to look at.** All six
+shipped only documentation or data in the window, so "no source went out untested" is true
+only because no source went out - and the gate used to print for them the same `ok` it
+prints for a release whose every source file arrived with a test.
+
+They now read `-` rather than `ok`, the header counts how many checks measured something,
+and the report says so at the bottom:
+
+```
+$ captain gate ~/code/llm-agentic-datasets --since 8
+
+  4 commit(s) assessed; 3 of 4 checks measured something
+
+  CHECKS
+    [ -  ] source changes without tests
+           no source changes in range, so test coupling was not observed
+    [ok  ] riskiest commit
+           34.3 - b17c7996 Add CC BY 4.0 licence and trim the index to the published da
+    [ok  ] areas touched
+           1 top-level area: (root)
+    [ok  ] commits far above this repo's median
+           none
+
+  1 check(s) had nothing to look at. A verdict that rests on fewer
+  checks is not a stronger one.
+```
+
+The verdict is still GO. Nothing was observed, and nothing observed is not a failure - but
+it is also not evidence, and a reader could not previously tell the two apart.
 
 ## Thresholds are relative to the repository
 
-A 400-line commit is unremarkable where the median is 739 lines and alarming where it is
-20. Every size threshold is a multiple of that repository's own median, which is why the
-outlier check on `mcp-lab` fires at 14,780 lines rather than at some number chosen in
-advance.
+A 500-line commit is unremarkable where the median is 2,100 lines and alarming where it is
+20. Every size threshold is a multiple of that repository's own median - the outlier check
+fires at 20x it - which is why it fires at 42,000 lines on `classical-computer-vision`,
+7,930 on `mcp-lab` and 2,280 on `langchain-lab` rather than at one number chosen in
+advance for all three.
 
 ## What I wrote vs what I installed
 
@@ -146,7 +184,7 @@ and a parser, against a dependency that wraps the same command. The web view is 
 ## Run it
 
 ```bash
-uv run pytest -q                        # 35 tests
+uv run pytest -q                        # 42 tests
 uv run captain gate <repo> --since 8
 uv run captain compare ~/code
 uv run python ui/serve.py               # web view on :8090
@@ -162,6 +200,6 @@ src/captain/
     cli.py       argparse
 ui/serve.py      http.server + Alpine.js, no dependency
 tests/
-    test_history.py  18 tests against real git repositories
-    test_risk.py     17 tests
+    test_history.py  20 tests against real git repositories
+    test_risk.py     22 tests
 ```

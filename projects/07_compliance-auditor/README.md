@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-34-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-44-success" alt="tests">
   <img src="https://img.shields.io/badge/repos%20audited-37-orange" alt="repos">
 </p>
 
@@ -18,25 +18,46 @@
 
 > *Every README has a "what it does NOT do" section — overclaiming wastes a reader's time.*
 
-Audited across 37 repositories, it holds in **9 of 33** — **27%**.
+Audited across every checkout in one folder — 78 of them, not a chosen subset — it
+holds in **14 of 76** — **18%**.
 
 ```
-  37 repositories  -  248/340 controls passed (73%)
+  78 repositories  -  464/740 controls passed (63%)
 
-  pass 248   fail 92   inconclusive 12   n/a 18
+  pass 464   fail 276   inconclusive 6   n/a 34
   Inconclusive and n/a are excluded from the rate, never counted as passes.
 
   BY CONTROL
-      9/33   27%  readme-limits     Every README has a 'what it does NOT do' section.
-     17/31   55%  deps-used         Every declared dependency is actually imported.
-     19/33   58%  readme-io         Every README states what goes in and what comes out.
-     25/37   68%  licence           Every repository has a LICENSE.
-     26/37   70%  backed-up         Every repository has a git remote.
-     27/33   82%  readme-problems   Every README has 'problems hit while building this'.
-     27/31   87%  imports-declared  Every third-party import is declared.
-     33/37   89%  readme-exists     Every repository has a README of substance.
-     33/36   92%  tests-exist       Every repository with source has tests.
-     32/32  100%  no-junk           No caches, venvs, logs or secrets are tracked.
+     13/76   17%  readme-problems
+               Every README has 'problems hit while building this'.
+     14/76   18%  readme-limits
+               Every README has a 'what it does NOT do' section.
+     21/76   28%  readme-io
+               Every README states what goes in and what comes out.
+     23/64   36%  deps-used
+               Every declared dependency is actually imported.
+     44/64   69%  imports-declared
+               Every third-party import is declared.
+     66/78   85%  licence
+               Every repository has a LICENSE.
+     65/76   86%  no-junk
+               No caches, venvs, logs or secrets are tracked.
+     68/74   92%  tests-exist
+               Every repository with source has tests.
+     74/78   95%  backed-up
+               Every repository has a git remote.
+     76/78   97%  readme-exists
+               Every repository has a README of substance.
+
+  LOWEST-SCORING REPOSITORIES
+      0%  kaggle-notebooks-new         readme-exists, tests-exist, licence, backed-up
+     20%  vision-language-lab          readme-exists, tests-exist, licence, backed-up
+     29%  private repos                readme-limits, readme-problems, readme-io, licence
+     38%  3d-computer-vision           readme-limits, readme-problems, readme-io, licence
+     38%  deep-computer-vision         readme-limits, readme-problems, readme-io, tests-exist
+     38%  generative-vision-lab        readme-limits, readme-problems, readme-io, tests-exist
+     38%  super-resolution             readme-limits, readme-problems, readme-io, tests-exist
+     38%  visual-analytics             readme-limits, readme-problems, readme-io, tests-exist
 ```
 
 A written convention is not evidence that the convention was followed. That is the whole
@@ -48,8 +69,8 @@ observation, and it is unremarkable until someone measures it.
 
 Where nothing could be observed - no README to search, no `pyproject.toml` to read - the
 result is `inconclusive` or `n/a`, and those are **excluded from the rate rather than
-counted as passes**. Twelve inconclusive and eighteen not-applicable results are held out
-of the 73% above.
+counted as passes**. Six inconclusive and thirty-four not-applicable results are held out of the 63%
+above.
 
 Counting unmeasured controls as passes is how an audit reports a comfortable number
 having checked a fraction of what it claimed. The UI draws pass, fail and *unmeasured* as
@@ -115,7 +136,7 @@ build step, the `.js` file in `ui/` is the source that runs.
 ## Run it
 
 ```bash
-uv run pytest -q                              # 34 tests
+uv run pytest -q                              # 44 tests
 uv run compliance-auditor audit ~/code
 uv run compliance-auditor policy
 uv run python ui/serve.py                     # :8100

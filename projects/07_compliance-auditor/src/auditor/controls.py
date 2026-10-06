@@ -165,6 +165,40 @@ def _provides(module: str) -> frozenset[str]:
     return _ALIASES.get(module, _ALIASES.get(normalised, frozenset({normalised})))
 
 
+def _declined_for_unread_imports(ev: Evidence, cid: str) -> Result | None:
+    """Decline an import control when the collector observed nothing to go on.
+
+    The README's own rule is that a control may return PASS only when a collector
+    actually observed something, and both import controls broke it: a file that does
+    not parse used to contribute an empty set, which is indistinguishable from a file
+    that imports nothing, so a repository whose only Python file is broken came back
+    [ok] on both.
+    """
+    if ev.python_files and not ev.imported_modules and ev.unreadable_files:
+        return _result(
+            cid,
+            NOT_APPLICABLE,
+            f"{len(ev.unreadable_files)} of {len(ev.python_files)} Python file(s) could "
+            "not be read, and no import was collected from the rest",
+            ev.pyproject_path,
+        )
+    return None
+
+
+def _coverage_caveat(ev: Evidence) -> str:
+    """What a PASS over a partially-read repository is worth.
+
+    A clean verdict over 99 of 100 files is still a clean verdict, but it is not the
+    same claim as one over 100 of 100, and the report has to say which it is.
+    """
+    if not ev.unreadable_files:
+        return ""
+    return (
+        f" ({len(ev.unreadable_files)} of {len(ev.python_files)} Python file(s) "
+        "could not be read)"
+    )
+
+
 def declared_deps_are_used(ev: Evidence) -> Result:
     """Every declared dependency should be imported somewhere.
 
@@ -175,6 +209,10 @@ def declared_deps_are_used(ev: Evidence) -> Result:
     cid = "deps-used"
     if ev.pyproject_path is None:
         return _result(cid, NOT_APPLICABLE, "no pyproject.toml")
+    declined = _declined_for_unread_imports(ev, cid)
+    if declined is not None:
+        return declined
+
     declared = _declared_names(ev)
     if not declared:
         return _result(cid, PASS, "declares no dependencies", ev.pyproject_path)
@@ -189,7 +227,10 @@ def declared_deps_are_used(ev: Evidence) -> Result:
             cid, FAIL, f"declared but never imported: {', '.join(unused)}", ev.pyproject_path
         )
     return _result(
-        cid, PASS, f"all {len(declared)} declared dependencies are imported", ev.pyproject_path
+        cid,
+        PASS,
+        f"all {len(declared)} declared dependencies are imported{_coverage_caveat(ev)}",
+        ev.pyproject_path,
     )
 
 
@@ -202,6 +243,10 @@ def imports_are_declared(ev: Evidence) -> Result:
     cid = "imports-declared"
     if ev.pyproject_path is None:
         return _result(cid, NOT_APPLICABLE, "no pyproject.toml")
+
+    declined = _declined_for_unread_imports(ev, cid)
+    if declined is not None:
+        return declined
 
     local = set(ev.local_packages) | {Path_stem(p) for p in ev.python_files}
     local |= {"src", "tests", "scripts", "ui", "shared", "projects", "conftest"}
@@ -219,7 +264,12 @@ def imports_are_declared(ev: Evidence) -> Result:
             f"imported but not declared: {', '.join(undeclared[:8])}",
             ev.pyproject_path,
         )
-    return _result(cid, PASS, "every third-party import is declared", ev.pyproject_path)
+    return _result(
+        cid,
+        PASS,
+        f"every third-party import is declared{_coverage_caveat(ev)}",
+        ev.pyproject_path,
+    )
 
 
 def Path_stem(rel: str) -> str:  # noqa: N802 - kept short, used once above

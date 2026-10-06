@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from captain.gate import BLOCK, PASS, WARN, evaluate
+from captain.gate import BLOCK, NOT_MEASURED, PASS, WARN, evaluate, render
 from captain.history import Commit, FileChange, History
 from captain.risk import Baseline, rank_by, rank_disagreement, score_commit
 
@@ -191,3 +191,76 @@ def test_rank_by_risk_differs_from_rank_by_churn_on_a_dump():
     h = _history([dump, broad])
     assert rank_by(h, "churn")[0].sha == "dump"
     assert rank_by(h, "risk")[0].sha == "broad"
+
+
+# -- a check that measured nothing ----------------------------------------
+
+
+def test_a_docs_only_release_does_not_clear_the_test_coupling_check():
+    """It used to come back PASS, with the detail "no source changes".
+
+    `captain sweep <folder> --since 8` over 75 local checkouts returns 17 clean GO
+    verdicts, and 6 of those 17 are this case - releases of documentation and data,
+    where "no source shipped untested" is true only because no source shipped. The
+    gate printed the same "ok" it prints for a release whose every source file
+    arrived with a test.
+    """
+    docs = make("d", "rewrite the install section", [("README.md", 40, 12)])
+    result = evaluate(_history([docs]))
+
+    coupling = next(c for c in result.checks if "without tests" in c.name)
+    assert coupling.status == NOT_MEASURED
+    assert coupling.status != PASS
+    assert result.verdict == "GO"  # nothing observed is not a failure
+    assert result.not_measured == [coupling]
+    assert result.evidence == "3 of 4 checks measured something"
+
+
+def test_the_report_says_how_many_checks_measured_something():
+    """So a reader can weigh the verdict without re-deriving it."""
+    report = render(evaluate(_history([make("d", "docs", [("README.md", 5, 0)])])))
+    assert "3 of 4 checks measured something" in report
+    assert " -  " in report  # the status column, not "ok"
+    assert "ok   source changes without tests" not in report
+
+
+def test_a_release_that_touches_source_measures_every_check():
+    both = make(
+        "s", "parser and its tests", [("src/pkg/parse.py", 80, 3), ("tests/t.py", 40, 0)]
+    )
+    result = evaluate(_history([both]))
+    assert result.not_measured == []
+    assert result.evidence == "4 of 4 checks measured something"
+
+
+def test_the_outlier_threshold_is_a_multiple_of_the_repositorys_own_median():
+    """The rule behind the three thresholds the README quotes: 20x the median.
+
+    Written once with the wrong arithmetic twice over: 400 lines against a 114-line
+    median is 3.5x, and against a 20-line median it is exactly 20x, which the check
+    does not fire on because the comparison is strict. The rule is asserted here
+    rather than described.
+    """
+    tiny = [make(str(i), "x", [("src/a.py", 20, 0)]) for i in range(7)]
+    large = [make(str(i), "x", [("src/a.py", 2100, 0)]) for i in range(7)]
+    assert Baseline.from_history(_history(tiny)).median_churn == 20
+    assert Baseline.from_history(_history(large)).median_churn == 2100
+
+    # 500 lines: past 20x the 20-line median, a fraction of the 2,100-line one.
+    five_hundred = make("f", "x", [("src/a.py", 500, 0)])
+    for history, fires in (
+        (_history([five_hundred, *tiny]), True),
+        (_history([five_hundred, *large]), False),
+    ):
+        check = next(c for c in evaluate(history).checks if "median" in c.name)
+        assert (check.status == WARN) is fires
+        assert ("20x" in check.detail) is fires
+
+
+def test_the_outlier_comparison_is_strict_at_exactly_twenty_times():
+    """Exactly 20x does not fire. Worth pinning because a README sentence assumed it did."""
+    tiny = [make(str(i), "x", [("src/a.py", 20, 0)]) for i in range(7)]
+    for churn, fires in ((400, False), (401, True)):
+        at = make("f", "x", [("src/a.py", churn, 0)])
+        check = next(c for c in evaluate(_history([at, *tiny])).checks if "median" in c.name)
+        assert (check.status == WARN) is fires, churn

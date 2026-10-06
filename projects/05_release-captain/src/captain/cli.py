@@ -117,6 +117,60 @@ def _compare_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _sweep_command(args: argparse.Namespace) -> int:
+    """Gate every checkout under a folder and print the verdict distribution.
+
+    The README quoted this table across a chosen 28 repositories, and no command
+    here produced it. A chosen subset and a folder are different populations: run
+    over the folder, the share of clean GO verdicts is a fraction of what the
+    subset suggested, and most of the ones that remain rest on a check that had
+    nothing to look at.
+    """
+    parent = Path(args.parent).resolve()
+    verdicts: dict[str, list[str]] = {"GO": [], "GO WITH WARNINGS": [], "NO-GO": []}
+    unmeasured: list[str] = []
+    blocked_by: dict[str, int] = {}
+    skipped = 0
+    for d in sorted(parent.iterdir()):
+        if not d.is_dir() or not is_repository(d):
+            continue
+        try:
+            history = read_history(d, limit=args.scan)
+        except NotAGitRepository:
+            continue
+        if not history.commits:
+            skipped += 1
+            continue
+        result = evaluate(history, since=args.since)
+        verdicts[result.verdict].append(d.name)
+        if result.verdict == "GO" and result.not_measured:
+            unmeasured.append(d.name)
+        for check in result.blockers:
+            blocked_by[check.name] = blocked_by.get(check.name, 0) + 1
+
+    total = sum(len(v) for v in verdicts.values())
+    print(f"{'Verdict':20s} {'Repositories':>12s}")
+    print("-" * 34)
+    for name, repos in verdicts.items():
+        print(f"{name:20s} {len(repos):12d}")
+    print("-" * 34)
+    print(f"{'measured':20s} {total:12d}")
+    print()
+    print(
+        f"{len(unmeasured)} of the {len(verdicts['GO'])} clean GO verdict(s) rest on a check "
+        "that had nothing to look at"
+    )
+    for name in unmeasured:
+        print(f"    {name}")
+    if blocked_by:
+        print("\nWhat blocked the NO-GO repositories:")
+        for name, count in sorted(blocked_by.items(), key=lambda kv: -kv[1]):
+            print(f"    {count:3d}  {name}")
+    if skipped:
+        print(f"\n{skipped} checkout(s) had no commits in range and were not counted")
+    return 0
+
+
 def _rank_command(args: argparse.Namespace) -> int:
     history = read_history(Path(args.repo).resolve())
     baseline = Baseline.from_history(history)
@@ -154,6 +208,12 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--by", choices=["churn", "files", "spread", "risk"], default="risk")
     r.add_argument("--top", type=int, default=10)
     r.set_defaults(func=_rank_command)
+
+    w = sub.add_parser("sweep", help="gate every checkout under a folder")
+    w.add_argument("parent")
+    w.add_argument("--since", type=int, default=None, help="assess the last N commits")
+    w.add_argument("--scan", type=int, default=None, help="read at most N commits of history")
+    w.set_defaults(func=_sweep_command)
 
     c = sub.add_parser("compare", help="do single metrics agree, above chance?")
     c.add_argument("parent")

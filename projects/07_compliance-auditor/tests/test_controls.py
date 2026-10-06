@@ -186,3 +186,83 @@ def test_folder_audit_skips_non_projects(tmp_path: Path):
     write(tmp_path, "real/README.md", "# real\n\n" + "word " * 60)
     audit = audit_folder(tmp_path)
     assert [r.name for r in audit.repos] == ["real"]
+
+
+def test_an_import_control_does_not_clear_a_repository_it_could_not_read(tmp_path: Path):
+    """The README's rule: "A control may return PASS only when a collector actually
+    observed something."
+
+    `_top_level_imports` returned an empty set on a SyntaxError and the walk skipped an
+    unreadable file, both in silence — so a repository whose only Python file does not
+    parse was indistinguishable from one that imports nothing, and both import controls
+    returned [ok] on it. These two are 2 of the 10 rates behind the headline number.
+    """
+    (tmp_path / "only.py").write_text("import requests\ndef broken(:\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\nversion = "0"\ndependencies = ["requests"]\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text("# x\n", encoding="utf-8")
+
+    evidence = collect(tmp_path)
+    assert evidence.python_files == ["only.py"]
+    assert evidence.imported_modules == set()
+    assert evidence.unreadable_files == ["only.py"]
+
+    by_id = {c.id: c.check(evidence) for c in CONTROLS}
+    for control_id in ("deps-used", "imports-declared"):
+        assert by_id[control_id].status == NOT_APPLICABLE, by_id[control_id]
+        assert "could not be read" in by_id[control_id].detail
+
+
+def test_a_repository_it_could_read_is_still_judged(tmp_path: Path):
+    """The guard must not decline everything: a file that parses is still checked."""
+    (tmp_path / "only.py").write_text("import requests\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\nversion = "0"\ndependencies = ["requests"]\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text("# x\n", encoding="utf-8")
+
+    evidence = collect(tmp_path)
+    assert evidence.unreadable_files == []
+    by_id = {c.id: c.check(evidence) for c in CONTROLS}
+    assert by_id["deps-used"].status != NOT_APPLICABLE
+
+
+def test_a_pass_over_a_partly_read_repository_says_what_it_did_not_read():
+    """A clean verdict over 99 of 100 files is not the same claim as over 100 of 100.
+
+    The whole-repository case is declined outright, but a single unparseable file
+    among many still produced a bare "every third-party import is declared" - and an
+    undeclared import could be sitting in exactly the file that was not read.
+    """
+    ev = Evidence(
+        name="r",
+        root=Path("r"),
+        pyproject_path="pyproject.toml",
+        declared_dependencies=["requests"],
+        python_files=["a.py", "b.py", "broken.py"],
+        imported_modules={"requests"},
+        unreadable_files=["broken.py"],
+    )
+
+    for control in (declared_deps_are_used, imports_are_declared):
+        result = control(ev)
+        assert result.status == PASS
+        assert "1 of 3 Python file(s) could not be read" in result.detail
+
+
+def test_a_pass_over_a_fully_read_repository_carries_no_caveat():
+    ev = Evidence(
+        name="r",
+        root=Path("r"),
+        pyproject_path="pyproject.toml",
+        declared_dependencies=["requests"],
+        python_files=["a.py"],
+        imported_modules={"requests"},
+    )
+    for control in (declared_deps_are_used, imports_are_declared):
+        result = control(ev)
+        assert result.status == PASS
+        assert "could not be read" not in result.detail

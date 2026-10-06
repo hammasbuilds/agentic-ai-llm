@@ -170,3 +170,65 @@ def test_co_change_pairs_files_that_move_together(repo: Path):
     commit(repo, "two", {"src/a.py": "x=2\n", "src/b.py": "y=2\n"})
     pairs = read_history(repo).co_change()
     assert pairs["src/a.py"]["src/b.py"] == 2
+
+
+# -- the sweep command ----------------------------------------------------
+
+
+def checkout(parent: Path, name: str, message: str, files: dict[str, str]) -> Path:
+    """A real one-commit git repository, because sweep reads git and not a fixture."""
+    root = parent / name
+    root.mkdir()
+    git(root, "init", "-q")
+    git(root, "config", "user.email", "t@example.com")
+    git(root, "config", "user.name", "Tester")
+    commit(root, message, files)
+    return root
+
+
+def sweep(parent: Path) -> int:
+    from captain.cli import main
+
+    return main(["sweep", str(parent)])
+
+
+def test_sweep_counts_verdicts_and_the_ones_that_measured_nothing(tmp_path, capsys):
+    """The README's portfolio table had no command behind it.
+
+    It quoted a verdict distribution over a chosen 28 repositories, and named five
+    as blocked by one check; nothing in the package computed either figure, so
+    neither could go stale visibly. `sweep` computes them, and prints alongside
+    them how many clean GO verdicts rest on a check that had nothing to look at -
+    which over the real folder is 6 of 17.
+    """
+    from captain.cli import main
+
+    docs = tmp_path / "docs-only"
+    docs.mkdir()
+    git(docs, "init", "-q")
+    git(docs, "config", "user.email", "t@example.com")
+    git(docs, "config", "user.name", "Tester")
+    commit(docs, "write the guide", {"README.md": "# guide\n"})
+
+    untested = tmp_path / "untested"
+    untested.mkdir()
+    git(untested, "init", "-q")
+    git(untested, "config", "user.email", "t@example.com")
+    git(untested, "config", "user.name", "Tester")
+    commit(untested, "add a parser", {"src/pkg/parse.py": "def f():\n    return 1\n"})
+
+    assert main(["sweep", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+
+    assert "measured                        2" in out
+    assert "1 of the 1 clean GO verdict(s) rest on a check that had nothing to look at" in out
+    assert "docs-only" in out
+    assert "source changes without tests" in out
+
+
+def test_sweep_over_a_folder_of_no_repositories_says_so(tmp_path, capsys):
+    (tmp_path / "not-a-repo").mkdir()
+    assert sweep(tmp_path) == 0
+    out = capsys.readouterr().out
+    assert "measured                        0" in out
+    assert "0 of the 0 clean GO verdict(s)" in out

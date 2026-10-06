@@ -68,8 +68,19 @@ def test_multiline_parenthesised_imports_are_read():
     assert found == {"fastapi"}
 
 
-def test_an_unparseable_file_contributes_nothing_rather_than_failing():
-    assert _top_level_imports("def f(:\n") == set()
+def test_an_unparseable_file_is_recorded_rather_than_contributing_nothing():
+    """It used to return an empty set, which is indistinguishable from a file with
+    no imports - so a repository whose only Python file does not parse looked exactly
+    like one that imports nothing, and both import controls returned PASS on it.
+
+    The audit still does not fail: the repository being audited is not required to
+    be valid Python. The collector says it could not read the file, and the controls
+    over imports decline rather than clear it.
+    """
+    from auditor.evidence import _UnparsedError
+
+    with pytest.raises(_UnparsedError):
+        _top_level_imports("def f(:" + chr(10))
 
 
 def test_aliased_imports_use_the_module_not_the_alias():

@@ -41,6 +41,10 @@ SKIP_DIRS = frozenset(
 )
 
 
+class _UnparsedError(Exception):
+    """This file is not valid Python under the running interpreter."""
+
+
 @dataclass
 class Evidence:
     """Everything observed about one repository."""
@@ -61,6 +65,10 @@ class Evidence:
     python_files: list[str] = field(default_factory=list)
     test_files: list[str] = field(default_factory=list)
     imported_modules: set[str] = field(default_factory=set)
+    #: Files the import collector could not read at all. A control over imports must
+    #: not return PASS when these are the whole repository: a collector that observed
+    #: nothing has not cleared anything, and this README's own rule says so.
+    unreadable_files: list[str] = field(default_factory=list)
 
     local_packages: set[str] = field(default_factory=set)
 
@@ -111,7 +119,7 @@ def _top_level_imports(text: str) -> set[str]:
     try:
         tree = ast.parse(text)
     except (SyntaxError, ValueError):
-        return set()
+        raise _UnparsedError from None
 
     found: set[str] = set()
     for node in ast.walk(tree):
@@ -222,8 +230,11 @@ def collect(root: Path) -> Evidence:
             ev.imported_modules |= _top_level_imports(
                 path.read_text(encoding="utf-8", errors="replace")
             )
-        except OSError:
-            continue
+        except (OSError, _UnparsedError):
+            # Recorded rather than skipped. Both used to `continue` in silence, so a
+            # repository whose only Python file does not parse looked exactly like one
+            # with no imports - and the two import controls returned PASS on it.
+            ev.unreadable_files.append(rel)
 
     ev.local_packages = _local_packages(root, ev)
 
