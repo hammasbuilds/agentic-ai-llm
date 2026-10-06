@@ -93,11 +93,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `order-intake` | `orders`, `stops` | a route |
-| `route-planner` | `routes` — solver output only | a route it did not cost |
-| `exception-triager` | `exceptions.kind` | cancelling a delivery |
-| `driver-comms` | `messages.draft` (Urdu and English) | sending without a dispatcher |
-| `eta-communicator` | `etas` — computed from the route | an ETA it did not compute |
+| `order-intake` | `order.*` | a route |
+| `route-planner` | `route.*` | a route it did not cost |
+| `exception-triager` | `exception.kind` | cancelling a delivery |
+| `driver-comms` | `message.draft` | sending without a dispatcher |
+
+`eta-communicator` appeared in this table with no grant anywhere in `fleetdesk/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

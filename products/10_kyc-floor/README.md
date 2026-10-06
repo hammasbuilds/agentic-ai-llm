@@ -107,12 +107,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `doc-verifier` | `identity.fields` with confidence | an approval |
-| `name-matcher` | `screening_hits` — deterministic | a disposition |
-| `alert-triager` | `alerts.disposition`, clear false positives only | clearing a true match |
-| `media-researcher` | `media_findings` with source and date | an unsourced allegation |
+| `doc-verifier` | `identity.*` | an approval |
+| `name-matcher` | `hit.*` | a disposition |
+| `alert-triager` | `alert.disposition` | clearing a true match |
 | `filing-writer` | `sar.draft` | filing |
-| `qa-sampler` | `qa_reviews` | overriding a human |
+
+`media-researcher`, `qa-sampler` appeared in this table with no grant anywhere in `kycfloor/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

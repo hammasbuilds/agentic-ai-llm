@@ -73,12 +73,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `triage` | `threads.category`, including an explicit abstain class | archiving or deleting |
-| `transcriber` | `transcripts` (ASR plus diarisation) | an unattributed line |
-| `extractor` | `commitments` with speaker and timestamp | a commitment with no source span |
-| `reconciler` | links between commitments and threads | merging two low-confidence items |
-| `reply-writer` | `drafts` | sending — no exception |
-| `scheduler` | `proposed_slots` from free/busy | booking without approval |
+| `triage` | `thread.category` | archiving or deleting |
+| `extractor` | `commitment.*` | a commitment with no source span |
+| `reply-writer` | `draft.*` | sending — no exception |
+| `scheduler` | `slot.proposed` | booking without approval |
+
+`reconciler`, `transcriber` appeared in this table with no grant anywhere in `comms/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

@@ -11,8 +11,9 @@ is legible embedded in a light or a dark page.
 from __future__ import annotations
 
 import html
-import math
 from dataclasses import dataclass
+
+from .profile import is_finite
 
 PALETTE = ("#2563eb", "#0d9488", "#b45309", "#7c3aed", "#be123c")
 
@@ -66,12 +67,22 @@ def histogram(values: list[float], title: str, bins: int = 24, box: Box | None =
 
     Bin edges are computed on the raw values including outliers, because
     trimming them is the thing that hides the -53,594 price.
+
+    A non-finite value is not an outlier, though, and this used to raise
+    `ValueError: cannot convert float NaN to integer` on one - `inf - inf` is NaN,
+    and `int(NaN)` is not a number. It is dropped and the drop is written on the
+    chart, because a bar chart missing a value it does not mention is the quiet
+    version of the same problem.
     """
     box = box or Box()
     out = _header(box, title)
-    if not values:
-        out.append('<text x="12" y="24" class="lbl">no values</text></svg>')
+    usable = [v for v in values if is_finite(v)]
+    dropped = len(values) - len(usable)
+    if not usable:
+        label = "no finite values" if dropped else "no values"
+        out.append(f'<text x="12" y="24" class="lbl">{label}</text></svg>')
         return "".join(out)
+    values = usable
 
     lo, hi = min(values), max(values)
     if lo == hi:
@@ -82,6 +93,11 @@ def histogram(values: list[float], title: str, bins: int = 24, box: Box | None =
         idx = int((v - lo) / width)
         counts[min(max(idx, 0), bins - 1)] += 1
     peak = max(counts) or 1
+    if dropped:
+        out.append(
+            f'<text x="12" y="{box.top - 4:.0f}" class="lbl">'
+            f"{dropped:,} non-finite value(s) not binned</text>"
+        )
 
     bar_w = box.plot_w / bins
     for i, count in enumerate(counts):
@@ -152,7 +168,14 @@ def bars(pairs: list[tuple[str, float]], title: str, box: Box | None = None) -> 
 
 
 def sparkline(values: list[float], width: int = 220, height: int = 40) -> str:
-    """A bare line, for a date-ordered numeric column."""
+    """A bare line, for a date-ordered numeric column.
+
+    The finite filter is applied before the minimum, not inside the comprehension.
+    Done after, a single non-finite value made `lo` and `hi` NaN - so every remaining
+    coordinate was NaN too and the filter dropped only the one point that caused it,
+    leaving a chart that renders as nothing with no error raised.
+    """
+    values = [v for v in values if is_finite(v)]
     if len(values) < 2:
         return ""
     lo, hi = min(values), max(values)
@@ -161,7 +184,6 @@ def sparkline(values: list[float], width: int = 220, height: int = 40) -> str:
     points = " ".join(
         f"{i * step:.1f},{height - ((v - lo) / span) * height:.1f}"
         for i, v in enumerate(values)
-        if math.isfinite(v)
     )
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '

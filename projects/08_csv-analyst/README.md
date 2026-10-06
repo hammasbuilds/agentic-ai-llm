@@ -194,7 +194,7 @@ by hand. `marimo` is an optional extra used only by the notebook view.
 ## Run it
 
 ```bash
-uv run pytest -q                                  # 52 passed, 9 skipped
+uv run pytest -q                                  # 56 passed, 9 skipped
 uv run csv-analyst report <csv> --limit 100000
 uv run csv-analyst coercion <csv>
 uv run --extra ui marimo edit ui/notebook.py

@@ -82,12 +82,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `report-parser` | `field_reports.fields` | an advisory |
-| `surveillance-linker` | `links` to collapsed variant clusters | a variant call |
-| `agronomy-retriever` | `evidence` with a dated source | an undated recommendation |
-| `advisory-writer` | `advisories.draft` | an advisory with no evidence attached |
-| `price-reporter` | `prices` — fetched, with the market and date | a price it did not fetch |
-| `escalation-router` | `escalations` | answering outside the evidence base |
+| `report-parser` | `report.*` | an advisory |
+| `surveillance-linker` | `link.*` | a variant call |
+| `advisory-writer` | `advisory.draft` | an advisory with no evidence attached |
+| `price-reporter` | `price.*` | a price it did not fetch |
+
+`agronomy-retriever`, `escalation-router` appeared in this table with no grant anywhere in `agridesk/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

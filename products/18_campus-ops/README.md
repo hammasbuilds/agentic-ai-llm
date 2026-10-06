@@ -64,12 +64,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `applicant-parser` | `applications.fields` with confidence | an admission decision |
-| `eligibility-checker` | `eligibility` from published rules | an offer |
-| `scheduler` | `timetables` — solver output only | publishing over a clash |
-| `fee-reconciler` | `payments`, `matches` | waiving a fee |
-| `parent-comms` | `messages.draft` | sending |
-| `policy-answerer` | `answers` with the regulation cited, plus an abstain class | an answer from an unversioned policy |
+| `applicant-parser` | `application.*` | an admission decision |
+| `eligibility-checker` | `eligibility` | an offer |
+| `scheduler` | `timetable.*` | publishing over a clash |
+| `parent-comms` | `message.draft` | sending |
+
+`fee-reconciler`, `policy-answerer` appeared in this table with no grant anywhere in `campusops/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

@@ -110,12 +110,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `planner` | `calendar` slots | published content |
-| `adapter` | `post_variants` | `posts.published` |
-| `brand-guard` | a veto, with a reason | anything else |
-| `comment-triage` | `threads.intent`, the escalation flag | a public reply |
-| `reply-writer` | `reply_drafts` | auto-publishing, ever |
-| `analyst` | `metrics_rollups` (computed) | a metric it did not fetch |
+| `planner` | `calendar.*` | published content |
+| `adapter` | `variant.*` | `post.published` — denied outright, not merely ungranted |
+| `brand-guard` | `veto` | anything else |
+| `analyst` | `metrics.*` | a metric it did not fetch |
+
+`comment-triage`, `reply-writer` appeared in this table with no grant anywhere in `onedesk/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

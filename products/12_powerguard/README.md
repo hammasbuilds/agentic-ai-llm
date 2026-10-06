@@ -101,11 +101,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `sensor-watcher` | `readings` — polled, never inferred | any action |
-| `policy-engine` | `plans` — deterministic, no model | executing a plan |
-| `job-custodian` | signals to processes **it started** | any PID it does not own |
-| `resume-planner` | `resume_order` from the dependency graph | starting a job a person disabled |
-| `incident-narrator` | `events.summary` — the only model call here | a figure it did not read |
+| `sensor-watcher` | `reading.*` | any action |
+| `policy-engine` | `plan.*` | executing a plan |
+| `job-custodian` | `action.*` | any PID it does not own |
+| `incident-narrator` | `event.summary` | a figure it did not read |
+
+`resume-planner` appeared in this table with no grant anywhere in `powerguard/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

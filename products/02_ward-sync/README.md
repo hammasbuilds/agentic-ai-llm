@@ -50,12 +50,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `intake` | `encounters`, `patient.demographics` | any clinical field |
-| `triage-router` | `encounter.department`, `encounter.acuity_band` | a diagnosis |
-| `bed-planner` | `assignments` — solver output only | an assignment that breaks a constraint |
-| `results-router` | `notifications` | a result value |
-| `discharge-writer` | `summaries.draft` | `summaries.final` — a clinician signs |
-| `preauth-packer` | `claims.draft`, the attachment list | a justification not in the record |
+| `intake` | `encounter.*` | any clinical field |
+| `triage-router` | `encounter.acuity_band`, `encounter.department` | a diagnosis |
+| `bed-planner` | `assignment.*` | an assignment that breaks a constraint |
+| `discharge-writer` | `summary.draft` — propose only: `summary.final` | write `summary.final` outright — a clinician signs, so the grant is PROPOSE |
+
+`preauth-packer`, `results-router` appeared in this table with no grant anywhere in `ward/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

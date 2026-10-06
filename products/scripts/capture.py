@@ -24,6 +24,66 @@ EXIT_TEST = {
 DEFAULT_EXIT_TEST = "test_the_early_exit_costs_no_generation"
 
 
+class _ModuleSpec:
+    """A product whose test is written out at module level, which is `01` alone.
+
+    The other nineteen declare the same four things as attributes of a
+    `StandardProductTests` subclass, and `_spec` returns the subclass itself. This
+    wrapper lets the loop below read either through one interface.
+    """
+
+    def __init__(self, module):
+        self._m = module
+
+    def payload(self, **extra) -> dict:
+        return self._m.payload(**extra)
+
+    def script(self, for_payload: dict) -> dict:
+        maker = getattr(self._m, "script", None)
+        return maker(for_payload) if maker else self._m.SCRIPT
+
+    def sources(self, **kw):
+        return self._m.sources(**kw)
+
+    def runtime(self, *a, **kw):
+        return self._m.runtime(*a, **kw)
+
+
+def _spec(module):
+    """The product's conformance subclass, or a wrapper over its module.
+
+    Nineteen products' `test_graph.py` used to hold a module-level `payload`,
+    `script` and `sources`, nineteen times over, and this file read them by name.
+    They now subclass `agentplatform.conformance.StandardProductTests` and declare
+    only what differs, so the four things are class attributes - and the early-exit
+    payload no longer has to be recovered by parsing the test that asserts it.
+    """
+    from agentplatform.conformance import StandardProductTests
+
+    for value in vars(module).values():
+        if (
+            isinstance(value, type)
+            and issubclass(value, StandardProductTests)
+            and value is not StandardProductTests
+        ):
+            return value
+    return _ModuleSpec(module)
+
+
+def _exit_payload(product_name: str, module, spec) -> dict:
+    """The override that makes the graph finish without generating anything.
+
+    Declared outright by a conformance subclass. For `01`, which spells its run out
+    by hand, it is still read out of the test that asserts it - restating it here
+    would let this file drift away from what is actually checked.
+    """
+    declared = getattr(spec, "early_exit_payload", None)
+    if declared:
+        return dict(declared)
+    name = EXIT_TEST.get(product_name, DEFAULT_EXIT_TEST)
+    return _exit_kwargs(module, name)
+
+
 def _exit_kwargs(module, name: str) -> dict:
     """Pull the early-exit payload out of the product's own test, by parsing it.
 
@@ -94,11 +154,11 @@ def capture(product: Path) -> dict:
         app = importlib.import_module(tg.runtime.__module__)
         from agentplatform.llm import Recorded
 
-        make_script = getattr(tg, "script", None) or (lambda _p: tg.SCRIPT)
+        spec = _spec(tg)
 
-        payload = tg.payload()
-        model = Recorded(make_script(payload))
-        rt = tg.runtime(model, tg.sources())
+        payload = spec.payload()
+        model = Recorded(spec.script(payload))
+        rt = spec.runtime(model, spec.sources())
 
         rt.submit("run_1", "e1", payload)
         lag = rt.bus.lag(rt.topics.tasks, rt.group)
@@ -112,10 +172,9 @@ def capture(product: Path) -> dict:
         gated = dict(rt.checkpoint("run_1").state)
         done = dict(rt.approve("run_1"))
 
-        exit_name = EXIT_TEST.get(product.name, DEFAULT_EXIT_TEST)
-        exit_model = Recorded(make_script(payload))
-        exit_rt = tg.runtime(exit_model, tg.sources())
-        exit_rt.submit("run_2", "e2", tg.payload(**_exit_kwargs(tg, exit_name)))
+        exit_model = Recorded(spec.script(payload))
+        exit_rt = spec.runtime(exit_model, spec.sources())
+        exit_rt.submit("run_2", "e2", spec.payload(**_exit_payload(product.name, tg, spec)))
         exit_rt.drain()
         exited = dict(exit_rt.run_row("run_2"))
 

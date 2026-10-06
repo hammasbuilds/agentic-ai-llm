@@ -17,6 +17,7 @@ worse than no table, because it is read as a guarantee.
 from __future__ import annotations
 
 import importlib
+import re
 import sys
 from pathlib import Path
 
@@ -331,3 +332,114 @@ def test_no_node_in_any_product_writes_claims_or_receipts():
         "a node now produces claims or receipts, so the gate can be a check on the "
         f"model and the READMEs should say so: {writers}"
     )
+
+
+# -- the table as the README prints it, against the table the code builds -----------
+#
+# `test_the_table_grants_something_and_denies_everyone_else` checks that a table exists
+# and is default-deny. Nothing compared it to the table printed beside it, and all
+# twenty disagreed:
+#
+#   * every product wrote plural collection names where the code grants dotted field
+#     patterns - `leads` against `lead.*`, `matches` against `match.*`, `drafts`
+#     against `draft.*`, `summaries.draft` against `summary.draft`. A reader checking
+#     whether a field is writable would have looked up a name that is not in the table;
+#   * thirty-two rows named an agent with no grant anywhere in the product -
+#     `results-router`, `preauth-packer`, `qa-sampler` and the rest. Default-deny means
+#     they may write nothing, and a row saying otherwise is read as a guarantee;
+#   * `brand-guard` was granted in code and documented nowhere;
+#   * two rows contradicted themselves, putting a field in the Never column that the
+#     same agent is granted at PROPOSE.
+#
+# The May-write column is now generated from `agents.authority()`. The Never column is
+# still prose - no code produces "any clinical field" - but it may not name a field the
+# same agent is granted, which is the one part of it that can be checked.
+
+AUTHORITY_ROW = re.compile(r"^\|\s*`([\w-]+)`\s*\|(.*?)\|(.*?)\|\s*$", re.MULTILINE)
+TICKED_FIELD = re.compile(r"`([\w.*-]+)`")
+
+
+def _documented_table(package_dir: Path) -> dict[str, tuple[str, str]]:
+    """Agent -> (may-write cell, never cell), from the README's authority table."""
+    lines = (package_dir / "README.md").read_text(encoding="utf-8").split("\n")
+    start = next(
+        (i for i, line in enumerate(lines) if line.strip() == "| Agent | May write | Never |"),
+        None,
+    )
+    if start is None:
+        return {}
+    out: dict[str, tuple[str, str]] = {}
+    for line in lines[start + 2 :]:
+        if not line.startswith("|"):
+            break
+        found = AUTHORITY_ROW.match(line)
+        if found:
+            out[found.group(1)] = (found.group(2).strip(), found.group(3).strip())
+    return out
+
+
+@pytest.mark.parametrize("product,package", sorted(PRODUCTS.items()))
+def test_the_readme_table_lists_exactly_the_agents_the_code_grants(product, package):
+    table = table_for(package)
+    # Every agent the code names, including one whose only entry is an explicit
+    # NEVER: `pr-opener` holds exactly that, and it is a statement the table makes
+    # rather than an absence, so it belongs in the printed table too.
+    granted = {agent for (agent, _field) in table._grants}  # noqa: SLF001 - its own repo
+    documented = _documented_table(ROOT / "products" / product)
+    assert documented, f"{product}: no authority table in the README"
+    assert set(documented) == granted, (
+        f"{product}: README lists {sorted(set(documented) - granted)} with no grant, "
+        f"and omits {sorted(granted - set(documented))}"
+    )
+
+
+@pytest.mark.parametrize("product,package", sorted(PRODUCTS.items()))
+def test_every_granted_field_appears_in_the_may_write_column(product, package):
+    """The column is generated from the code, so a grant added without regenerating it
+    is what this catches - which is exactly how the plural names survived."""
+    table = table_for(package)
+    documented = _documented_table(ROOT / "products" / product)
+    for (agent, field_name), level in table._grants.items():  # noqa: SLF001
+        if level is Level.NEVER:
+            continue
+        cell = documented.get(agent, ("", ""))[0]
+        assert f"`{field_name}`" in cell, (
+            f"{product}: {agent} is granted {field_name}, cell: {cell}"
+        )
+
+
+@pytest.mark.parametrize("product,package", sorted(PRODUCTS.items()))
+def test_the_may_write_column_names_no_field_the_code_does_not_grant(product, package):
+    table = table_for(package)
+    grants = {}
+    for (agent, field_name), level in table._grants.items():  # noqa: SLF001
+        grants.setdefault(agent, {})[field_name] = level
+    documented = _documented_table(ROOT / "products" / product)
+    for agent, (may_write, _never) in documented.items():
+        for ref in TICKED_FIELD.findall(may_write):
+            level = grants.get(agent, {}).get(ref)
+            assert level is not None and level is not Level.NEVER, (
+                f"{product}: README says {agent} may write {ref}; the code says "
+                f"{level.value if level else 'nothing'}"
+            )
+
+
+@pytest.mark.parametrize("product,package", sorted(PRODUCTS.items()))
+def test_no_never_cell_names_a_field_the_same_agent_may_write(product, package):
+    """The two that did said a clinician signs `summaries.final` and that `deal.amount`
+    may never be written - both fields the agent holds a PROPOSE grant on. A row that
+    contradicts itself is worse than either half of it alone."""
+    table = table_for(package)
+    # WRITE only. A PROPOSE field in the Never column is not a contradiction - "may
+    # never write `summary.final` outright, a clinician signs" is exactly what a
+    # PROPOSE grant means, and that row says so. A WRITE field there is flatly false.
+    writable = {}
+    for (agent, field_name), level in table._grants.items():  # noqa: SLF001
+        if level is Level.WRITE:
+            writable.setdefault(agent, set()).add(field_name)
+    documented = _documented_table(ROOT / "products" / product)
+    for agent, (_may, never) in documented.items():
+        for ref in TICKED_FIELD.findall(never):
+            assert ref not in writable.get(agent, set()), (
+                f"{product}: {agent} may never write {ref}, and is granted it"
+            )

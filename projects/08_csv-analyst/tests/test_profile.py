@@ -16,6 +16,7 @@ from csvanalyst.profile import (
     _name_tokens,
     detect_date_format,
     honest_mean,
+    is_finite,
     naive_mean,
     parse_number,
     profile_csv,
@@ -212,3 +213,49 @@ def test_mixed_junk_yields_no_date_format():
 def test_a_date_column_is_classified_as_date(tmp_path: Path):
     csv_path = write(tmp_path, "d.csv", "when\n2024-01-05\n2024-02-06\n2024-03-07\n")
     assert column(profile_csv(csv_path), "when").kind == "date"
+
+
+# -- a value that is not a number, written as one ----------------------------------
+#
+# `is_finite` was the only top-level definition under this package's `src/` that
+# nothing anywhere named - 1 of 705 across the repository. Reading what it checked for
+# turned up the reason it should have had a caller: `float("1e400")` is `inf`, `1e400`
+# matches the numeric pattern, and a single cell holding it reached three places that
+# each did something different and none of them right.
+
+
+def test_a_value_that_overflows_to_infinity_is_not_a_number():
+    """`inf` is an artefact of a 64-bit float, not something a CSV says.
+
+    Returning it put infinity into every figure downstream. Returning None puts the
+    cell in the unparseable count this tool already reports, which is where a value it
+    could not use belongs.
+    """
+    assert parse_number("1e400") is None
+    assert parse_number("-1e400") is None
+    # The ordinary cases must survive it, including scientific notation that fits.
+    assert parse_number("1e4") == 10_000.0
+    assert parse_number("1,234.5") == 1234.5
+    assert parse_number("-53594") == -53594.0
+
+
+def test_the_mean_reports_the_overflowed_cell_as_skipped():
+    """It returned `(inf, 3, 0)`: a mean of infinity, over all three values, none
+    skipped. Every part of that was a statement, and the statement was false."""
+    mean, used, skipped = honest_mean(["1e400", "1", "2"])
+    assert (mean, used, skipped) == (1.5, 2, 1)
+
+
+def test_the_naive_mean_no_longer_returns_infinity():
+    """`naive_mean` is the one the tool exists to contrast with, so it has to stay
+    naive - about blanks and contamination. Not about arithmetic on a non-number."""
+    assert naive_mean(["1e400", "1", "2"]) == 1.5
+
+
+def test_is_finite_has_a_caller_and_answers_correctly():
+    assert is_finite(1.0)
+    assert is_finite(0.0)
+    assert not is_finite(None)
+    assert not is_finite(float("inf"))
+    assert not is_finite(float("-inf"))
+    assert not is_finite(float("nan"))

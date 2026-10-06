@@ -60,12 +60,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `doc-intake` | `documents`, extracted fields with per-field confidence | a posted transaction |
-| `reconciler` | `matches` where the deterministic matcher is unambiguous | an ambiguous match |
-| `match-explainer` | `matches.rationale` | `matches.decision` |
-| `inventory-watcher` | `reorder_suggestions` | a purchase order |
-| `cashflow-analyst` | `projections` (computed) | a figure it did not compute |
-| `collections-writer` | `chase_drafts` | sending |
+| `doc-intake` | `document.*` | a posted transaction |
+| `reconciler` | `match.*` | an ambiguous match |
+| `match-explainer` | `match.rationale` | `match.decision` — denied outright, not merely ungranted |
+| `collections-writer` | `chase.draft` | sending |
+
+`cashflow-analyst`, `inventory-watcher` appeared in this table with no grant anywhere in `ledger/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

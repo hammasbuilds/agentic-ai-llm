@@ -106,11 +106,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `inventory` | `assets`, `packages` — collected, never inferred | a vulnerability verdict |
-| `cve-matcher` | `findings` — deterministic version comparison | an exploitability judgement |
-| `exploitability-triager` | `findings.priority`, with the reachability evidence | closing a finding |
-| `remediation-writer` | `remediations.draft` | applying a change |
-| `exception-approver` | nothing — a human owns this | everything |
+| `inventory` | `asset.*` | a vulnerability verdict |
+| `cve-matcher` | `finding.*` | an exploitability judgement |
+| `exploitability-triager` | `finding.priority` | closing a finding |
+| `remediation-writer` | `remediation.draft` | applying a change |
+
+`exception-approver` appeared in this table with no grant anywhere in `watchtower/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

@@ -149,11 +149,11 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `change-watcher` | `changes` from webhooks | a claim |
-| `claim-extractor` | `claims` with a file and line | a verdict |
-| `verifier` | `verdicts` — executed, never reasoned | a verdict on an unfalsifiable claim |
-| `patch-writer` | `patches.draft` | committing |
-| `pr-opener` | a pull request, on approval | merging |
+| `change-watcher` | `change.*` | a claim |
+| `claim-extractor` | `claim.*` | a verdict |
+| `verifier` | `verdict.*` | a verdict on an unfalsifiable claim |
+| `patch-writer` | `patch.draft` | committing |
+| `pr-opener` | — | merging |
 
 ## Architecture
 

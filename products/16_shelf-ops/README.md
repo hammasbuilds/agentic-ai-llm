@@ -64,12 +64,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `listing-writer` | `listings.draft` | a published listing |
-| `repricer` | `price_proposals` | `listings.price` directly |
-| `promotions-planner` | `price_proposals` | `listings.price` directly |
-| `price-authority` | `listings.price` — the only writer, deterministic | going below the floor |
-| `returns-classifier` | `returns.reason` | issuing a refund |
-| `supplier-chaser` | `chase_drafts` | sending |
+| `listing-writer` | `listing.draft` | a published listing |
+| `repricer` | `proposal.*` | `listing.price` — denied outright, not merely ungranted |
+| `promotions-planner` | `proposal.*` | `listing.price` — denied outright, not merely ungranted |
+| `price-authority` | `listing.price` | going below the floor |
+
+`returns-classifier`, `supplier-chaser` appeared in this table with no grant anywhere in `shelfops/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

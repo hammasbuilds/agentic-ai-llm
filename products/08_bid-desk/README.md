@@ -73,12 +73,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `crawler` | `tenders` (raw, plus a source snapshot) | a parsed requirement |
-| `requirement-extractor` | `requirements`, each with a source span | an inferred requirement |
-| `fit-scorer` | `fit_scores` from rules and a capability matrix | the bid/no-bid decision |
-| `competitor-analyst` | `market_notes` with source dates | an undated claim |
-| `proposal-writer` | `proposal_sections` | a capability claim absent from the capability store |
-| `compliance-checker` | `checklist` pass or fail per item | a soft pass |
+| `crawler` | `tender.*` | a parsed requirement |
+| `requirement-extractor` | `requirement.*` | an inferred requirement |
+| `fit-scorer` | `fit.score` — propose only: `bid.decision` | the bid/no-bid decision |
+| `proposal-writer` | `section.*` | a capability claim absent from the capability store |
+
+`competitor-analyst`, `compliance-checker` appeared in this table with no grant anywhere in `biddesk/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

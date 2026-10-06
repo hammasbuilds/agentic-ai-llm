@@ -54,14 +54,32 @@ def _is_null(value: str) -> bool:
 
 
 def parse_number(value: str) -> float | None:
-    """Parse a number, tolerating thousands separators and surrounding space."""
+    """Parse a number, tolerating thousands separators and surrounding space.
+
+    A value that overflows to infinity is not a number this returns. `float("1e400")`
+    is `inf`, and `1e400` matches the numeric pattern, so a single cell holding it
+    used to become infinity and travel the length of the tool:
+
+      * `honest_mean(["1e400", "1", "2"])` returned `(inf, 3, 0)` - a mean of
+        infinity, reported as computed over all three values with none skipped;
+      * `histogram` raised `ValueError: cannot convert float NaN to integer`, because
+        `inf - inf` is NaN;
+      * `sparkline` drew a polyline whose other points had all collapsed to one
+        coordinate, with no error at all.
+
+    `inf` is an artefact of a 64-bit float, not something a CSV says. Returning None
+    puts the cell in the unparseable count this tool already reports, which is the
+    honest place for a value it could not use. Keeping it was the alternative, and
+    three different parts of the tool each did something different with it.
+    """
     v = value.strip().replace(",", "")
     if not v or not _NUMERIC_RE.match(value.strip()):
         return None
     try:
-        return float(v)
+        parsed = float(v)
     except ValueError:
         return None
+    return parsed if math.isfinite(parsed) else None
 
 
 def parse_date(value: str, formats: tuple[str, ...] = _DATE_FORMATS) -> date | None:
@@ -459,4 +477,12 @@ def honest_mean(values: list[str]) -> tuple[float | None, int, int]:
 
 
 def is_finite(value: float | None) -> bool:
+    """A value that can be arithmetic on.
+
+    This had no caller anywhere in the repository, and the thing it checks for was
+    reaching three places that each mishandled it - see `parse_number`. It is used
+    now: `charts` filters with it before taking a minimum, where it used to filter
+    after, so one non-finite value set the whole scale to NaN and the filter only
+    removed that one point from the line.
+    """
     return value is not None and math.isfinite(value)

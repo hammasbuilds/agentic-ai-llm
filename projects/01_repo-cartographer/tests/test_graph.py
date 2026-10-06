@@ -332,9 +332,20 @@ def test_real_repo_resolves_most_of_its_internal_calls():
     """Pure AST resolution should bind the large majority of repo-internal calls.
 
     No embeddings, no model. If this drops sharply, resolution has regressed.
+
+    A band, not a floor, and the measured value is written down: 0.931 on
+    2026-10-06.  alone is satisfied by 0.99 as well, and a rate that climbed
+    to 0.99 would mean calls had gone back to leaving the denominator - the exact
+    defect the README table is about, passing as an improvement.
+
+    The bound stays wide because this reads a sibling checkout that other work
+    commits to, so the figure moves with the machine. That is also why the published
+    table is pinned to a frozen survey instead, and why the three tests above this one
+    put the denominator itself on a repository written in `tmp_path`.
     """
     graph = build_graph(parse_repo(REAL_REPO))
-    assert graph.resolution.repo_resolution_rate > 0.85
+    measured = graph.resolution.repo_resolution_rate
+    assert 0.85 < measured < 0.97, measured
 
 
 @pytest.mark.skipif(not REAL_REPO.exists(), reason=f"no checkout at {REAL_REPO}")

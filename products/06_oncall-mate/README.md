@@ -79,12 +79,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `correlator` | `incidents`, `alert_links` — deterministic | a hypothesis |
-| `hypothesiser` | `hypotheses`, each with linked evidence ids | an unevidenced hypothesis |
-| `change-attributor` | `suspect_changes`, ranked by diff statistics | a suspect with no deploy record |
-| `runbook-selector` | `proposed_actions` | executing anything |
-| `comms-writer` | `status_drafts` | publishing |
-| `pir-writer` | `reviews.draft` | a cause absent from the timeline |
+| `correlator` | `incident.*` | a hypothesis |
+| `hypothesiser` | `hypothesis.*` | an unevidenced hypothesis |
+| `runbook-selector` | `action.proposed` | executing anything |
+| `comms-writer` | `status.draft` | publishing |
+
+`change-attributor`, `pir-writer` appeared in this table with no grant anywhere in `oncall/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

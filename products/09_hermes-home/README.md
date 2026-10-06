@@ -67,11 +67,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `conversation` | `messages`, `ctx:` | semantic memory |
-| `memory-proposer` | `memory_candidates` | `memories` |
-| `contradiction-checker` | `memories` — the only writer | a hard constraint, which a person settles |
-| `skill-author` | `skills.draft` | `skills.active` |
-| `tool-broker` | `tool_calls` | a call outside the allow-list |
+| `conversation` | `message.*` | semantic memory |
+| `memory-proposer` | `memory.candidate` | `memories` |
+| `contradiction-checker` | `memory.stored` | a hard constraint, which a person settles |
+| `skill-author` | `skill.draft` | `skill.active` — never granted, so default-deny closes it |
+
+`tool-broker` appeared in this table with no grant anywhere in `hermes/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

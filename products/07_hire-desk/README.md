@@ -72,12 +72,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `cv-parser` | `candidates.fields` with confidence | a score |
-| `redactor` | `redacted_views` — deterministic | anything else |
-| `scorer` | `scores` per rubric dimension, from the redacted view only | a free-text overall verdict |
-| `kit-builder` | `interview_kits` | a question outside the rubric |
-| `scheduler` | `slots` | booking without approval |
-| `fairness-auditor` | `audit_reports` | suppressing a measure |
+| `cv-parser` | `candidate.*` | a score |
+| `redactor` | `redacted_view` | anything else |
+| `scorer` | `score.*` | a free-text overall verdict |
+| `fairness-auditor` | `audit.*` | suppressing a measure |
+
+`kit-builder`, `scheduler` appeared in this table with no grant anywhere in `hiredesk/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

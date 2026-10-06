@@ -79,12 +79,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `ingester` | `documents` | an entity or a relation |
-| `entity-linker` | `mentions` with a confidence and a span | a relation |
-| `graph-builder` | `nodes`, `edges` — deterministic from linked mentions | an inferred edge |
-| `traversal-planner` | `queries` | an unbounded walk |
-| `synthesiser` | `answers.draft` with the path attached | an answer whose path is empty |
-| `contradiction-reporter` | `contradictions` | choosing between two sources |
+| `ingester` | `document.*` | an entity or a relation |
+| `entity-linker` | `mention.*` | a relation |
+| `graph-builder` | `edge.*` | an inferred edge |
+| `synthesiser` | `answer.draft` | an answer whose path is empty |
+
+`contradiction-reporter`, `traversal-planner` appeared in this table with no grant anywhere in `graphclinic/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

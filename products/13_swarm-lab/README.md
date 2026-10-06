@@ -90,10 +90,11 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `sweep-runner` | `trials` — the harness, deterministic | interpreting a result |
-| `worker` | its own `tool_calls` and `writes` | another worker's entity |
-| `collector` | `metrics` — counted, never estimated | a metric it did not count |
-| `narrator` | `reports.draft` | a number absent from `metrics` |
+| `sweep-runner` | `trial.*` | interpreting a result |
+| `collector` | `metric.*` | a metric it did not count |
+| `narrator` | `report.draft` | a number absent from `metrics` |
+
+`worker` appeared in this table with no grant anywhere in `swarmlab/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

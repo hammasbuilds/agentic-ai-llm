@@ -49,7 +49,10 @@ def test_the_naive_list_names_a_stopped_drug_for_almost_every_patient(gaps):
     # started, and never what was stopped, is wrong for 104 of 105 patients.
     affected = [g for g in gaps if g.would_name_a_stopped_drug]
     assert len(affected) == 104
-    assert len(affected) / len(gaps) > 0.98
+    # 104 of 105, asserted as the two counts. The rate was published as `> 0.98`,
+    # which is satisfied by 105 of 105 as well - and the one gap that is NOT affected
+    # is the whole reason this is a share rather than "all of them".
+    assert (len(affected), len(gaps)) == (104, 105)
 
 
 def test_the_naive_list_is_five_times_too_long(gaps):

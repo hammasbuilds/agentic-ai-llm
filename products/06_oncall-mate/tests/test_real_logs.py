@@ -130,7 +130,13 @@ def test_a_drip_of_real_templates_still_cannot_chain_forever(lines):
     incidents = collapse(alerts, window=120, max_span=900)
     assert len(incidents) > 1
     assert all(inc.span <= 900 for inc in incidents)
-    assert reduction(alerts, incidents) > 0.8
+    # 200 alerts collapse to 20, which is 0.9 exactly - a fixed slice of the corpus
+    # through a fixed window, so there is nothing here for a floor to absorb. It read
+    # `> 0.8`, which is a tenfold change in the incident count away from the measured
+    # value and would have passed through any of it.
+    assert len(alerts) == 200
+    assert len(incidents) == 20
+    assert reduction(alerts, incidents) == pytest.approx(0.9)
 
 
 def test_levels_are_read_from_the_line(lines):

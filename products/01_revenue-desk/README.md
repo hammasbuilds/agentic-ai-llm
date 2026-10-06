@@ -144,13 +144,14 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `scout` | `leads` (new rows) | an existing lead's fields |
-| `enricher` | `company.*` facts, each with a source URL | anything on a deal |
-| `qualifier` | `lead.score`, `lead.stage` (rules-derived) | a stage jump greater than one |
-| `writer` | `drafts` | `messages` — it never sends |
-| `reply-classifier` | `reply.intent`, `contact.opted_out` | clearing an opt-out |
-| `deal-analyst` | `deal.risk_factors` | `deal.amount`, `deal.close_date` — proposes only |
-| `forecaster` | nothing; it reads | every field |
+| `scout` | `lead.*` | an existing lead's fields |
+| `enricher` | `company.*` | anything on a deal |
+| `qualifier` | `lead.score`, `lead.stage` | a stage jump greater than one |
+| `writer` | `draft.*` — propose only: `message.send` | `messages` — it never sends |
+| `reply-classifier` | `contact.opted_out`, `reply.intent` | clearing an opt-out |
+| `deal-analyst` | `deal.risk_factors` — propose only: `deal.amount`, `deal.close_date` | write either outright — the grant is PROPOSE, so a human commits them |
+
+`forecaster` appeared in this table with no grant anywhere in `revenue/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

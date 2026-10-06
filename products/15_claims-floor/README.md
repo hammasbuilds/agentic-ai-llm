@@ -92,12 +92,12 @@ both inside `authority.py` itself.
 
 | Agent | May write | Never |
 |---|---|---|
-| `fnol-intake` | `claims`, `loss.date`, `loss.description` | a coverage decision |
-| `coverage-checker` | `coverage` — from the version-pinned wording | reading a version that was not in force |
-| `fraud-scorer` | `claims.signals` with the rule that fired | declining a claim |
-| `adjuster-router` | `assignments` — solver output | reassigning to clear a queue |
-| `settlement-writer` | `settlements.draft` | paying |
-| `qa-sampler` | `qa_reviews` | overriding an adjuster |
+| `fnol-intake` | `claim.*` | a coverage decision |
+| `coverage-checker` | `coverage.*` | reading a version that was not in force |
+| `fraud-scorer` | `claim.signals` | declining a claim |
+| `settlement-writer` | `settlement.draft` | paying |
+
+`adjuster-router`, `qa-sampler` appeared in this table with no grant anywhere in `claimsfloor/agents.py`. Default-deny means they may write nothing, so the rows claiming otherwise are gone: an intended agent is not a declared one, and this column is generated from the code rather than written beside it.
 
 ## Architecture
 

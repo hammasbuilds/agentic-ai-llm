@@ -28,6 +28,7 @@ python -m pytest -q                      # 198 passed, 12 skipped
 | `graphs` | the graph runtime: five shapes, checkpointed interrupts | two measured findings are enforced, not suggested |
 | `api` | the four things a person does with an agent product | — |
 | `blueprint` | the seven-node shape all twenty products share | writing it twenty times means twenty places for the approval gate to be subtly wrong |
+| `conformance` | the six end-to-end tests every product inherits | the same six used to be pasted into nineteen files, so a correction to them had to be made nineteen times |
 | `adapters` | Redis, Kafka and Postgres behind the ports | — |
 | `web` | the operator console every product serves at `/` | — |
 
