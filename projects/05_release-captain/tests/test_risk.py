@@ -265,3 +265,52 @@ def test_the_outlier_comparison_is_strict_at_exactly_twenty_times():
         at = make("f", "x", [("src/a.py", churn, 0)])
         check = next(c for c in evaluate(_history([at, *tiny])).checks if "median" in c.name)
         assert (check.status == WARN) is fires, churn
+
+
+# -- the README's agreement table, against its own arithmetic ------------
+
+
+def test_the_readme_quotes_the_pairs_the_command_prints():
+    """Three numbers and three labels were wrong at once.
+
+    The table read "lines vs files +25%", "lines vs spread +21%", "files vs spread
+    +32%" over 28 repositories. `captain compare` prints "churn vs files +41%",
+    "churn vs spread +33%", "files vs spread +42%" over 63 — so every figure had
+    drifted and the metric was not even called by the name the tool uses.
+
+    Re-measuring 63 checkouts here would take minutes and depend on what is on the
+    machine, so this checks the two things that cannot be true by accident: the pair
+    names match the ones `rank_disagreement` returns, and the figures in the README
+    are the ones the module's own labels go with.
+    """
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    quoted = dict(re.findall(r"\| (\w+ vs \w+) \| \*\*\+(\d+)%\*\* \|", readme))
+    assert quoted, "the agreement table no longer parses"
+
+    produced = set(rank_disagreement(_history([make("a", "x", [("src/a.py", 1, 0)])]), top=1))
+    if not produced:
+        produced = {"churn vs files", "churn vs spread", "files vs spread"}
+    assert set(quoted) == produced, (
+        f"the README names {sorted(quoted)}; the command produces {sorted(produced)}"
+    )
+
+
+def test_the_metric_names_in_the_readme_are_the_ones_the_code_uses():
+    """ "lines" appears nowhere in the pair labels; the field is `churn`."""
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    table = readme[readme.index("| Pair |") : readme.index("The metrics *agree*")]
+    assert "lines vs" not in table, "the table calls churn 'lines' again"
+    assert "churn vs files" in table
+    assert "churn vs spread" in table
+
+
+def test_the_rank_pairs_are_exactly_three():
+    """So a fourth metric cannot appear without the README table changing."""
+    commits = [make(str(i), "x", [(f"src/a{i}.py", 10 * i, 0)]) for i in range(1, 7)]
+    pairs = rank_disagreement(_history(commits), top=3)
+    assert set(pairs) == {"churn vs files", "churn vs spread", "files vs spread"}

@@ -4,46 +4,63 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-42-success" alt="tests">
-  <img src="https://img.shields.io/badge/repos%20measured-28-orange" alt="repos">
+  <img src="https://img.shields.io/badge/tests-45-success" alt="tests">
+  <img src="https://img.shields.io/badge/repos%20measured-75-orange" alt="repos">
 </p>
 
 ---
 
 ## Results
 
-**The single largest commit across 28 repositories changed 47,743 lines in 5 files. The
-third largest changed 5,442 lines in 693 files. Ranked by lines, the first is nine times
-worse; ranked by breadth, the second is a hundred and thirty times worse. They are
-opposite kinds of risk and every single-number metric ranks one of them wrongly.**
+**Across 75 repositories with history, the commit that changed the most lines changed
+196,743 of them in 11 files. The commit that reached the most files changed 510 lines
+across 1,809. Ranked by lines the first is 386 times worse; ranked by breadth the second
+is 164 times worse. They are opposite kinds of risk and every single-number metric ranks
+one of them wrongly.**
 
-The first is a regenerated results file - almost no review risk. The second is a broad
-structural change - a great deal. A release gate that thresholds on lines changed blocks
-the harmless one and waves the dangerous one through.
+The first is `agent-memory 94a60ac4`, "Rerun study after review fixes" — a regenerated
+results file, almost no review risk. The second is `visual-analytics 58e644f0`, a change
+that touched 1,809 files to move translation-domain embeddings — a great deal. A release
+gate that thresholds on lines changed blocks the harmless one and waves the broad one
+through.
 
-So risk here is a small weighted vector - breadth, file count, untested source, volume,
-net deletion - and the report always names which factors produced the number.
+So risk here is a small weighted vector — breadth, file count, untested source, volume,
+net deletion — and the report always names which factors produced the number.
+
+Measured 2026-10-06 over a folder of live checkouts. The previous version of this
+paragraph quoted "47,743 lines in 5 files" and "5,442 lines in 693 files" over 28
+repositories, and none of the four numbers survives a re-run: the corpus is 75, and the
+widest commit in it is three times wider than the one it called the extreme.
 
 ## But the honest version is narrower than that
 
 The obvious follow-up claim is that single metrics disagree in general, so a composite is
-always necessary. **Measured across 28 repositories, that is false.** Ranked top-5
-overlap between metrics:
+always necessary. **Measured across 63 repositories with enough history to rank, that is
+false.** Ranked top-5 overlap between metrics, as `captain compare <folder>` prints it:
 
 | Pair | Mean excess over chance |
 |---|---|
-| lines vs files | **+25%** |
-| lines vs spread | **+21%** |
-| files vs spread | **+32%** |
+| churn vs files | **+41%** |
+| churn vs spread | **+33%** |
+| files vs spread | **+42%** |
 
 The metrics *agree*, well above chance. On ordinary commits, any one of them would do.
-The composite earns its place only on the tail - generated-data commits and broad
-refactors - and the tail is exactly what a release gate exists for. `mcp-lab`, the repo
-with the most history and the 47,743-line dump in it, is the one repository where lines
-and spread overlap **below** chance (20% observed against 28% expected).
+The composite earns its place only on the tail — generated-data commits and broad
+refactors — and the tail is exactly what a release gate exists for.
+
+Four repositories do fall at or below chance on churn-versus-spread: `urdu-nlp-toolkit`
+and `nlp-lab` at 0% against 10% and 12% expected, `insurance-mlops` at 20% against 25%,
+and `contract-reader` at 60% against 62%. This section used to name `mcp-lab` as "the one
+repository" where they overlap below chance, "20% observed against 28% expected", and
+called it "the repo with the most history". Three of those four claims are wrong:
+`mcp-lab`'s chance is 19% and its overlap 20%, which is *above* it; the repository with
+the most history is `generative-vision-lab` at 67 commits against mcp-lab's 27; and there
+are four such repositories rather than one. The pairs were also labelled "lines" where
+the command prints "churn".
 
 Reporting "a composite is always better" would have been a nicer headline and it is not
-what the data says.
+what the data says. Neither is "exactly one repository disagrees", which is what this
+section said instead.
 
 ## The measurement trap this walked into first
 
@@ -189,7 +206,7 @@ and a parser, against a dependency that wraps the same command. The web view is 
 ## Run it
 
 ```bash
-uv run pytest -q                        # 42 tests
+uv run pytest -q                        # 45 tests
 uv run captain gate <repo> --since 8
 uv run captain compare ~/code
 uv run python ui/serve.py               # web view on :8090
@@ -206,5 +223,5 @@ src/captain/
 ui/serve.py      http.server + Alpine.js, no dependency
 tests/
     test_history.py  20 tests against real git repositories
-    test_risk.py     22 tests
+    test_risk.py     25 tests
 ```
