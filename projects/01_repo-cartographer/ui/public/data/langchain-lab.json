@@ -11,6 +11,7 @@
   "repo_resolution_rate": 0.9312,
   "excluded_projects": [],
   "parse_errors": [],
+  "at_commit": "f30be3cc1f93c8d71346605b20befa314efe682e",
   "core_modules": [
     {
       "module": "shared.models",

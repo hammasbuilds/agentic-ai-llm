@@ -154,7 +154,7 @@ questions this tool exists for.
 ## Run it
 
 ```bash
-uv run pytest -q                      # 45 tests
+uv run pytest -q                      # 47 tests
 uv run cartographer map <repo>
 uv run cartographer compare <folder>  # every checkout under it
 ```

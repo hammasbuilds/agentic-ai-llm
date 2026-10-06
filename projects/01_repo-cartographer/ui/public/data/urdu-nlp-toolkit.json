@@ -2,15 +2,16 @@
   "name": "urdu-nlp-toolkit",
   "root": "D:\\github\\urdu-nlp-toolkit",
   "modules": 39,
-  "symbols": 455,
-  "loc": 9628,
-  "total_calls": 2881,
-  "in_scope_calls": 769,
-  "resolved_calls": 717,
-  "resolution_rate": 0.2489,
-  "repo_resolution_rate": 0.9324,
+  "symbols": 463,
+  "loc": 9757,
+  "total_calls": 2908,
+  "in_scope_calls": 787,
+  "resolved_calls": 735,
+  "resolution_rate": 0.2528,
+  "repo_resolution_rate": 0.9339,
   "excluded_projects": [],
   "parse_errors": [],
+  "at_commit": "190f9f2b78ccf019d315a40002fd8eed4e3f81e2",
   "core_modules": [
     {
       "module": "urdunlp.normalize",
@@ -152,7 +153,7 @@
     {
       "module": "urdunlp.numbers",
       "path": "src/urdunlp/numbers.py",
-      "loc": 847,
+      "loc": 870,
       "symbols": 19,
       "importance": 0.03065,
       "imports": [
@@ -213,7 +214,7 @@
     {
       "module": "urdunlp._channel",
       "path": "src/urdunlp/_channel.py",
-      "loc": 664,
+      "loc": 678,
       "symbols": 26,
       "importance": 0.02284,
       "imports": [
@@ -244,7 +245,7 @@
       "name": "decode",
       "kind": "method",
       "path": "src/urdunlp/_channel.py",
-      "line": 479,
+      "line": 493,
       "fan_in": 0,
       "docstring": "The most probable Urdu for a run of lowercase Roman words, by Viterbi."
     },
@@ -267,6 +268,15 @@
       "docstring": "No public function may take super-linear time on one unbroken token or run."
     },
     {
+      "qualname": "tests.test_urdunlp.test_the_future_is_written_as_two_words_consistently",
+      "name": "test_the_future_is_written_as_two_words_consistently",
+      "kind": "function",
+      "path": "tests/test_urdunlp.py",
+      "line": 490,
+      "fan_in": 0,
+      "docstring": "The same construction must not come out two ways in one sentence."
+    },
+    {
       "qualname": "tests.test_urdunlp.test_observed_source_tags_are_all_documented",
       "name": "test_observed_source_tags_are_all_documented",
       "kind": "function",
@@ -280,7 +290,7 @@
       "name": "romanize",
       "kind": "method",
       "path": "src/urdunlp/_channel.py",
-      "line": 535,
+      "line": 549,
       "fan_in": 0,
       "docstring": "The Roman spelling people most likely write for one Urdu word."
     },
@@ -337,15 +347,6 @@
       "line": 296,
       "fan_in": 0,
       "docstring": null
-    },
-    {
-      "qualname": "tests.test_robustness.test_transliteration_is_linear_in_the_length_of_a_run",
-      "name": "test_transliteration_is_linear_in_the_length_of_a_run",
-      "kind": "function",
-      "path": "tests/test_robustness.py",
-      "line": 180,
-      "fan_in": 0,
-      "docstring": "The decoder carried each path in every state and copied it at every word:"
     }
   ],
   "most_called": [
@@ -355,7 +356,7 @@
       "kind": "function",
       "path": "src/urdunlp/translit.py",
       "line": 1161,
-      "fan_in": 81,
+      "fan_in": 83,
       "docstring": "Roman Urdu to Urdu script."
     },
     {
@@ -386,6 +387,15 @@
       "docstring": "Roman Urdu to Urdu script, reporting how each token was resolved."
     },
     {
+      "qualname": "urdunlp.numbers.parse_number",
+      "name": "parse_number",
+      "kind": "function",
+      "path": "src/urdunlp/numbers.py",
+      "line": 570,
+      "fan_in": 29,
+      "docstring": "The value of an Urdu number phrase."
+    },
+    {
       "qualname": "urdunlp.tokenize.words",
       "name": "words",
       "kind": "function",
@@ -408,8 +418,8 @@
       "name": "find_numbers",
       "kind": "function",
       "path": "src/urdunlp/numbers.py",
-      "line": 628,
-      "fan_in": 18,
+      "line": 651,
+      "fan_in": 19,
       "docstring": "Every number phrase in running text, with its value and character span."
     },
     {
@@ -429,15 +439,6 @@
       "line": 171,
       "fan_in": 17,
       "docstring": "Which of eleven Perso-Arabic-script languages a text is written in."
-    },
-    {
-      "qualname": "urdunlp.numbers.parse_number",
-      "name": "parse_number",
-      "kind": "function",
-      "path": "src/urdunlp/numbers.py",
-      "line": 547,
-      "fan_in": 16,
-      "docstring": "The value of an Urdu number phrase."
     },
     {
       "qualname": "urdunlp.stem.stem",

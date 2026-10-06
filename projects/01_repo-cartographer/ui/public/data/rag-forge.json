@@ -11,6 +11,7 @@
   "repo_resolution_rate": 0.8365,
   "excluded_projects": [],
   "parse_errors": [],
+  "at_commit": "ab5c97b964fed2f98028b9951ac56ec3ebf30cc6",
   "core_modules": [
     {
       "module": "ragforge.types",

@@ -11,6 +11,7 @@
   "repo_resolution_rate": 0.8118,
   "excluded_projects": [],
   "parse_errors": [],
+  "at_commit": "ea33a50a005ce82197902e362cf395775a367afc",
   "core_modules": [
     {
       "module": "bar.tools.registry",

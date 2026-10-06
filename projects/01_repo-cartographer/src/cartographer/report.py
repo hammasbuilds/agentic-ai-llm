@@ -57,6 +57,14 @@ class RepoReport:
     repo_resolution_rate: float
     excluded_projects: list[str]
     parse_errors: list[tuple[str, str]]
+    #: The commit the repository was at when this map was taken, when it is a git
+    #: checkout. A written-out map with no revision beside it cannot be checked
+    #: against anything later: the five maps this package ships to its UI were
+    #: compared against a fresh measurement by a test, and one of them began failing
+    #: because somebody else had changed that repository - which is a true statement
+    #: about the world and a useless test. With the revision recorded, the comparison
+    #: runs when the checkout still matches and declines, saying so, when it does not.
+    at_commit: str = ""
     core_modules: list[ModuleCard] = field(default_factory=list)
     entry_points: list[SymbolCard] = field(default_factory=list)
     most_called: list[SymbolCard] = field(default_factory=list)
@@ -84,6 +92,27 @@ def build_report(root: Path, top: int = 12) -> RepoReport:
     repo = parse_repo(root)
     graph = build_graph(repo)
     return report_from_graph(graph, top=top)
+
+
+def _head_commit(root) -> str:
+    """The checkout's current revision, or "" when it is not a git repository."""
+    import subprocess  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+
+    root = Path(root)
+    if not (root / ".git").exists():
+        return ""
+    try:
+        done = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return done.stdout.strip() if done.returncode == 0 else ""
 
 
 def report_from_graph(graph: RepoGraph, top: int = 12) -> RepoReport:
@@ -125,6 +154,7 @@ def report_from_graph(graph: RepoGraph, top: int = 12) -> RepoReport:
         repo_resolution_rate=round(res.repo_resolution_rate, 4),
         excluded_projects=repo.excluded_projects,
         parse_errors=repo.parse_errors,
+        at_commit=_head_commit(repo.root),
         core_modules=core,
         entry_points=entries,
         most_called=called,

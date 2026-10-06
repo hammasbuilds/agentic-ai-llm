@@ -11,6 +11,7 @@
   "repo_resolution_rate": 0.751,
   "excluded_projects": [],
   "parse_errors": [],
+  "at_commit": "33969fa6fa4fed3e8b2da4b30a871a4dd8b56172",
   "core_modules": [
     {
       "module": "conftest",
