@@ -92,3 +92,61 @@ def test_number_field_falls_back_on_garbage():
 def test_text_field_passes_through():
     f = Field("issue", "Issue", kind="textarea", default="")
     assert _coerce("  some text  ", f) == "  some text  "
+
+
+# -- what the README claims about the themes ------------------------------
+
+
+def test_the_readme_counts_the_typeface_pairings_and_radii_it_claims():
+    """It said "ten palettes ... with their own typeface pairings and corner radii".
+
+    There are five display/body pairings across the ten themes and one monospace, so
+    "their own" was four themes short on one axis. The tests here asserted ten
+    distinct accents and ten distinct backgrounds - claims the README does not make -
+    and never touched the one it does.
+    """
+    import re
+    from pathlib import Path
+
+    palettes = list(themes.all_themes())
+    pairings = {(t.font_display, t.font_body) for t in palettes}
+    radii = {t.radius for t in palettes}
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    stated = re.search(
+        r"\*\*(\w+)\*\* display/body typeface pairings[^*]*\*\*(\w+)\*\* distinct corner radii",
+        readme,
+    )
+    assert stated, "the README no longer states the pairing and radius counts"
+
+    words = {
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+    }
+
+    def number(raw: str) -> int:
+        return int(raw) if raw.isdigit() else words[raw.lower()]
+
+    assert number(stated.group(1)) == len(pairings), f"{len(pairings)} pairings"
+    assert number(stated.group(2)) == len(radii), f"{len(radii)} radii"
+
+
+def test_the_light_dark_split_is_the_one_the_readme_states():
+    from collections import Counter
+    from pathlib import Path
+
+    modes = Counter(t.mode for t in themes.all_themes())
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert f"{len(themes.all_themes())} palettes" in readme.replace("Ten palettes", "10 palettes")
+    assert "four light and six dark" in readme
+    assert modes["light"] == 4 and modes["dark"] == 6
+
+
+def test_one_monospace_across_all_ten():
+    """Stated, because "their own typeface pairings" implied otherwise."""
+    assert len({t.font_mono for t in themes.all_themes()}) == 1

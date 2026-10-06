@@ -35,8 +35,11 @@ Redis state and a worker that owns the single GPU.
 | [**09**](apps/09_temperature) | 🌡 | [**Temperature Lab**](apps/09_temperature) | where do pass@1 and pass@k diverge? | heat |
 | [**10**](apps/10_roundtrip) | 📜 | [**Roundtrip**](apps/10_roundtrip) | what survives code → prose → code? | sepia, light |
 
-Ten palettes, four light and six dark, with their own typeface pairings and corner radii —
-opening two of them side by side should not feel like opening the same tool twice.
+Ten palettes, four light and six dark, drawn from **five** display/body typeface pairings
+and **nine** distinct corner radii — opening two of them side by side should not feel like
+opening the same tool twice. (This said "their own typeface pairings", which reads as ten:
+four themes share Inter with Inter, two share Source Serif with Source Serif, and all ten
+share one monospace. The light/dark split is exact.)
 
 ## What they found
 

@@ -141,13 +141,16 @@ it would have added forty megabytes to parse nothing.
 - **It reads licences, not contracts.** The clause segmentation handles numbered sections
   and ALL-CAPS headings; a commercial agreement with nested definitions and schedules
   would defeat it.
-- **`unknown` means unknown.** Four files in this corpus are unidentified and the tool
-  says so rather than guessing the closest match.
+- **`unknown` means unknown.** One file in this corpus is unidentified and the tool says
+  so rather than guessing the closest match — the same one the Results section counts.
+  This said "four", which is the number of keyword matches the reader *rejected* as too
+  weak to name a family; those are a different quantity and the two sat eighty lines
+  apart contradicting each other.
 
 ## Run it
 
 ```bash
-uv run pytest -q                                   # 33 tests
+uv run pytest -q                                   # 34 tests
 uv run contract-reader survey ~/code
 uv run contract-reader read <path/to/LICENSE> -v
 uv run python ui/serve.py                          # :8115, nothing to install
@@ -161,5 +164,5 @@ src/contractreader/
     obligations.py  families, obligations, the context check, compatibility
     cli.py          argparse
 ui/                 one HTML file served by http.server
-tests/test_reading.py   33 tests
+tests/test_reading.py   34 tests
 ```

@@ -9,7 +9,7 @@ LangGraph ones skip too when that extra is absent, each naming the package rathe
 pretending the feature is untested for some other reason.
 
 ```
-python -m pytest -q                      # 153 passed, 9 skipped
+python -m pytest -q                      # 158 passed, 9 skipped
 ```
 
 ## What is here
@@ -149,6 +149,27 @@ starts calling a real model.
   supervisor, not this package. It reports `done`, `failed` and `awaiting_approval` rather
   than a count of messages taken off the topic — that count was the same number for a pass
   that completed every run and one that sent every run to the dead-letter queue.
+
+## A pause that outlives the process that made it
+
+`Runtime._checkpoints` was a plain in-process dict, so a run could be approved only
+from the Python object that drained it. A web process sharing the bus and the store
+with a worker saw the row as `awaiting_approval`, listed it under `/approvals`, and
+answered `POST /approvals/{run_id}/approve` with **404 "no such run"** — while the
+products index sells the chain "HTTP in → bus → drained by a worker → paused for
+approval → resumed". It closed only when the worker and the web process were the same
+object, and `scripts/smoke_serve.py` guarantees that by running uvicorn in a thread of
+the same process, so nothing could catch it.
+
+Checkpoints live in the store now, in a `checkpoints` table beside `runs`. A second
+`Runtime` sharing only the bus and the store approves a run the first one paused, and a
+restarted worker resumes one rather than losing it while the stored row still says it is
+waiting.
+
+That needed real serialisation: fan-out state holds `Outcome` dataclasses, which `json`
+cannot encode. `Checkpoint.to_row()` converts them and **raises** on anything else
+rather than falling back to `str` — a state field quietly stringified comes back as the
+wrong type and the graph then runs on data that looks right.
 
 ## At-least-once, and what made it so
 

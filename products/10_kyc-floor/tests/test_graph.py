@@ -114,7 +114,7 @@ def test_an_unreceipted_claim_never_reaches_the_approver():
     rt = runtime(model, sources())
     rt.submit("r1", "e1", payload())
     rt.drain()
-    state = rt._checkpoints["r1"].state
+    state = rt.checkpoint("r1").state
     assert state["kept_claims"] == ["Backed by a real receipt."]
     assert state["dropped_claims"][0][0] == "Asserted with nothing behind it."
     assert state["drop_rate"] == 0.5

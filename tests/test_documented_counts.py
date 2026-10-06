@@ -134,3 +134,54 @@ def test_a_per_package_count_in_an_index_is_the_one_pytest_collects(index: Path)
             + (f" and {skipped} skipped" if skipped else "")
             + f", which is {stated}; pytest collects {actual}"
         )
+
+
+# -- RUNNING.md, whose counts did not add up ------------------------------
+
+
+RUNNING = ROOT / "RUNNING.md"
+
+
+def test_running_md_counts_the_uis_that_exist():
+    """It said nine, then three, then four - sixteen across eleven projects.
+
+    All eleven ship a `ui/`; four carry a `package.json`. The sentence was a
+    judgement about whether a browser adds anything, written as a count of what is
+    there, under a line reading "Verified 2026-09-17. Every command below was run on
+    this PC."
+    """
+    import re
+
+    uis = sorted(p for p in (ROOT / "projects").glob("*/ui") if p.is_dir())
+    npm = sorted(p for p in uis if (p / "package.json").exists())
+    stdlib = len(uis) - len(npm)
+
+    text = RUNNING.read_text(encoding="utf-8")
+    words = {"seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "four": 4}
+    stated = re.search(
+        r"All (\w+) ship a `ui/`\.\s*(\w+) run from the standard library[^;]*;\s*(\w+) are",
+        text,
+    )
+    assert stated, "the short answer no longer states the three counts"
+
+    assert words[stated.group(1).lower()] == len(uis), f"{len(uis)} ui directories"
+    assert words[stated.group(2).lower()] == stdlib, f"{stdlib} stdlib"
+    assert words[stated.group(3).lower()] == len(npm), f"{len(npm)} with package.json"
+    assert stdlib + len(npm) == len(uis), "the three numbers have to close"
+
+
+def test_running_mds_test_everything_loop_names_real_directories():
+    """It looped over bare names against `NN_name` directories, so the first `cd`
+    failed and nothing ran."""
+    import re
+
+    text = RUNNING.read_text(encoding="utf-8")
+    block = text[text.index("## Testing everything at once") :]
+    block = block[: block.index("```", block.index("```bash") + 7)]
+
+    assert "for r in repo-cartographer" not in block, "the bare-name loop is back"
+    assert "for d in projects/*/" in block
+
+    # And every path the block names exists.
+    for path in re.findall(r"(?:python|uv run) (\S+\.py)", block):
+        assert (ROOT / path).exists(), f"{path} is documented and missing"

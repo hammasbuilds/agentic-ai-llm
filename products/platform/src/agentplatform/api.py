@@ -106,7 +106,7 @@ class Runtime:
             raise KeyError(run_id)
         if row["status"] != AWAITING_APPROVAL:
             raise ValueError(f"run {run_id} is {row['status']}, not awaiting approval")
-        checkpoint = self._checkpoints[run_id]
+        checkpoint = self._load_checkpoint(run_id)
         resumed = dict(checkpoint.state)
         resumed[graphs.APPROVED] = True
         return self._execute(
@@ -125,10 +125,32 @@ class Runtime:
 
     # ---------------------------------------------------------------- worker
 
-    _checkpoints: dict = None  # type: ignore[assignment]
+    #: The table pauses live in. A plain in-process dict used to hold them, so a run
+    #: could be approved only from the Python object that drained it - the web process
+    #: saw `awaiting_approval` in the store, listed it under `/approvals`, and answered
+    #: approve with 404. The store is shared; the dict was not.
+    CHECKPOINTS = "checkpoints"
 
-    def __post_init__(self) -> None:
-        self._checkpoints = {}
+    def _save_checkpoint(self, checkpoint: graphs.Checkpoint) -> None:
+        self.store.put(self.CHECKPOINTS, checkpoint.run_id, checkpoint.to_row())
+
+    def checkpoint(self, run_id: str) -> graphs.Checkpoint:
+        """The pause this run is sitting at, read from the store.
+
+        Public because all twenty products needed it and all twenty reached into
+        `rt._checkpoints["r1"].state` to get it - which is how a private in-process
+        dict came to be load-bearing across the whole portfolio.
+        """
+        return self._load_checkpoint(run_id)
+
+    def _load_checkpoint(self, run_id: str) -> graphs.Checkpoint:
+        row = self.store.get(self.CHECKPOINTS, run_id)
+        if row is None:
+            raise KeyError(
+                f"run {run_id} has no stored checkpoint; it was paused by a process "
+                "that did not save one"
+            )
+        return graphs.Checkpoint.from_row(row)
 
     def drain(self, limit: int = 10) -> DrainPass:
         """Run one worker pass, and say what happened in it.
@@ -162,7 +184,7 @@ class Runtime:
         try:
             result = graphs.run(self.graph, state, run_id=run_id, checkpoint=checkpoint)
         except graphs.GraphInterruptedError as paused:
-            self._checkpoints[run_id] = paused.checkpoint
+            self._save_checkpoint(paused.checkpoint)
             # The generations that produced the thing being approved are
             # recorded now, not when it resumes. A paused run has already cost
             # something and its row must say so.

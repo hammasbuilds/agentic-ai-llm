@@ -11,12 +11,16 @@ Verified 2026-09-17. Every command below was run on this PC.
 
 ## The short answer
 
-**Nine of eleven need no UI at all.** They answer a question and print it; a browser adds
-nothing. Three have a UI that earns its place, and all three run from the standard
-library with **nothing to install**.
+**All eleven ship a `ui/`. Seven run from the standard library with nothing to install;
+four are written against a framework and need `npm install` first.** Every project's CLI
+is complete without its UI.
 
-Four have a UI written against a framework that needs `npm install` first. Those are
-optional, and the CLI is complete without them.
+This said "nine of eleven need no UI at all", then "three have a UI that earns its
+place", then "four need npm" - sixteen across eleven projects, while
+`ls -d projects/*/ui | wc -l` is 11 with four `package.json` files among them. The
+judgement underneath still holds: for most of these a browser adds nothing to a command
+that prints an answer. That is a different statement from a count and it was written as
+one.
 
 ## Start immediately — no install, no npm
 
@@ -92,10 +96,14 @@ profile is genuinely nicer than terminal output, and it is one dependency.
 ## Testing everything at once
 
 ```bash
-for r in repo-cartographer test-smith release-captain csv-analyst db-surgeon \
-         compliance-auditor migration-pilot review-bot study-tutor \
-         log-detective contract-reader; do
-  echo "== $r"; (cd "$r" && uv run pytest -q)
+# From the repository root. The directories are numbered, so a loop over bare
+# names fails on the first `cd` - which is what this block used to do, under a
+# line saying every command here was run on this PC.
+python scripts/test_all.py              # all 32 packages, one process each
+
+# Or the eleven tools alone:
+for d in projects/*/; do
+  echo "== $d"; (cd "$d" && uv run pytest -q)
 done
 ```
 

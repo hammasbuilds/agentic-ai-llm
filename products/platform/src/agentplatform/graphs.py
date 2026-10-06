@@ -67,6 +67,33 @@ class Checkpoint:
     def awaiting(self) -> str:
         return self.state.get("_interrupt", "")
 
+    def to_row(self) -> dict:
+        """A JSON-safe row, so the pause survives the process that created it.
+
+        `Runtime` held checkpoints in a plain in-process dict, so approving a run was
+        possible only from the same Python object that drained it. A web process
+        sharing the bus and the store with a worker saw the row as
+        `awaiting_approval`, listed it under `/approvals`, and answered
+        `POST /approvals/{id}/approve` with 404 - and a restart lost every pending
+        approval while the stored row still said it was waiting.
+
+        Fan-out state holds `Outcome` dataclasses, which `json` cannot encode, so
+        this converts them and **raises** on anything else rather than dropping it: a
+        checkpoint that silently loses part of its state resumes a different run.
+        """
+        return {
+            "run_id": self.run_id,
+            "next_node": self.next_node,
+            "state": _encodable(self.state),
+        }
+
+    @classmethod
+    def from_row(cls, row: dict) -> Checkpoint:
+        state = dict(row["state"])
+        if "branches" in state:
+            state["branches"] = [Outcome(**o) for o in state["branches"]]
+        return cls(row["run_id"], row["next_node"], state)
+
 
 class GraphInterruptedError(Exception):
     """The graph paused for a person.
@@ -105,6 +132,35 @@ class Graph:
         for name in self.nodes:
             if name not in self.edges:
                 raise ValueError(f"node {name!r} has no outgoing edge; use END")
+
+
+def _encodable(value):
+    """`value` as something `json.dumps` accepts, or a TypeError naming what it hit.
+
+    Deliberately not `default=str`: a state field quietly stringified comes back as
+    the wrong type on resume, and the graph then runs on data that looks right.
+    """
+    import dataclasses
+    import json
+
+    def convert(item):
+        if dataclasses.is_dataclass(item) and not isinstance(item, type):
+            return {k: convert(v) for k, v in dataclasses.asdict(item).items()}
+        if isinstance(item, dict):
+            return {str(k): convert(v) for k, v in item.items()}
+        if isinstance(item, (list, tuple)):
+            return [convert(v) for v in item]
+        if isinstance(item, (str, int, float, bool)) or item is None:
+            return item
+        raise TypeError(
+            f"a checkpoint cannot hold {type(item).__name__}: it has to survive the "
+            "process that made it, and stringifying it would resume the graph on the "
+            "wrong type"
+        )
+
+    converted = convert(value)
+    json.dumps(converted)  # proves it, rather than assuming it
+    return converted
 
 
 @dataclass

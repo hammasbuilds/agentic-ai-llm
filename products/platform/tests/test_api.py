@@ -221,3 +221,118 @@ def test_a_batch_is_acknowledged_by_the_worker_rather_than_by_polling():
 
     assert rt.drain().handled == 1, "redelivered to the restarted worker"
     assert rt.bus.lag("crm.tasks", rt.group) == 0, "and acknowledged once it was handled"
+
+
+# -- a pause that outlives the process that made it -----------------------
+
+
+def test_a_second_runtime_sharing_the_bus_and_store_can_approve(tmp_path):
+    """Approval was impossible from anywhere but the process that drained the run.
+
+    `Runtime._checkpoints` was a plain in-process dict. A web process sharing the bus
+    and the store with a worker saw the row as `awaiting_approval`, listed it under
+    `/approvals`, and answered `POST /approvals/{id}/approve` with 404 "no such run" -
+    while `products/README.md` sells the chain "HTTP in -> bus -> drained by a worker
+    -> paused for approval -> resumed". It closed only when the worker and the web
+    process were the same Python object, which `scripts/smoke_serve.py` guarantees by
+    running uvicorn in a thread of the same process.
+    """
+    bus, store = InMemoryBus(), InMemoryStore()
+    graph = Graph(
+        nodes={
+            "draft": Node("draft", graphs.RULES, lambda s: {"draft": "pay"}),
+            "approve": Node("approve", graphs.INTERRUPT),
+            "pay": Node("pay", graphs.TOOL, lambda s: {"paid": True}),
+        },
+        entry="draft",
+        edges={"draft": "approve", "approve": "pay", "pay": END},
+    )
+    worker = api.Runtime(domain="crm", bus=bus, store=store, graph=graph)
+    web = api.Runtime(domain="crm", bus=bus, store=store, graph=graph)
+
+    worker.submit("r1", "4192", {})
+    assert worker.drain().awaiting_approval == 1
+    assert web.run_row("r1")["status"] == api.AWAITING_APPROVAL
+    assert [row["run_id"] for row in web.awaiting()] == ["r1"]
+
+    resumed = web.approve("r1")
+    assert resumed["status"] == api.DONE
+    assert resumed["result"]["paid"] is True
+
+
+def test_the_checkpoint_is_in_the_store_not_in_the_object(tmp_path):
+    """So a restart does not lose every pending approval."""
+    bus, store = InMemoryBus(), InMemoryStore()
+    graph = Graph(
+        nodes={
+            "approve": Node("approve", graphs.INTERRUPT),
+            "pay": Node("pay", graphs.TOOL, lambda s: {"paid": True}),
+        },
+        entry="approve",
+        edges={"approve": "pay", "pay": END},
+    )
+    first = api.Runtime(domain="crm", bus=bus, store=store, graph=graph)
+    first.submit("r1", "4192", {"amount": 10})
+    first.drain()
+
+    held = store.get(api.Runtime.CHECKPOINTS, "r1")
+    assert held is not None, "the pause is not durable"
+    assert held["run_id"] == "r1"
+    assert held["next_node"] == "pay"
+    assert held["state"]["amount"] == 10
+
+    import json
+
+    json.dumps(held), "a checkpoint that cannot be serialised cannot reach Postgres"
+
+    # A brand-new Runtime, as a restarted worker would be.
+    restarted = api.Runtime(domain="crm", bus=bus, store=store, graph=graph)
+    assert restarted.approve("r1")["status"] == api.DONE
+
+
+def test_approving_a_run_with_no_stored_checkpoint_says_which(tmp_path):
+    bus, store = InMemoryBus(), InMemoryStore()
+    graph = Graph(
+        nodes={"a": Node("a", graphs.TOOL, lambda s: {})}, entry="a", edges={"a": END}
+    )
+    rt = api.Runtime(domain="crm", bus=bus, store=store, graph=graph)
+    store.put("runs", "ghost", {"run_id": "ghost", "status": api.AWAITING_APPROVAL})
+
+    with pytest.raises(KeyError, match="no stored checkpoint"):
+        rt.approve("ghost")
+
+
+def test_a_fanouts_branches_survive_the_round_trip():
+    """Fan-out state holds `Outcome` dataclasses, which `json` cannot encode."""
+    checkpoint = graphs.Checkpoint(
+        "r1",
+        "synth",
+        {
+            "branches": [
+                graphs.Outcome("a", True, 1),
+                graphs.Outcome("b", False, None, "boom"),
+            ],
+            "branch_status": [("a", True), ("b", False)],
+            "branches_failed": ["b"],
+        },
+    )
+    import json
+
+    row = checkpoint.to_row()
+    json.dumps(row)
+
+    back = graphs.Checkpoint.from_row(row)
+    assert [o.name for o in back.state["branches"]] == ["a", "b"]
+    assert back.state["branches"][1].error == "boom"
+    assert back.state["branches_failed"] == ["b"]
+
+
+def test_a_checkpoint_refuses_state_it_cannot_encode():
+    """Rather than stringifying it, which resumes the graph on the wrong type."""
+
+    class Opaque:
+        pass
+
+    checkpoint = graphs.Checkpoint("r1", "next", {"handle": Opaque()})
+    with pytest.raises(TypeError, match="cannot hold Opaque"):
+        checkpoint.to_row()

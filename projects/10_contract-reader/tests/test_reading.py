@@ -7,7 +7,6 @@ forced, and it has its own section below.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -227,36 +226,31 @@ def test_an_unidentified_licence_is_reported_as_a_conflict():
     assert why and "could not be identified" in why
 
 
-# -- against the real corpus ----------------------------------------------
+# -- the PSF case, as a fixture rather than somebody else's vendored tree -----
+#
+# This was asserted against
+# `<REPOS_ROOT>/gan-diffusion-projects/pylibs/typing_extensions-4.16.0.dist-info/
+# licenses/LICENSE`, and skipped twice over: once because the root defaulted to
+# `~/code`, and then - with REPOS_ROOT set - because that tree is gone, which this
+# project's own README says. Two skips wearing a reason about local setup, and the
+# headline case they were the only check on.
+#
+# The fixture is a real standalone PSF licence (pip's vendored `distlib`), copied in,
+# so the evidence survives whatever happens to anybody else's checkout. That is the
+# rule the three review causes below already follow.
 
 
-# Siblings of this repository, not `~/code`: that default does not exist on the
+def test_a_psf_licence_is_not_read_as_gpl():
+    """The headline case: PSF text mentions the GPL, and is not copyleft.
 
+    Section 3 of the PSF agreement discusses GPL compatibility, so a keyword matcher
+    reading "GPL" and stopping finds exactly the wrong answer about the strictest
+    thing a licence can say.
+    """
+    text = fixture("psf_licence.txt")
+    assert "GPL" in text, "the fixture has to contain the word to be a test of anything"
 
-# machine these numbers were measured on, so every tool using it silently found
-
-
-# nothing and reported success over an empty corpus.
-
-
-CORPUS = Path(
-    os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[3].parent
-).expanduser()
-
-
-@pytest.mark.skipif(not CORPUS.exists(), reason="local checkout not present")
-def test_the_python_licence_in_the_corpus_is_not_read_as_gpl():
-    path = (
-        CORPUS
-        / "gan-diffusion-projects"
-        / "pylibs"
-        / "typing_extensions-4.16.0.dist-info"
-        / "licenses"
-        / "LICENSE"
-    )
-    if not path.is_file():
-        pytest.skip("that package is not vendored here")
-    reading = read(str(path), path.read_text(encoding="utf-8", errors="replace"))
+    reading = read("psf_licence.txt", text)
     assert reading.family == "PSF"
     assert not reading.copyleft
 
@@ -371,3 +365,21 @@ def test_the_readme_counts_the_tests_this_file_holds():
     assert claimed == {int(found.group(1))}, (
         f"README says {sorted(claimed)}; pytest collects {found.group(1)}"
     )
+
+
+def test_the_readme_states_one_unidentified_file_in_both_places():
+    """It said one in the Results section and four in Scope, eighty lines apart.
+
+    The four is the number of keyword matches the reader *rejects* as too weak to name
+    a family - a different quantity from the files it ends up calling `unknown`, and
+    the survey reports `unknown: 1` of 94.
+    """
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+
+    headline = re.search(r"\*\*(\w+) file in ninety-four is unidentifiable\*\*", readme)
+    scope = re.search(r"\*\*`unknown` means unknown\.\*\* (\w+) file", readme)
+    assert headline and scope, "the README no longer states both counts"
+    assert headline.group(1).lower() == scope.group(1).lower() == "one"
