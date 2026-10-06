@@ -147,3 +147,106 @@ def test_the_readme_quotes_the_three_most_common_in_order(stock_codes):
     for code in ("85123A", "85099B"):
         assert f"`{code}`" in readme
     assert f"`POST` {stock_codes['POST']:,}" in readme
+
+
+# -- the headline block, and the command that now produces it -------------
+
+
+def test_the_revenue_block_is_what_the_impact_command_prints():
+    """It had no producer. The figures were right; one of them was wrong anyway.
+
+    19,493 of 19,500 is 99.96%, printed as 100.0% and then leaned on in prose as
+    "100% of the refunds - the only negative transactions in the file". Seven rows
+    disagreed, and six of them are `Adjust bad debt` entries that reduce revenue
+    through a negative price rather than a negative quantity - so counting what
+    actually reduces the total gives 99.99% and a better finding.
+    """
+    import io
+    import re
+    from contextlib import redirect_stdout
+
+    from csvanalyst.cli import main
+
+    captured = io.StringIO()
+    with redirect_stdout(captured):
+        assert (
+            main(
+                [
+                    "impact",
+                    str(RETAIL),
+                    "--coerce",
+                    "Invoice",
+                    "--quantity",
+                    "Quantity",
+                    "--price",
+                    "Price",
+                ]
+            )
+            == 0
+        )
+    printed = captured.getvalue()
+
+    readme = README.read_text(encoding="utf-8")
+    block = readme[readme.index("rows with parseable quantity/price") :]
+    block = block[: block.index("```")].strip()
+    assert block == printed.strip(), "the README block is not this command's output"
+
+    # And the two percentages the prose quotes come from it.
+    assert "99.96%" in printed and "99.99%" in printed
+    assert "100.0%" not in printed, "the rounding that the prose leaned on"
+    headline = readme[readme.index("## Results") : readme.index("```")]
+    assert "99.99% of them reduce revenue" in headline
+    assert "100.0% of them" not in headline
+
+    numbers = dict(re.findall(r"^(\S[^:]*?)\s*:\s+([\d,.-]+)", printed, re.MULTILINE))
+    assert numbers["rows with parseable quantity/price"] == "1,067,371"
+    assert numbers["non-numeric Invoice rows"] == "19,500"
+
+
+def test_the_two_rows_that_do_not_reduce_revenue_are_named():
+    """A 99.99% claim has to say what the other 0.01% is."""
+    import io
+    from contextlib import redirect_stdout
+
+    from csvanalyst.cli import main
+
+    captured = io.StringIO()
+    with redirect_stdout(captured):
+        main(
+            [
+                "impact",
+                str(RETAIL),
+                "--coerce",
+                "Invoice",
+                "--quantity",
+                "Quantity",
+                "--price",
+                "Price",
+            ]
+        )
+    printed = captured.getvalue()
+
+    assert "2 dropped row(s) whose line total is not negative" in printed
+    assert "C496350" in printed and "A563185" in printed
+    readme = README.read_text(encoding="utf-8")
+    assert "C496350" in readme and "A563185" in readme
+
+
+def test_impact_refuses_a_column_the_file_does_not_have():
+    from csvanalyst.cli import main
+
+    assert (
+        main(
+            [
+                "impact",
+                str(RETAIL),
+                "--coerce",
+                "Nope",
+                "--quantity",
+                "Quantity",
+                "--price",
+                "Price",
+            ]
+        )
+        == 2
+    )

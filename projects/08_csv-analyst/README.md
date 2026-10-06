@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-53-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-56-success" alt="tests">
   <img src="https://img.shields.io/badge/rows%20measured-1.07M-orange" alt="rows">
 </p>
 
@@ -13,23 +13,39 @@
 ## Results
 
 **In the UCI Online Retail II dataset, 19,500 rows have an invoice number that is not a
-number. 100.0% of them have a negative quantity: they are the cancellations. Loading that
-column as numeric drops exactly those rows, and overstates total revenue by £1,674,282 -
-8.68%.**
+number. 99.99% of them reduce revenue - they are the cancellations and the bad-debt
+adjustments. Loading that column as numeric drops exactly those rows, and overstates
+total revenue by £1,674,282 - 8.68%.**
 
 ```
-rows with parseable quantity/price : 1,067,371
-non-numeric Invoice rows           :    19,500  (1.83%)
-  of those, negative Quantity      :    19,493  (100.0%)
+rows with parseable quantity/price:     1,067,371
+non-numeric Invoice rows          :        19,500  (1.83%)
+  of those, negative Quantity     :        19,493  (99.96%)
+  of those, negative line total   :        19,498  (99.99%)
 
-revenue, all rows                  : 19,287,250.57
-revenue, numeric Invoice only      : 20,961,532.51
-overstatement                      :  1,674,281.94   (+8.68%)
+total, all rows                   :    19,287,250.57
+total, numeric Invoice only       :    20,961,532.51
+overstatement                     :     1,674,281.94   (+8.68%)
+
+2 dropped row(s) whose line total is not negative, by Invoice: C496350, A563185
 ```
 
-The rows a type coercion silently discards are **not a random sample**. Here they were
-100% of the refunds - the only negative transactions in the file. Dropping 1.83% of rows
-moved the headline figure by 8.68% and in the same direction every time.
+`csv-analyst impact <csv> --coerce Invoice --quantity Quantity --price Price` prints
+that block. It used to have no producer at all: the figures were right - I re-derived
+every one - but one of them was wrong, and a block nothing computes cannot be checked.
+19,493 of 19,500 is **99.96%**, not the 100.0% it rounded to, and the prose leaned on the
+rounding: "100% of the refunds - the only negative transactions in the file."
+
+Counting what actually reduces revenue is both more accurate and a better finding.
+**19,498 of the 19,500 have a negative line total — 99.99%** — because five of the seven
+rows with a non-negative quantity are `Adjust bad debt` entries carrying a negative
+*price* instead. Only two dropped rows do not reduce the figure: `C496350`, a £373.57
+`Manual`, and `A563185`, a bad-debt adjustment that two identical negatives cancel out.
+
+So the cast drops three kinds of row behind three invoice prefixes — `C` for
+cancellations, `A` for adjustments, and the plain numeric ones it keeps — and the rows a
+type coercion silently discards are **not a random sample**. Dropping 1.83% of rows moved
+the headline figure by 8.68%, in the same direction every time.
 
 So this tool refuses to coerce. A column that is 97.9% numeric is loaded as **text**, and
 the values that would not parse get their own section of the report.
@@ -96,6 +112,8 @@ Also:
 
 ```
 $ csv-analyst coercion <csv>           # what a silent numeric cast costs, per column
+$ csv-analyst impact <csv> --coerce Invoice --quantity Quantity --price Price
+                                       # what that cast does to a total - the block above
 $ csv-analyst charts <csv> --out dir   # one SVG per column, no plotting library
 $ csv-analyst sweep <folder>           # every delimited file in it - the table below
 $ uv run --extra ui marimo edit ui/notebook.py
@@ -176,7 +194,7 @@ by hand. `marimo` is an optional extra used only by the notebook view.
 ## Run it
 
 ```bash
-uv run pytest -q                                  # 53 tests, 9 of them over the real corpus
+uv run pytest -q                                  # 56 tests, 12 of them over the real corpus
 uv run csv-analyst report <csv> --limit 100000
 uv run csv-analyst coercion <csv>
 uv run --extra ui marimo edit ui/notebook.py

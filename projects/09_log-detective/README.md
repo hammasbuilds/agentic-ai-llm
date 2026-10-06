@@ -4,8 +4,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-35-success" alt="tests">
-  <img src="https://img.shields.io/badge/real%20log%20lines-1%2C005-orange" alt="lines">
+  <img src="https://img.shields.io/badge/tests-39-success" alt="tests">
+  <img src="https://img.shields.io/badge/scored%20log%20lines-973-orange" alt="lines">
 </p>
 
 ---
@@ -16,9 +16,12 @@
 
 Template extraction is the standard first move in log analysis, and the number everyone
 quotes is the compression ratio. That ratio is bought by deciding two lines are the same
-event. Measured on 1,005 real log lines, at every similarity threshold:
+event. Measured on 1,005 real log lines captured from this machine, 973 of which are
+non-blank and therefore scored, at every similarity threshold:
 
 ```
+1,005 lines read, 973 scored (32 blank); every ratio below is over the scored count
+
  thresh  templates  compression  merged  distinct lost  singletons
     0.9        921         1.1x       0              0         908
     0.8        822         1.2x       6             99         804
@@ -27,6 +30,9 @@ event. Measured on 1,005 real log lines, at every similarity threshold:
     0.5        104         9.4x      22            817          72
     0.4         90        10.8x      24            831          57
     0.3         71        13.7x      26            850          37
+
+  'distinct lost' counts messages that no longer have a template of
+  their own. Compression is bought by deciding two lines are the same.
 ```
 
 There is a cliff between 0.8 and 0.7. Compression triples, and the number of genuinely
@@ -98,7 +104,7 @@ dashboard.
 ## Run it
 
 ```bash
-uv run pytest -q                    # 35 tests
+uv run pytest -q                    # 39 tests
 uv run log-detective cost data/
 uv run --extra ui panel serve ui/app.py --show
 ```

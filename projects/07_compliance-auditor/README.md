@@ -4,8 +4,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-44-success" alt="tests">
-  <img src="https://img.shields.io/badge/repos%20audited-37-orange" alt="repos">
+  <img src="https://img.shields.io/badge/tests-47-success" alt="tests">
+  <img src="https://img.shields.io/badge/repos%20audited-78-orange" alt="repos">
 </p>
 
 ---
@@ -103,18 +103,35 @@ Each result names the policy, what was found, and the file it was found in:
 
 ## Results
 
-**Four repositories import packages they never declare** — code that works on this
-machine and fails on anyone else's: `machine-learning` (plotly, streamlit), `mcp-lab`
-(langchain_mcp_adapters), `rag-forge` (streamlit), `sql-analyst-agent` (pandas,
-streamlit). Every one is Streamlit or a plotting library left behind by a deleted
+Every figure here is from `compliance-auditor audit <folder> --json`, over the same 78
+checkouts as the block above. The prose used to be written out by hand and had drifted
+three to five times low: "four repositories" where the audit finds 20, "fourteen" where
+it finds 41, and "ten of 37 have no remote" where it is four of 78.
+
+**20 repositories import packages they never declare** — code that works on this machine
+and fails on anyone else's. `agent-memory`, `agentic-ai-lab`, `code-llm-lab`,
+`doc-intelligence-api`, `harness-ablation`, `job-radar`, `machine-learning`,
+`mbpp-false-accepts` and twelve more. The pattern the original four were picked for is
+still the commonest one: Streamlit or a plotting library left behind by a deleted
 dashboard.
 
-**Fourteen repositories declare dependencies nothing imports** — `uvicorn` in three,
-`ruff` declared as a runtime dependency in two, and `accelerate`, `bitsandbytes` and
-`datasets` in `qlora-finetune-suite`.
+**41 repositories declare dependencies nothing imports** — more than half of those with a
+`pyproject.toml` that declares anything. `uvicorn` left behind by a deleted server,
+`ruff` declared as a runtime dependency rather than a dev one, `accelerate` and
+`bitsandbytes` in `qlora-finetune-suite`.
 
-**Ten of 37 have no remote.** Four are not git repositories at all: `computer-vision`,
-`multimodal-emotion`, `infra` and `swe` hold real work on one disk with no copy anywhere.
+**4 of 78 have no git remote**: `kaggle-notebooks-new`, `private repos`, `repo-recon` and
+`vision-language-lab` hold real work on one disk with no copy anywhere. (`repo-recon` is
+deliberate — it has no remote yet.) The previous "ten of 37" named four directories —
+`computer-vision`, `multimodal-emotion`, `infra`, `swe` — none of which is on this disk
+any more, so that sentence had outlived the thing it described as well as miscounting it.
+
+**12 of 78 have no LICENSE**, which `licence` reports and the table above scores at 85%.
+
+Measured 2026-10-06 over a folder of live checkouts, so these counts move; the shape has
+not. The lesson is the one this tool exists for: hand-written prose beside a generated
+table drifts away from it silently, and in this case the hand-written half flattered the
+portfolio by a factor of three.
 
 ## What I wrote vs what I installed
 
@@ -138,7 +155,7 @@ build step, the `.js` file in `ui/` is the source that runs.
 ## Run it
 
 ```bash
-uv run pytest -q                              # 44 tests
+uv run pytest -q                              # 47 tests
 uv run compliance-auditor audit ~/code
 uv run compliance-auditor policy
 uv run python ui/serve.py                     # :8100

@@ -30,9 +30,13 @@ def _templates_command(args: argparse.Namespace) -> int:
         return 2
     result = extract(lines, threshold=args.threshold)
 
+    # The blank count is named here too, so this command and `cost` describe the same
+    # corpus. They used to differ by 32 lines on the same input, with the compression
+    # ratio computed over one number and printed under the other.
+    blank = f", {result.blank_lines:,} blank and not scored" if result.blank_lines else ""
     print(
         f"{result.lines:,} lines -> {len(result.templates)} templates "
-        f"({result.compression:.1f}x) at threshold {result.threshold}"
+        f"({result.compression:.1f}x) at threshold {result.threshold}{blank}"
     )
     print(
         f"  {len(result.merged_templates)} template(s) merged distinct messages; "
@@ -53,7 +57,18 @@ def _cost_command(args: argparse.Namespace) -> int:
     lines = _read(args.paths)
     if not lines:
         return 2
-    print(f"{len(lines):,} lines\n")
+    # Both numbers, because this header printed the lines READ while every ratio in
+    # the table below divides by the lines SCORED. One input gave two corpus sizes -
+    # 1,005 under this header and 973 in `templates` - and the README and the badge
+    # both took the larger.
+    blanks = sum(1 for raw in lines if not raw.strip())
+    if blanks:
+        print(
+            f"{len(lines):,} lines read, {len(lines) - blanks:,} scored "
+            f"({blanks:,} blank); every ratio below is over the scored count\n"
+        )
+    else:
+        print(f"{len(lines):,} lines, none blank\n")
     print(
         f"{'thresh':>7s} {'templates':>10s} {'compression':>12s} "
         f"{'merged':>7s} {'distinct lost':>14s} {'singletons':>11s}"

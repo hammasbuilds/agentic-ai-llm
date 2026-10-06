@@ -176,3 +176,70 @@ def test_line_counts_add_up():
     lines = [f"job {i} done" for i in range(25)] + ["something else entirely here"]
     result = extract(lines, threshold=0.6)
     assert sum(t.count for t in result.templates) == result.lines == 26
+
+
+# -- one input, one corpus size -------------------------------------------
+
+
+def test_both_commands_agree_on_how_many_lines_they_read(tmp_path, capsys):
+    """They did not. `cost` printed the lines read; every ratio divided by the lines
+    scored, because `extract` skips blanks. One input gave 1,005 under the header and
+    973 in the arithmetic, and the README and the badge both took the larger.
+    """
+    from detective.cli import main
+
+    log = tmp_path / "sample.log"
+    log.write_text(
+        chr(10).join(["alpha 1 started", "", "alpha 2 started", "   ", "beta done"]) + chr(10),
+        encoding="utf-8",
+    )
+
+    assert main(["cost", str(log)]) == 0
+    cost = capsys.readouterr().out
+    assert "5 lines read, 3 scored (2 blank)" in cost
+    assert "every ratio below is over the scored count" in cost
+
+    assert main(["templates", str(log)]) == 0
+    templates = capsys.readouterr().out
+    assert templates.startswith("3 lines ->"), templates.splitlines()[0]
+    assert "2 blank and not scored" in templates
+
+
+def test_a_file_with_no_blank_lines_says_so(tmp_path, capsys):
+    from detective.cli import main
+
+    log = tmp_path / "dense.log"
+    log.write_text("one a" + chr(10) + "one b" + chr(10), encoding="utf-8")
+    assert main(["cost", str(log)]) == 0
+    assert "2 lines, none blank" in capsys.readouterr().out
+
+
+def test_the_extraction_reports_both_counts():
+    from detective.templates import extract
+
+    result = extract(["alpha one", "", "alpha two", "  "])
+    assert result.lines == 2, "blank lines are not events"
+    assert result.lines_read == 4
+    assert result.blank_lines == 2
+    assert result.compression == result.lines / len(result.templates)
+
+
+def test_the_readme_quotes_the_scored_count_as_the_denominator():
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    stated = re.search(
+        r"([\d,]+) lines read, ([\d,]+) scored "
+        + chr(92)
+        + r"(([\d,]+) blank"
+        + chr(92)
+        + r")",
+        readme,
+    )
+    assert stated, "the README no longer prints the two counts"
+    read, scored, blank = (int(g.replace(",", "")) for g in stated.groups())
+    assert read == scored + blank
+    assert f"{scored}" in readme.split('alt="lines"')[0], (
+        "the badge should quote the scored count"
+    )

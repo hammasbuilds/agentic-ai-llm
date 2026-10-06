@@ -103,13 +103,29 @@ def _merge(tokens: list[str], other: list[str]) -> list[str]:
 @dataclass
 class Extraction:
     templates: list[Template]
+    #: Lines that were scored - blank lines are skipped and are not in it.
     lines: int
     threshold: float
+    #: Lines handed in, blanks included. `cli cost` printed this number under a
+    #: header while every compression figure divided by `lines`, so one input gave
+    #: two different corpus sizes - 1,005 and 973 - and the ratio in the table was
+    #: not the ratio its own header implied.
+    lines_read: int = 0
 
     @property
     def compression(self) -> float:
-        """Lines per template. Higher looks better and is not free."""
+        """Lines per template, over the lines actually scored.
+
+        The denominator is `lines`, not `lines_read`: a blank line is not an event
+        and compressing it is not an achievement. `blank_lines` reports the gap so
+        the two numbers can never be read as the same one again.
+        """
         return self.lines / len(self.templates) if self.templates else 0.0
+
+    @property
+    def blank_lines(self) -> int:
+        """Lines handed in and not scored, because they were blank."""
+        return max(0, self.lines_read - self.lines)
 
     @property
     def merged_templates(self) -> list[Template]:
@@ -171,7 +187,10 @@ def extract(lines: list[str], threshold: float = 0.6) -> Extraction:
     templates = [t for bucket in buckets.values() for t in bucket]
     templates.sort(key=lambda t: -t.count)
     return Extraction(
-        templates=templates, lines=sum(t.count for t in templates), threshold=threshold
+        templates=templates,
+        lines=sum(t.count for t in templates),
+        threshold=threshold,
+        lines_read=len(lines),
     )
 
 

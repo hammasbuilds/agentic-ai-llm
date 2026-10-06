@@ -27,7 +27,7 @@ make it rather than asking something to guess.
 | 10 | [**contract-reader**](10_contract-reader) | Read a licence, and cite the character span behind every claim |
 | 11 | [**study-tutor**](11_study-tutor) | Spaced repetition where the scheduler is arithmetic and the model only writes questions |
 
-**436 tests across the eleven**, every one of them runnable without a network, a model or a
+**446 tests across the eleven**, every one of them runnable without a network, a model or a
 GPU. The per-package counts are in the table that `scripts/test_all.py` prints.
 
 ## Running them

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv as _csv
 import json
 import sys
 from dataclasses import asdict
@@ -11,7 +12,12 @@ from pathlib import Path
 from .charts import bars, histogram
 from .execute import column_summary, contamination_findings, load
 from .narrate import narrate
-from .profile import honest_mean, naive_mean, profile_csv
+from .profile import (
+    honest_mean,
+    naive_mean,
+    parse_number,
+    profile_csv,
+)
 
 
 def _analyse(path: Path, limit: int | None):
@@ -183,6 +189,99 @@ def _charts_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _impact_command(args: argparse.Namespace) -> int:
+    """What a numeric cast on one column does to a total over two others.
+
+    This is the README's headline and nothing here computed it. The figures were
+    right - I re-derived every one - but a block with no producer cannot be checked,
+    and one of them was wrong: 19,493 of 19,500 is 99.96%, printed as 100.0% and then
+    leaned on in prose as "100% of the refunds".
+
+    Generic rather than hardcoded to this dataset: name the column a loader would
+    coerce and the two columns whose product is the total.
+    """
+    path = Path(args.csv)
+    profile = profile_csv(path, limit=args.limit)
+    index = {column.name: column.index for column in profile.columns}
+
+    for needed in (args.coerce, args.quantity, args.price):
+        if needed not in index:
+            print(
+                f"{path.name} has no column {needed!r}; it has {', '.join(sorted(index))}",
+                file=sys.stderr,
+            )
+            return 2
+
+    reader = _csv.reader(
+        path.read_text(encoding="utf-8", errors="replace").splitlines(),
+        delimiter=profile.delimiter,
+    )
+    next(reader, [])
+
+    widest = max(index[c] for c in (args.coerce, args.quantity, args.price))
+    rows = dropped = negative_quantity = negative_total = short = 0
+    total_all = total_kept = 0.0
+    examples: list[str] = []
+
+    for row in reader:
+        if widest >= len(row):
+            short += 1
+            continue
+        quantity = parse_number(row[index[args.quantity]])
+        price = parse_number(row[index[args.price]])
+        if quantity is None or price is None:
+            continue
+        rows += 1
+        line = quantity * price
+        total_all += line
+        if parse_number(row[index[args.coerce]]) is not None:
+            total_kept += line
+            continue
+        dropped += 1
+        if quantity < 0:
+            negative_quantity += 1
+        if line < 0:
+            negative_total += 1
+        elif len(examples) < 8:
+            examples.append(row[index[args.coerce]])
+
+    if not rows:
+        print("no row had a parseable quantity and price", file=sys.stderr)
+        return 2
+
+    shift = total_kept - total_all
+    parseable = f"rows with parseable {args.quantity.lower()}/{args.price.lower()}"
+    print(f"{parseable:<34}: {rows:>13,}")
+    label = f"non-numeric {args.coerce} rows"
+    print(f"{label:<34}: {dropped:>13,}  ({dropped / rows * 100:.2f}%)")
+    if dropped:
+        by_quantity = f"  of those, negative {args.quantity}"
+        print(
+            f"{by_quantity:<34}: {negative_quantity:>13,}  "
+            f"({negative_quantity / dropped * 100:.2f}%)"
+        )
+        # Negative quantity is how a cancellation is usually encoded; a negative
+        # *line total* is what actually reduces the figure, and the two differ here.
+        print(
+            f"{'  of those, negative line total':<34}: {negative_total:>13,}  "
+            f"({negative_total / dropped * 100:.2f}%)"
+        )
+    print()
+    print(f"{'total, all rows':<34}: {total_all:>16,.2f}")
+    kept_label = f"total, numeric {args.coerce} only"
+    print(f"{kept_label:<34}: {total_kept:>16,.2f}")
+    direction = "overstatement" if shift > 0 else "understatement"
+    print(f"{direction:<34}: {shift:>16,.2f}   ({shift / total_all * 100:+.2f}%)")
+    if examples:
+        print(
+            f"\n{len(examples)} dropped row(s) whose line total is not negative, by "
+            f"{args.coerce}: {', '.join(examples)}"
+        )
+    if short:
+        print(f"\n{short:,} short row(s) did not reach every named column and were not counted")
+    return 0
+
+
 def _coercion_command(args: argparse.Namespace) -> int:
     """Show what a silent numeric cast costs, column by column.
 
@@ -238,6 +337,14 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("folder")
     w.add_argument("--limit", type=int, default=None, help="read at most N rows per file")
     w.set_defaults(func=_sweep_command)
+
+    i = sub.add_parser("impact", help="what a cast on one column does to a total")
+    i.add_argument("csv")
+    i.add_argument("--coerce", required=True, help="the column a loader would cast")
+    i.add_argument("--quantity", required=True, help="first factor of the total")
+    i.add_argument("--price", required=True, help="second factor of the total")
+    i.add_argument("--limit", type=int, default=None)
+    i.set_defaults(func=_impact_command)
 
     x = sub.add_parser("coercion", help="what a silent numeric cast drops")
     x.add_argument("csv")
