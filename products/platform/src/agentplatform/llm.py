@@ -117,9 +117,18 @@ class Budgeted:
         if not decision.admitted:
             raise AdmissionRejectedError(decision.reason)
         try:
-            return self.inner.generate(prompt, max_tokens=max_tokens)
-        finally:
-            self.controller.release()
+            completion = self.inner.generate(prompt, max_tokens=max_tokens)
+        except BaseException:
+            # The call cost something unknown. The estimate stays charged, booked as
+            # an estimate rather than as measured usage.
+            self.controller.release(decision.reservation, None)
+            raise
+        # Settled against what the call really cost. `release` used to free the slot
+        # and leave the worst-case estimate charged for good: a 19-word prompt
+        # answered in four tokens stood at 515, which is 129 times its cost, and a
+        # cache hit - which reaches no model at all - stood at the same.
+        self.controller.release(decision.reservation, completion.total_tokens)
+        return completion
 
 
 @dataclass

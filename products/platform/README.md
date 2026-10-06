@@ -9,7 +9,7 @@ LangGraph ones skip too when that extra is absent, each naming the package rathe
 pretending the feature is untested for some other reason.
 
 ```
-python -m pytest -q                      # 143 passed, 9 skipped
+python -m pytest -q                      # 150 passed, 9 skipped
 ```
 
 ## What is here
@@ -74,6 +74,38 @@ prompt:
 `graphs.loop()` caps revision at two iterations by default, with an **external** done
 predicate, because doubling a critique-revise loop from three to six changed nothing on
 every task measured and self-reported completion quit on the first draft every time.
+
+## A budget charged what a call might cost
+
+`admission.Controller.admit` added `len(prompt.split()) + max_tokens` to a tenant's
+usage, and nothing ever corrected it. `used()` was a sum of worst cases, reported as
+consumption. A 19-word prompt answered in four tokens stood at 515 — **129 times what it
+cost** — so a 100,000-token daily budget allowed 194 calls where the real usage allows
+25,000, and the tenant hit its limit having spent 0.4% of it. A cache hit, which reaches
+no model at all, was charged in full.
+
+An admission now **reserves** the estimate and the release **settles** it:
+
+```python
+decision = controller.admit("acme", estimate)   # reserved, and counted against the budget
+...                                             # the generation runs
+controller.release(decision.reservation, completion.total_tokens)
+```
+
+Reserving still has to happen before the call — two concurrent generations must not both
+fit a budget that one of them would exhaust — and usage is reported in three parts because
+they are three different claims:
+
+| | |
+|---|---|
+| `settled(tenant)` | tokens the model reported consuming |
+| `estimated(tenant)` | an estimate nothing reconciled: a generation that raised |
+| `reserved(tenant)` | held by generations still running |
+| `used(tenant)` | all three, which is what the budget is checked against |
+
+A call that raised keeps its estimate charged, because the safe assumption about an
+unmeasured call is not that it was free — but it is booked as an estimate rather than as
+measured usage, so the two cannot be confused.
 
 ## Nothing waits on a download
 

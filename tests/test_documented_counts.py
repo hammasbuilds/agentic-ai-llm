@@ -85,3 +85,52 @@ def test_the_projects_index_totals_the_eleven():
     assert stated, "the index no longer states a total"
     total = sum(collected(p) for p in PACKAGES if p.parent.name == "projects")
     assert int(stated.group(1).replace(",", "")) == total
+
+
+#: `cd platform && python -m pytest -q   # 127 passed, 9 skipped` in an index README.
+#: The package is named by the `cd`, so the line is checkable without guessing.
+CD_QUOTED = re.compile(
+    r"cd\s+([\w.-]+)\s*&&[^\n#]*pytest -q[^\n#]*#\s*(\d[\d,]*)\s+(tests?|passed)"
+    r"(?:,\s*(\d+)\s+skipped)?",
+)
+
+INDEXES = sorted(
+    readme
+    for readme in (
+        ROOT / "README.md",
+        ROOT / "projects" / "README.md",
+        ROOT / "products" / "README.md",
+        ROOT / "apps" / "README.md",
+    )
+    if readme.is_file()
+)
+
+
+def test_the_indexes_quoting_a_per_package_count_are_found():
+    """One index quotes them. Pinned, because a sweep over nothing passes.
+
+    This is the gap that let `products/README.md` sit at "127 passed, 9 skipped"
+    while `platform/README.md` was corrected to 143: the per-package counts in an
+    index are the same class of claim, and the sweep above only reads each package's
+    own README.
+    """
+    quoting = [i for i in INDEXES if CD_QUOTED.search(i.read_text(encoding="utf-8"))]
+    assert [i.parent.name for i in quoting] == ["products"]
+
+
+@pytest.mark.parametrize("index", INDEXES, ids=lambda p: f"{p.parent.name}/README.md")
+def test_a_per_package_count_in_an_index_is_the_one_pytest_collects(index: Path):
+    quoted = CD_QUOTED.findall(index.read_text(encoding="utf-8"))
+    if not quoted:
+        pytest.skip(f"{index.parent.name}/README.md quotes no per-package count")
+
+    for name, number, kind, skipped in quoted:
+        package = index.parent / name
+        assert package.is_dir(), f"{index}: `cd {name}` names no directory here"
+        stated = int(number.replace(",", "")) + (int(skipped) if skipped else 0)
+        actual = collected(package)
+        assert stated == actual, (
+            f"{index.parent.name}/README.md: {name} says {number} {kind}"
+            + (f" and {skipped} skipped" if skipped else "")
+            + f", which is {stated}; pytest collects {actual}"
+        )
