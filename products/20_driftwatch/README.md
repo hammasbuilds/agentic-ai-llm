@@ -44,7 +44,9 @@ checker *having the fact* are different things, and conflating them inflates the
 Reproduce it:
 
 ```bash
+REPOS_ROOT=/path/to/your/checkouts \
 cd 20_driftwatch && python -m pytest tests/test_real_repos.py -q     # 10 passed
+#  without REPOS_ROOT it is 10 SKIPPED, 0 passed - these read real repositories
 cd 20_driftwatch && python -m pytest tests/test_structure.py -q     # 11 passed
 ```
 
@@ -140,7 +142,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 20_driftwatch
-python -m pytest -q                      # 41 passed
+python -m pytest -q                      # 51 passed, 11 skipped
 PYTHONPATH="src;../platform/src" python -m driftwatch.app    # console on http://127.0.0.1:8000
 ```
 

@@ -169,11 +169,12 @@ def test_call_through_a_package_reexport_resolves(tmp_path: Path):
     assert graph.resolution.repo_resolution_rate == pytest.approx(1.0)
 
 
-REPOS_ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
-REAL_REPO = REPOS_ROOT / "langchain-llm"
+# Sibling checkouts live beside the monorepo, so that is the default root.
+REPOS_ROOT = Path(os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[3].parent)
+REAL_REPO = REPOS_ROOT / "langchain-lab"
 
 
-@pytest.mark.skipif(not REAL_REPO.exists(), reason="local checkout not present")
+@pytest.mark.skipif(not REAL_REPO.exists(), reason=f"no checkout at {REAL_REPO}")
 def test_real_repo_resolves_most_of_its_internal_calls():
     """Pure AST resolution should bind the large majority of repo-internal calls.
 
@@ -183,7 +184,7 @@ def test_real_repo_resolves_most_of_its_internal_calls():
     assert graph.resolution.repo_resolution_rate > 0.85
 
 
-@pytest.mark.skipif(not REAL_REPO.exists(), reason="local checkout not present")
+@pytest.mark.skipif(not REAL_REPO.exists(), reason=f"no checkout at {REAL_REPO}")
 def test_real_repo_core_module_is_the_shared_one():
     """langchain-lab's load-bearing module is its shared model registry."""
     graph = build_graph(parse_repo(REAL_REPO))

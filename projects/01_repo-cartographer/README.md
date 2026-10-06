@@ -5,15 +5,15 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
   <img src="https://img.shields.io/badge/tests-32-success" alt="tests">
-  <img src="https://img.shields.io/badge/median%20resolution-99%25-orange" alt="resolution">
+  <img src="https://img.shields.io/badge/median%20resolution-81%25-orange" alt="resolution">
 </p>
 
 ---
 
 ## Results
 
-**A plain `ast` walk binds 99% of a repository's internal calls to their definitions
-(median across 29 real repositories, 519 modules, 88,166 lines). No embeddings, no model,
+**A plain `ast` walk binds 81% of a repository's internal calls to their definitions
+(median across 77 real checkouts, 1,729 modules, 335,560 lines). No embeddings, no model,
 no index.**
 
 The usual approach to "explain this codebase" is to embed every chunk and retrieve by
@@ -38,14 +38,14 @@ $ cartographer map ~/code/rag-forge
 ==============================================================================
 
   CALL RESOLUTION
-    133 of 146 repo-internal calls resolved  (91%)
+    133 of 159 repo-internal calls resolved  (84%)
     624 call sites in total; the rest are builtins,
     the standard library, or methods on third-party objects.
 
   LOAD-BEARING MODULES  (PageRank over internal imports)
-    0.1534  ragforge.types
+    0.1609  ragforge.types
               src/ragforge/types.py  -  47 lines, imported by 11
-    0.1239  ragforge.config
+    0.1295  ragforge.config
               src/ragforge/config.py  -  53 lines, imported by 11
     0.0391  ragforge.store
               src/ragforge/store/__init__.py  -  27 lines, imported by 6
@@ -69,22 +69,36 @@ $ cartographer compare ~/code                         # every checkout under a f
 $ cartographer map <repo> --json -o map.json             # for the UI
 ```
 
-## Measured across 29 repositories
+## Measured across 77 repositories
+
+Every checkout in one folder, not a chosen subset — `cartographer compare <folder>`, whose
+last three lines are this table.
 
 | | |
 |---|---|
-| Repositories mapped | 29 |
-| Modules | 519 |
-| Lines | 88,166 |
-| **Median repo-call resolution** | **99%** |
-| At or above 90% | 25 of 29 |
-| Parse failures | 0 |
+| Repositories measured | 77 |
+| Modules | 1,729 |
+| Lines | 335,560 |
+| **Median repo-call resolution** | **81%** |
+| Median over *all* call sites, for contrast | 21% |
+| At or above 90% | 17 of 77 |
+| Parse failures | 1 |
+| Checkouts holding no Python, skipped | 26 |
 
-The four below 90%: `classical-computer-vision` (78%) and `computer-vision` (60%) both use
-dynamic dispatch through registry dictionaries, which no AST can follow;
-`multimodal-emotion` (75%) is two scripts with almost no internal calls, so one miss moves
-the percentage several points; `repo-cartographer` itself (79%) resolves `args.func(args)`
-nowhere, because argparse binds that callable at runtime.
+This said **99% across 29 repositories** until two things changed, and both moved it down.
+
+The denominator was wrong in the direction that flatters: every `x.method()` on a variable
+whose type an AST cannot infer went to *out of scope*, which removes it from the
+denominator rather than counting it as unresolved — and in code written with classes those
+are the calls. They are now in scope when this repository defines a method of that name.
+
+And 29 was a subset. Over every checkout in the folder, including the ones that are mostly
+notebooks, scripts or someone else's vendored code, the median is 81%. The lowest:
+`contract-reader` (29%), `urdu-desk` (32%), `_fifteen_build` (38%), `router-14b` (40%), `model-serving-platform` (43%), `minimal-diff` (46%).
+
+A repository of two scripts with almost no internal calls swings several points on one
+miss, which is why the median is quoted rather than the mean — and why the count at or
+above 90% is beside it.
 
 ## The denominator matters more than the resolver
 
@@ -97,11 +111,11 @@ Counting them in the denominator makes every codebase look unmappable:
 
 | Repository | All call sites | Repo-internal calls only |
 |---|---|---|
-| machine-learning | 8% | **99%** |
-| mcp-lab | 12% | **91%** |
-| rag-forge | 21% | **91%** |
-| credit-risk-engine | 24% | **100%** |
-| langchain-lab | 38% | **98%** |
+| machine-learning | 8% | **81%** |
+| mcp-lab | 11% | **75%** |
+| rag-forge | 21% | **84%** |
+| credit-risk-engine | 21% | **76%** |
+| langchain-lab | 38% | **93%** |
 
 This is the same mistake `langchain-lab` project 01 found in extraction scoring, where the
 standard metric dropped failed extractions from the denominator and made
@@ -140,7 +154,7 @@ questions this tool exists for.
 ## Run it
 
 ```bash
-uv run pytest -q                      # 32 tests
+uv run pytest -q                      # 45 tests
 uv run cartographer map <repo>
 uv run cartographer compare <folder>  # every checkout under it
 ```

@@ -47,6 +47,12 @@ async def runner(params: dict, emit) -> dict:
     kinds: dict[str, list[int]] = {}
     killed_how = {"fail": 0, "error": 0, "timeout": 0}
 
+    # The population every rate below is over. The README used to quote "227 of 782
+    # problems", and 782 is neither the number loaded nor the number whose reference
+    # passes - nothing here produced it, so nothing could check it.
+    usable = 0
+    unusable: list[str] = []
+
     loop = asyncio.get_running_loop()
     for i, task in enumerate(tasks, 1):
         # The reference must pass its own tests or every mutant of it is meaningless.
@@ -54,8 +60,10 @@ async def runner(params: dict, emit) -> dict:
             None, run_tests, task.reference, list(task.tests), task.setup
         )
         if not ref_ok.passed:
+            unusable.append(task.task_id)
             await emit(i, len(tasks), f"{task.task_id}: reference fails its own tests")
             continue
+        usable += 1
 
         muts = mutants(task.reference, limit=per_problem)
         for m in muts:
@@ -111,6 +119,9 @@ async def runner(params: dict, emit) -> dict:
 
     return {
         "problems": len(tasks),
+        "problems_usable": usable,
+        "problems_whose_reference_fails": len(unusable),
+        "problems_with_a_survivor": len({r["task_id"] for r in rows}),
         "mutants": total,
         "survived": survived,
         "survival_rate": survived / total if total else 0.0,

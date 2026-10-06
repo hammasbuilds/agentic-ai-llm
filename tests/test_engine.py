@@ -201,3 +201,32 @@ def test_a_mutant_no_input_ran_against_is_not_reported_like_one_that_was_tried()
 
     # And the three are distinguishable from the outside, which is the point.
     assert len({(w.found, w.cases_run == 0) for w in (separated, equivalent, untried)}) == 3
+
+
+def test_a_program_is_not_a_witness_against_itself():
+    """`_call(f_ref, args)` then `_call(f_mut, args)` shared one object.
+
+    A function that mutates its argument handed the mutant pre-mutated input, so the
+    prober reported a separating input between a program and itself — and between a
+    reference and an equivalent mutant. Quantified over the first 150 MBPP problems by
+    an independent review: 2 of 66 "provably wrong" survivors were artefacts of this,
+    and the `mut` value shown in the witness table was not what the mutant produces.
+    """
+    from apps._engine.differential import find_witness
+
+    mutating = "def f(xs):\n    xs.append(1)\n    return xs\n"
+    assert not find_witness(mutating, mutating, "f", ("assert f([0]) == [0, 1]",)).found
+
+    doubled = "def g(n):\n    return n * 2\n"
+    added = "def g(n):\n    return n + n\n"
+    assert not find_witness(doubled, added, "g", ("assert g(3) == 6",)).found
+
+    # And a real difference is still found, with the mutant's real output.
+    witness = find_witness(
+        "def h(n):\n    return n + 1\n",
+        "def h(n):\n    return n + 2\n",
+        "h",
+        ("assert h(1) == 2",),
+    )
+    assert witness.found
+    assert witness.ref == "('ok', '2')" and witness.mut == "('ok', '3')"

@@ -149,6 +149,4 @@ def load(benchmark: str = "mbpp", limit: int | None = None) -> list[Task]:
         return load_mbpp(limit, split="sanitized")
     if benchmark == "humaneval":
         return load_humaneval(limit)
-    raise ValueError(
-        f"unknown benchmark {benchmark!r}; expected mbpp, mbpp-sanitized or humaneval"
-    )
+    raise ValueError(f"unknown benchmark {benchmark!r}; expected mbpp, mbpp-sanitized or humaneval")

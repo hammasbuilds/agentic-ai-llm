@@ -1,14 +1,14 @@
 {
   "name": "bounded-agent-runtime",
-  "root": "C:\\src\\bounded-agent-runtime",
+  "root": "D:\\github\\bounded-agent-runtime",
   "modules": 23,
   "symbols": 117,
   "loc": 1438,
   "total_calls": 451,
-  "in_scope_calls": 157,
+  "in_scope_calls": 186,
   "resolved_calls": 151,
   "resolution_rate": 0.3348,
-  "repo_resolution_rate": 0.9618,
+  "repo_resolution_rate": 0.8118,
   "excluded_projects": [],
   "parse_errors": [],
   "core_modules": [
@@ -420,11 +420,43 @@
   ],
   "unresolved_sample": [
     [
+      "log.record",
+      9
+    ],
+    [
+      "reg.register",
+      6
+    ],
+    [
       "AuditLog.load",
       5
     ],
     [
+      "rt.run",
+      5
+    ],
+    [
+      "runtime.run",
+      2
+    ],
+    [
       "app",
+      1
+    ],
+    [
+      "budget.remaining",
+      1
+    ],
+    [
+      "budget.check",
+      1
+    ],
+    [
+      "planner.next_action",
+      1
+    ],
+    [
+      "budget.record_step",
       1
     ]
   ]

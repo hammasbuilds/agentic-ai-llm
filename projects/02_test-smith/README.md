@@ -167,7 +167,7 @@ imports it.
 ## Run it
 
 ```bash
-uv run pytest -q                                   # 35 tests
+uv run pytest -q                                   # 39 tests
 uv run testsmith run <repo> --limit 40
 uv run python scripts/sweep.py 40                  # reproduces the table above
 uv run --extra ui python ui/app.py                 # UI on :8081
@@ -186,5 +186,5 @@ ui/app.py         NiceGUI front end (optional extra)
 scripts/sweep.py  produces every number in this README
 tests/
     test_mutate.py   26 tests (parametrised)
-    test_runner.py    9 tests
+    test_runner.py   13 tests
 ```

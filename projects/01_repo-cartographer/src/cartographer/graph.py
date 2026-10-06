@@ -133,7 +133,13 @@ def _external_names(repo: ParsedRepo) -> dict[str, set[str]]:
     return index
 
 
-def _classify_miss(callee: str, module: str, external: set[str], internal: set[str]) -> str:
+def _classify_miss(
+    callee: str,
+    module: str,
+    external: set[str],
+    internal: set[str],
+    repo_methods: frozenset[str] | set[str] = frozenset(),
+) -> str:
     """Why did this call not resolve: out of scope, or genuinely missed?
 
     Out of scope means it never could have bound to a repo definition - a
@@ -152,9 +158,18 @@ def _classify_miss(callee: str, module: str, external: set[str], internal: set[s
     if head in internal:
         return "missed"  # points into this repo but did not bind
     if rest:
-        # A method on a local variable. Needs type inference, which this tool
-        # deliberately does not attempt.
-        return "out_of_scope"
+        # A method on a variable whose type an AST cannot know. Sending ALL of these
+        # out of scope removes them from the denominator rather than counting them as
+        # unresolved - and in code written with classes they ARE the calls. An
+        # independent review built a repository where every one of six call sites
+        # targeted a repo definition and this reported 100% over one in-scope call,
+        # listing the methods it had failed to bind as "called by nothing".
+        #
+        # In scope when this repository defines a method of that name somewhere -
+        # `engine.run()` - and out of scope when it does not, which is `response.json()`
+        # and `path.exists()`. The fuller answer is one-assignment type inference, which
+        # `repo-recon` does; this is the honest denominator without it.
+        return "missed" if rest.split(".")[-1] in repo_methods else "out_of_scope"
     return "missed"
 
 
@@ -249,6 +264,8 @@ def resolve(repo: ParsedRepo) -> Resolution:
     imports = _build_import_index(repo)
     mod_syms = _module_symbol_index(repo)
     cls_methods = _class_method_index(repo)
+    # Every method name any class in this repo defines.
+    repo_methods = {name for methods in cls_methods.values() for name in methods}
     externals = _external_names(repo)
     by_qualname = {s.qualname: s for s in repo.symbols}
     class_names = {s.qualname for s in repo.symbols if s.kind == "class"}
@@ -303,7 +320,9 @@ def resolve(repo: ParsedRepo) -> Resolution:
                 )
             else:
                 res.unresolved[call.callee] += 1
-                reason = _classify_miss(call.callee, mod.module, external, internal_names)
+                reason = _classify_miss(
+                    call.callee, mod.module, external, internal_names, repo_methods
+                )
                 if reason == "missed":
                     res.missed[call.callee] += 1
                 else:

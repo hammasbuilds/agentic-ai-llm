@@ -1,14 +1,14 @@
 {
   "name": "rag-forge",
-  "root": "C:\\src\\rag-forge",
+  "root": "D:\\github\\rag-forge",
   "modules": 34,
   "symbols": 128,
   "loc": 2071,
   "total_calls": 624,
-  "in_scope_calls": 146,
+  "in_scope_calls": 159,
   "resolved_calls": 133,
   "resolution_rate": 0.2131,
-  "repo_resolution_rate": 0.911,
+  "repo_resolution_rate": 0.8365,
   "excluded_projects": [],
   "parse_errors": [],
   "core_modules": [
@@ -442,15 +442,31 @@
   ],
   "unresolved_sample": [
     [
+      "store.counts",
+      5
+    ],
+    [
       "seeded.sparse",
       5
     ],
     [
-      "store.counts",
-      2
+      "store.healthy",
+      3
     ],
     [
       "store.sparse",
+      3
+    ],
+    [
+      "store.upsert_document",
+      2
+    ],
+    [
+      "store.add_chunks",
+      2
+    ],
+    [
+      "store.dense",
       2
     ],
     [
@@ -458,15 +474,11 @@
       1
     ],
     [
-      "store.upsert_document",
+      "llm.complete",
       1
     ],
     [
-      "store.add_chunks",
-      1
-    ],
-    [
-      "store.dense",
+      "store.ensure_schema",
       1
     ]
   ]

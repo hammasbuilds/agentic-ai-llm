@@ -45,10 +45,11 @@ run locally on `qwen2.5-coder` at 14B and 3B over MBPP, HumanEval, SWE-bench and
 **The run artifacts are not committed**: reproducing one needs Ollama, both model sizes and
 a GPU, so they are a claim about work done on this machine rather than something this
 repository can show you. What it can show you offline is the measurement code, every
-execution rule it applies, and the eleven tools in [`projects/`](projects) — which do ship
-the data behind their numbers, down to the five JSONs under
-[`projects/01_repo-cartographer`](projects/01_repo-cartographer) that the resolution table
-there is computed from.
+execution rule it applies, and the eleven tools in [`projects/`](projects), whose numbers
+you can reproduce by running them. `repo-cartographer`'s resolution table is the last three
+lines of `cartographer compare <folder>` over every checkout in one folder — it used to
+quote a median across a chosen 29 that nothing in the tool computed, and the five JSONs
+shipped beside it covered five of those rows.
 
 - **BM25 collapses from 74.5% to 8.4%** depending only on whether the issue quotes the file
   path. The same 14B model scores 55.8% on that hard half when naming files freely and

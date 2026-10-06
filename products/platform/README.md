@@ -7,7 +7,7 @@ database, no model, no framework. FastAPI, LangGraph and ollama are optional ext
 lazy imports.
 
 ```
-python -m pytest -q                      # 132 passed, 0 skipped
+python -m pytest -q                      # 127 passed, 9 skipped
 ```
 
 ## What is here

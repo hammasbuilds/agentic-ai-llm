@@ -1,14 +1,14 @@
 {
   "name": "langchain-lab",
-  "root": "C:\\src\\langchain-lab",
+  "root": "D:\\github\\langchain-lab",
   "modules": 35,
   "symbols": 339,
   "loc": 5867,
   "total_calls": 1298,
-  "in_scope_calls": 499,
+  "in_scope_calls": 523,
   "resolved_calls": 487,
   "resolution_rate": 0.3752,
-  "repo_resolution_rate": 0.976,
+  "repo_resolution_rate": 0.9312,
   "excluded_projects": [],
   "parse_errors": [],
   "core_modules": [
@@ -435,6 +435,34 @@
   ],
   "unresolved_sample": [
     [
+      "g.band",
+      4
+    ],
+    [
+      "f.matches",
+      4
+    ],
+    [
+      "agg.add",
+      3
+    ],
+    [
+      "tags.add",
+      3
+    ],
+    [
+      "p.passages_for",
+      3
+    ],
+    [
+      "fact.matches",
+      2
+    ],
+    [
+      "designs.count",
+      2
+    ],
+    [
       "L1Flat.model_validate",
       2
     ],
@@ -443,35 +471,7 @@
       1
     ],
     [
-      "STRATEGIES.items",
-      1
-    ],
-    [
-      "build",
-      1
-    ],
-    [
-      "BY_TAG.get",
-      1
-    ],
-    [
-      "LADDER.values",
-      1
-    ],
-    [
-      "LADDER.items",
-      1
-    ],
-    [
-      "NULLABLE_FIELDS.items",
-      1
-    ],
-    [
-      "L5Union.model_validate",
-      1
-    ],
-    [
-      "DOCUMENT.split",
+      "names.add",
       1
     ]
   ]

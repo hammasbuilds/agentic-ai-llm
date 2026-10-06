@@ -130,7 +130,7 @@ measurement that was never made.
 Reproduce it:
 
 ```bash
-cd 01_revenue-desk && python -m pytest tests/test_real_reverts.py -q     # 13 passed
+cd 01_revenue-desk && python -m pytest tests/test_real_reverts.py -q     # 16 passed
 ```
 
 ## Agents and write authority
@@ -191,7 +191,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 01_revenue-desk
-python -m pytest -q                      # 34 passed
+python -m pytest -q                      # 37 passed, 1 skipped
 PYTHONPATH="src;../platform/src" python -m revenue.app    # console on http://127.0.0.1:8000
 ```
 

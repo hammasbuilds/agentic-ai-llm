@@ -87,19 +87,56 @@ def _compare_command(args: argparse.Namespace) -> int:
             continue
         rows.append((d.name, report_from_graph(graph, top=1), None))
 
+    # Both columns, because the gap between them IS the finding. A table of only
+    # repo-internal rates cannot show that the all-call-sites metric is the broken one.
     print(
-        f"{'repo':28s} {'mods':>5s} {'defs':>6s} {'lines':>8s} {'repo-calls':>11s}  core module"
+        f"{'repo':28s} {'mods':>5s} {'defs':>6s} {'lines':>8s} "
+        f"{'all-calls':>10s} {'repo-calls':>11s}  core module"
     )
     print("-" * 96)
     for name, rep, err in rows:
         if err:
-            print(f"{name:28s} {'-':>5s} {'-':>6s} {'-':>8s} {'-':>11s}  error: {err[:30]}")
+            print(
+                f"{name:28s} {'-':>5s} {'-':>6s} {'-':>8s} {'-':>10s} {'-':>11s}  "
+                f"error: {err[:30]}"
+            )
             continue
         core = rep.core_modules[0].module if rep.core_modules else "-"
         print(
             f"{name:28s} {rep.modules:5d} {rep.symbols:6d} {rep.loc:8,d} "
-            f"{rep.repo_resolution_rate:10.0%}  {core}"
+            f"{rep.resolution_rate:9.0%} {rep.repo_resolution_rate:10.0%}  {core}"
         )
+
+    # The summary the README quotes. It used to quote a median that nothing here
+    # computed - `grep -rni median src/` found nothing - so the headline number had no
+    # source in the tool that was supposed to produce it. Empty checkouts were skipped
+    # silently and never counted, which is the denominator doing quiet work.
+    measured = [rep for _, rep, err in rows if rep is not None and err is None]
+    rates = sorted(rep.repo_resolution_rate for rep in measured)
+    failed = [name for name, rep, err in rows if err]
+    empty = len(repos) - len(measured) - len(failed)
+    print("-" * 96)
+    if rates:
+        middle = len(rates) // 2
+        median = rates[middle] if len(rates) % 2 else (rates[middle - 1] + rates[middle]) / 2
+        all_rates = sorted(rep.resolution_rate for rep in measured)
+        a_mid = len(all_rates) // 2
+        all_median = (
+            all_rates[a_mid]
+            if len(all_rates) % 2
+            else (all_rates[a_mid - 1] + all_rates[a_mid]) / 2
+        )
+        print(
+            f"{len(measured)} repositories measured, "
+            f"{sum(1 for r in rates if r >= 0.90)} at or above 90%, "
+            f"median {median:.0%} repo-internal against {all_median:.0%} over all call sites"
+        )
+        print(
+            f"{sum(rep.modules for rep in measured):,} modules, "
+            f"{sum(rep.loc for rep in measured):,} lines, "
+            f"{sum(len(rep.parse_errors) for rep in measured)} file(s) that did not parse"
+        )
+    print(f"{empty} checkout(s) held no Python and were skipped; {len(failed)} failed to read")
     return 0
 
 

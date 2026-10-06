@@ -1,23 +1,32 @@
 {
   "name": "mcp-lab",
-  "root": "C:\\src\\mcp-lab",
-  "modules": 52,
-  "symbols": 299,
-  "loc": 5932,
-  "total_calls": 1649,
-  "in_scope_calls": 214,
-  "resolved_calls": 195,
-  "resolution_rate": 0.1183,
-  "repo_resolution_rate": 0.9112,
+  "root": "D:\\github\\mcp-lab",
+  "modules": 55,
+  "symbols": 348,
+  "loc": 6485,
+  "total_calls": 1777,
+  "in_scope_calls": 261,
+  "resolved_calls": 196,
+  "resolution_rate": 0.1103,
+  "repo_resolution_rate": 0.751,
   "excluded_projects": [],
   "parse_errors": [],
   "core_modules": [
+    {
+      "module": "conftest",
+      "path": "conftest.py",
+      "loc": 76,
+      "symbols": 3,
+      "importance": 0.01818,
+      "imports": [],
+      "imported_by": []
+    },
     {
       "module": "projects.01_mcp_redteam_platform.agent",
       "path": "projects/01_mcp_redteam_platform/agent/__init__.py",
       "loc": 1,
       "symbols": 0,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -26,7 +35,7 @@
       "path": "projects/01_mcp_redteam_platform/agent/client.py",
       "loc": 124,
       "symbols": 6,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -35,7 +44,7 @@
       "path": "projects/01_mcp_redteam_platform/config.py",
       "loc": 27,
       "symbols": 1,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -44,7 +53,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/__init__.py",
       "loc": 1,
       "symbols": 0,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -53,7 +62,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/common.py",
       "loc": 15,
       "symbols": 1,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -62,7 +71,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/decoy_tools.py",
       "loc": 64,
       "symbols": 4,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -71,7 +80,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/m1_answer_leakage.py",
       "loc": 121,
       "symbols": 7,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -80,7 +89,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/m2_tool_poisoning.py",
       "loc": 107,
       "symbols": 4,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -89,7 +98,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/m3_path_traversal.py",
       "loc": 64,
       "symbols": 1,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -98,7 +107,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/m4_lethal_trifecta.py",
       "loc": 97,
       "symbols": 5,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     },
@@ -107,16 +116,7 @@
       "path": "projects/01_mcp_redteam_platform/redteam/m5_tool_bloat.py",
       "loc": 87,
       "symbols": 4,
-      "importance": 0.01923,
-      "imports": [],
-      "imported_by": []
-    },
-    {
-      "module": "projects.01_mcp_redteam_platform.redteam.run_all",
-      "path": "projects/01_mcp_redteam_platform/redteam/run_all.py",
-      "loc": 36,
-      "symbols": 1,
-      "importance": 0.01923,
+      "importance": 0.01818,
       "imports": [],
       "imported_by": []
     }
@@ -154,7 +154,7 @@
       "name": "score_example",
       "kind": "function",
       "path": "projects/02_hotpotqa_multihop_rag/pipeline.py",
-      "line": 300,
+      "line": 310,
       "fan_in": 0,
       "docstring": null
     },
@@ -190,7 +190,7 @@
       "name": "two_hop_retrieve",
       "kind": "function",
       "path": "projects/02_hotpotqa_multihop_rag/pipeline.py",
-      "line": 175,
+      "line": 183,
       "fan_in": 0,
       "docstring": "Two-hop dense retrieval."
     },
@@ -213,6 +213,15 @@
       "docstring": "Return a list of merged test cases for a category."
     },
     {
+      "qualname": "tests.test_03_bfcl.test_live_ollama_end_to_end_on_one_case",
+      "name": "test_live_ollama_end_to_end_on_one_case",
+      "kind": "function",
+      "path": "tests/test_03_bfcl.py",
+      "line": 203,
+      "fan_in": 0,
+      "docstring": "Full pipeline against a real local Ollama model on one real BFCL case."
+    },
+    {
       "qualname": "projects.04_swebench_coding_agent.patch_generator.generate_patch",
       "name": "generate_patch",
       "kind": "function",
@@ -220,15 +229,6 @@
       "line": 73,
       "fan_in": 0,
       "docstring": null
-    },
-    {
-      "qualname": "projects.06_fever_fact_verification.verdict.get_verdict",
-      "name": "get_verdict",
-      "kind": "function",
-      "path": "projects/06_fever_fact_verification/verdict.py",
-      "line": 82,
-      "fan_in": 0,
-      "docstring": "Call the local Ollama chat model and return {label, raw_response}."
     }
   ],
   "most_called": [
@@ -273,7 +273,7 @@
       "name": "normalize_answer",
       "kind": "function",
       "path": "projects/02_hotpotqa_multihop_rag/pipeline.py",
-      "line": 253,
+      "line": 263,
       "fan_in": 4,
       "docstring": null
     },
@@ -309,7 +309,7 @@
       "name": "HopTrace",
       "kind": "class",
       "path": "projects/02_hotpotqa_multihop_rag/pipeline.py",
-      "line": 85,
+      "line": 93,
       "fan_in": 3,
       "docstring": null
     },
@@ -318,7 +318,7 @@
       "name": "embed_texts",
       "kind": "function",
       "path": "projects/02_hotpotqa_multihop_rag/pipeline.py",
-      "line": 156,
+      "line": 164,
       "fan_in": 3,
       "docstring": "Batch-embed via Ollama's /api/embed endpoint."
     },
@@ -343,15 +343,43 @@
   ],
   "unresolved_sample": [
     [
+      "tools.read_file",
+      16
+    ],
+    [
       "progress_cb",
       16
+    ],
+    [
+      "tools.notify_user",
+      12
+    ],
+    [
+      "session.run_turn",
+      4
+    ],
+    [
+      "tools.query_records",
+      3
+    ],
+    [
+      "tools.search_docs",
+      2
+    ],
+    [
+      "spec._stub",
+      2
     ],
     [
       "func",
       2
     ],
     [
-      "CitedAnswer.model_validate",
+      "result.status_for",
+      2
+    ],
+    [
+      "session.list_tool_descriptions",
       1
     ]
   ]

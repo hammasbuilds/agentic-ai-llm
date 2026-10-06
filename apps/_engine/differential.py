@@ -131,7 +131,7 @@ def _src(node: ast.expr) -> str:
 
 
 _PROBE = """\
-import json, sys
+import copy, json, sys
 {setup}
 _NS_REF = {{}}
 _NS_MUT = {{}}
@@ -141,8 +141,13 @@ f_ref = _NS_REF[{fn!r}]
 f_mut = _NS_MUT[{fn!r}]
 
 def _call(f, args):
+    # A fresh copy per call. Both programs were handed the SAME object, so a function
+    # that mutates its argument gave the mutant pre-mutated input - and the prober then
+    # reported a separating input between a program and itself. Measured over the first
+    # 150 MBPP problems: 2 of 66 "proven wrong" survivors were artefacts of this, and
+    # the `mut` value shown in the witness table was not what the mutant produces.
     try:
-        return ("ok", repr(f(*args)))
+        return ("ok", repr(f(*copy.deepcopy(args))))
     except Exception as e:
         return ("exc", type(e).__name__)
 
