@@ -219,3 +219,55 @@ def test_a_submitted_run_shows_up_on_the_history_page(path, monkeypatch):
 
     assert history.status_code == 200
     assert job_id in history.text, "the run is not on the page that lists runs"
+
+
+# -- a finished job whose result the template cannot render -------------------------
+#
+# It raised out of Jinja and came back as a 500, which HTMX swaps in as nothing. The
+# page then sits on "Still running…" for a job that finished - the worst of the
+# available outcomes, because the only thing the reader can tell is the one thing that
+# is false. Every path into it is ordinary: a result cached by an earlier version of
+# the app, which job state in Redis outlives a deploy to produce; a graph that exited
+# early and finished with `{}`; a key renamed in the app and not in its template.
+#
+# Driven through `cache._LOCAL_JOBS`, the in-process fallback `get_job` merges over
+# Redis, so no broker is needed and the route is the real one.
+
+DRIFTED_RESULTS = {
+    "empty": "{}",
+    "a renamed key": '{"unexpected": 1}',
+    "not an object": '"a plain string"',
+    "not json at all": "oops",
+}
+
+
+@pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
+@pytest.mark.parametrize("shape", sorted(DRIFTED_RESULTS))
+def test_a_result_the_template_cannot_render_is_a_fragment_not_a_500(path, shape):
+    module = load(path)
+    cache._LOCAL_JOBS["j"] = {
+        "status": "done",
+        "slug": module.app.title,
+        "result": DRIFTED_RESULTS[shape],
+    }
+    with TestClient(module.app, raise_server_exceptions=False) as client:
+        response = client.get("/job/j/result")
+
+    assert response.status_code == 200, (shape, response.text[:200])
+    # Either the template coped, or it said so. What it may never do is claim a
+    # finished job is still running, which is what a 500 made the page show.
+    assert "Still running" not in response.text, shape
+    if "cannot display its result" in response.text:
+        assert "Keys in it:" in response.text, shape
+
+
+@pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
+def test_a_job_that_has_not_finished_still_says_so(path):
+    """The fallback must not swallow the running case. Those are different answers,
+    and the defect was one of them being shown for the other."""
+    module = load(path)
+    cache._LOCAL_JOBS["j"] = {"status": "running", "slug": module.app.title}
+    with TestClient(module.app) as client:
+        response = client.get("/job/j/result")
+    assert response.status_code == 200
+    assert "Still running" in response.text

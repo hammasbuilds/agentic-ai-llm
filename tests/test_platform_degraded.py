@@ -34,8 +34,8 @@ def run(coro):
 
 def test_the_same_request_gets_the_same_key():
     """Several apps ask the model identical questions; that is what the cache is for."""
-    a = cache.gen_key("qwen2.5-coder:14b", "write a function", 0.0, 7)
-    b = cache.gen_key("qwen2.5-coder:14b", "write a function", 0.0, 7)
+    a = cache.gen_key("qwen2.5-coder:14b", "write a function", 0.0, 7, 512)
+    b = cache.gen_key("qwen2.5-coder:14b", "write a function", 0.0, 7, 512)
     assert a == b
 
 
@@ -45,11 +45,16 @@ def test_the_same_request_gets_the_same_key():
         # Every component has to be in the key. A collision here serves one app's
         # generation as another's, and the apps compare models and temperatures for a
         # living - so a key that ignored either would quietly make two arms identical.
-        (("m1", "p", 0.0, 1), ("m2", "p", 0.0, 1)),
-        (("m", "prompt a", 0.0, 1), ("m", "prompt b", 0.0, 1)),
-        (("m", "p", 0.0, 1), ("m", "p", 0.8, 1)),
-        (("m", "p", 0.0, 1), ("m", "p", 0.0, 2)),
-        (("m", "p", 0.0, None), ("m", "p", 0.0, 0)),
+        #
+        # This comment said "every component" while the list was missing one:
+        # `num_predict` was passed to ollama and left out of the key, so the last row
+        # below is the case this file claimed to cover and did not.
+        (("m1", "p", 0.0, 1, 512), ("m2", "p", 0.0, 1, 512)),
+        (("m", "prompt a", 0.0, 1, 512), ("m", "prompt b", 0.0, 1, 512)),
+        (("m", "p", 0.0, 1, 512), ("m", "p", 0.8, 1, 512)),
+        (("m", "p", 0.0, 1, 512), ("m", "p", 0.0, 2, 512)),
+        (("m", "p", 0.0, None, 512), ("m", "p", 0.0, 0, 512)),
+        (("m", "p", 0.0, 1, 512), ("m", "p", 0.0, 1, 128)),
     ],
 )
 def test_different_requests_get_different_keys(first, second):
@@ -58,7 +63,7 @@ def test_different_requests_get_different_keys(first, second):
 
 def test_the_key_is_bounded_and_prefixed():
     """Keys share a namespace with job state, and cache_stats scans by that prefix."""
-    key = cache.gen_key("m", "p" * 100_000, 0.0, None)
+    key = cache.gen_key("m", "p" * 100_000, 0.0, None, 512)
     assert key.startswith(cache.GEN_PREFIX)
     assert len(key) < 80
 
@@ -68,11 +73,11 @@ def test_the_key_is_bounded_and_prefixed():
 
 def test_a_cold_cache_reads_as_a_miss_rather_than_an_error():
     """ "A cold cache is slow, not broken" - the comment in the code, tested."""
-    assert run(cache.get_generation("m", "p", 0.0, None)) is None
+    assert run(cache.get_generation("m", "p", 0.0, None, 512)) is None
 
 
 def test_writing_to_a_cache_that_is_not_there_is_not_an_error():
-    run(cache.put_generation("m", "p", 0.0, None, "an answer"))
+    run(cache.put_generation("m", "p", 0.0, None, "an answer", 512))
 
 
 def test_cache_stats_reports_no_hit_rate_rather_than_a_zero_one():
@@ -180,7 +185,7 @@ def test_a_degraded_call_costs_well_under_a_second(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(cache, "REDIS_URL", "redis://127.0.0.1:1/0")
     monkeypatch.setattr(cache, "_down_until", 0.0)  # not already short-circuited
     started = time.perf_counter()
-    assert run(cache.get_generation("m", "p", 0.0, None)) is None
+    assert run(cache.get_generation("m", "p", 0.0, None, 512)) is None
     assert time.perf_counter() - started < 2.0
 
 

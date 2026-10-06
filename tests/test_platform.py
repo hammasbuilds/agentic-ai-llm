@@ -61,16 +61,45 @@ def test_unknown_theme_is_rejected():
 
 
 def test_cache_key_is_stable():
-    a = gen_key("m", "prompt", 0.0, None)
-    b = gen_key("m", "prompt", 0.0, None)
+    a = gen_key("m", "prompt", 0.0, None, 512)
+    b = gen_key("m", "prompt", 0.0, None, 512)
     assert a == b
 
 
-def test_cache_key_separates_temperature_and_seed():
-    base = gen_key("m", "p", 0.0, None)
-    assert gen_key("m", "p", 0.7, None) != base
-    assert gen_key("m", "p", 0.0, 1) != base
-    assert gen_key("m2", "p", 0.0, None) != base
+def test_cache_key_separates_every_argument_that_changes_the_answer():
+    base = gen_key("m", "p", 0.0, None, 512)
+    assert gen_key("m", "p", 0.7, None, 512) != base
+    assert gen_key("m", "p", 0.0, 1, 512) != base
+    assert gen_key("m2", "p", 0.0, None, 512) != base
+    # `num_predict` was not in the key. It caps the generation, so a prompt asked with
+    # a limit of 128 could be served the answer produced at 512 - and `localize_eval`
+    # asks at both through this cache.
+    assert gen_key("m", "p", 0.0, None, 128) != base
+
+
+def test_the_key_covers_every_parameter_the_caller_can_vary():
+    """The test above names its arguments one at a time, so a new parameter is simply
+    absent from it - which is how `num_predict` stayed out of the key while a test
+    called `..._separates_temperature_and_seed` passed.
+
+    This reads the signature instead. Anything a caller can pass and the key does not
+    cover is a cache that answers a question it was not asked.
+    """
+    import inspect
+
+    covered = set(inspect.signature(gen_key).parameters)
+    assert covered == {"model", "prompt", "temperature", "seed", "num_predict"}
+
+    from apps._platform import model as platform_model
+
+    generate = set(inspect.signature(platform_model.generate).parameters)
+    # What `generate` takes and the key does not: these must each be a parameter that
+    # cannot change the text that comes back.
+    uncovered = generate - covered
+    # `timeout` bounds how long to wait and `use_cache` decides whether to consult
+    # the cache at all. Neither can change the text that comes back, which is the test
+    # a parameter has to pass to be allowed out of the key.
+    assert uncovered <= {"timeout", "use_cache"}, uncovered
 
 
 # --- form coercion -------------------------------------------------------------------

@@ -52,33 +52,39 @@ def redis(monkeypatch):
 
 
 def test_a_generation_written_is_the_generation_read_back(redis):
-    run(cache.put_generation("m", "prompt", 0.0, 1, "the answer"))
-    assert run(cache.get_generation("m", "prompt", 0.0, 1)) == "the answer"
+    run(cache.put_generation("m", "prompt", 0.0, 1, "the answer", 512))
+    assert run(cache.get_generation("m", "prompt", 0.0, 1, 512)) == "the answer"
 
 
 @pytest.mark.parametrize(
     "other",
     [
-        ("m2", "prompt", 0.0, 1),
-        ("m", "prompt2", 0.0, 1),
-        ("m", "prompt", 0.7, 1),
-        ("m", "prompt", 0.0, 2),
+        ("m2", "prompt", 0.0, 1, 512),
+        ("m", "prompt2", 0.0, 1, 512),
+        ("m", "prompt", 0.7, 1, 512),
+        ("m", "prompt", 0.0, 2, 512),
+        ("m", "prompt", 0.0, 1, 128),
     ],
-    ids=["model", "prompt", "temperature", "seed"],
+    ids=["model", "prompt", "temperature", "seed", "num_predict"],
 )
 def test_every_part_of_the_key_separates_two_generations(redis, other):
     """Not just that the keys differ - that the stored value does not leak across.
 
     `test_platform_degraded.py` asserts the keys are unequal, which it can do with no
     Redis. With one, the stronger claim is checkable: a lookup differing in any one of
-    the four parts must miss, or one app serves another app's answer.
+    the five parts must miss, or one app serves another app's answer.
+
+    `num_predict` was not one of them, and was not in the key either. It caps the
+    generation, so the leak it allowed was a reply truncated where the caller allowed
+    more, or longer than the caller asked for - and `localize_eval` asks at 256 and
+    128 through this same cache.
     """
-    run(cache.put_generation("m", "prompt", 0.0, 1, "the answer"))
+    run(cache.put_generation("m", "prompt", 0.0, 1, "the answer", 512))
     assert run(cache.get_generation(*other)) is None
 
 
 def test_a_miss_is_a_miss_and_not_an_error(redis):
-    assert run(cache.get_generation("m", "never written", 0.0, None)) is None
+    assert run(cache.get_generation("m", "never written", 0.0, None, 512)) is None
 
 
 # -- the hit rate, over this cache's own lookups -------------------------------
@@ -93,11 +99,11 @@ def test_the_hit_rate_counts_this_caches_lookups_and_nothing_else(redis):
     rate. Here: three generation lookups, one hit, plus unrelated traffic that must not
     appear in the figure.
     """
-    run(cache.put_generation("m", "a", 0.0, None, "A"))
+    run(cache.put_generation("m", "a", 0.0, None, "A", 512))
 
-    assert run(cache.get_generation("m", "a", 0.0, None)) == "A"  # hit
-    assert run(cache.get_generation("m", "b", 0.0, None)) is None  # miss
-    assert run(cache.get_generation("m", "c", 0.0, None)) is None  # miss
+    assert run(cache.get_generation("m", "a", 0.0, None, 512)) == "A"  # hit
+    assert run(cache.get_generation("m", "b", 0.0, None, 512)) is None  # miss
+    assert run(cache.get_generation("m", "c", 0.0, None, 512)) is None  # miss
 
     # Traffic that is not a generation lookup. Under the old implementation each of
     # these moved the keyspace counters and therefore the reported hit rate.

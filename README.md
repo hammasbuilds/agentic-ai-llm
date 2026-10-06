@@ -77,7 +77,7 @@ The columns these apps read are committed under
 [`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
 `data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
 guarantee by pointing both variables at an empty directory, and the suite gives the same
-result either way: **906 tests collected**. Measured 2026-10-06, 867 of them pass and 39
+result either way: **985 tests collected**. Measured 2026-10-06, 946 of them pass and 39
 skip here; on a fresh clone the split moves because three suites read data that is not in
 the repository.
 

@@ -44,7 +44,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest ruff
+      # Pinned to the same specifier the dev group uses. Unpinned, this job and
+      # the `platform` job above lint the same tree with whatever two ruff versions
+      # pip and uv each resolved that morning - and `ruff format` output changes
+      # between minor versions, so the failure is a formatting diff in files nobody
+      # touched. `tests/test_ci_pins.py` keeps the two specifiers equal.
+      - run: pip install "pytest>=8" "ruff>=0.16,<0.17"
       # Lint them too. CI checked only `apps tests`, so 56 errors accumulated in
       # projects/ unseen - including unused imports in shipped CLI modules. Each
       # package has its own ruff config and ruff honours the nearest one, so this is
@@ -57,5 +62,11 @@ jobs:
       # package's own 96-column limit.
       - name: Check formatting in every sub-package
         run: ruff format --check projects products scripts worker.py
-      - name: Every sub-package
-        run: python scripts/test_all.py
+      # `--fresh` is what makes this the run the READMEs describe: REPOS_ROOT, the
+      # HF caches and every endpoint pointed at an empty directory. Without it the
+      # sweep reads whatever the runner happens to have - and `REPOS_ROOT` defaults
+      # to the parent of the checkout, which on a runner is not empty. The recorded
+      # counts are all measured with it, so a sweep without it is not comparable to
+      # the figures it is being checked against.
+      - name: Every sub-package, on a fresh clone
+        run: python scripts/test_all.py --fresh

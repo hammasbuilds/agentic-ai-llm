@@ -110,18 +110,30 @@ async def ping() -> bool:
 # --- generation cache ----------------------------------------------------------------
 
 
-def gen_key(model: str, prompt: str, temperature: float, seed: int | None) -> str:
+def gen_key(model: str, prompt: str, temperature: float, seed: int | None, num_predict: int) -> str:
+    """Every input that changes the answer, and nothing else.
+
+    `num_predict` was missing. It is passed to ollama as an option and caps the
+    generation, so two calls differing only in it get different answers - and shared
+    one key. `localize_eval` asks for 256 tokens on the locate prompt and 128 on the
+    rerank through this same cache, so a prompt asked at one limit could be served the
+    answer generated at the other: a reply truncated where the caller allowed more, or
+    longer than the caller asked for, with nothing to indicate either.
+
+    Adding it changes every digest, so the existing entries are missed once rather
+    than returned wrongly. That is the right direction for a key that was too narrow.
+    """
     digest = hashlib.sha256(
-        json.dumps([model, prompt, temperature, seed], sort_keys=True).encode()
+        json.dumps([model, prompt, temperature, seed, num_predict], sort_keys=True).encode()
     ).hexdigest()
     return f"{GEN_PREFIX}{digest[:40]}"
 
 
 async def get_generation(
-    model: str, prompt: str, temperature: float, seed: int | None
+    model: str, prompt: str, temperature: float, seed: int | None, num_predict: int
 ) -> str | None:
     try:
-        found = await call(client().get, gen_key(model, prompt, temperature, seed))
+        found = await call(client().get, gen_key(model, prompt, temperature, seed, num_predict))
     except Exception:
         return None  # a cold cache is slow, not broken
     # Counted here, on this cache's own keys. `cache_stats` used to divide Redis'
@@ -136,10 +148,20 @@ async def get_generation(
 
 
 async def put_generation(
-    model: str, prompt: str, temperature: float, seed: int | None, response: str
+    model: str,
+    prompt: str,
+    temperature: float,
+    seed: int | None,
+    response: str,
+    num_predict: int,
 ) -> None:
     with suppress(Exception):
-        await call(client().set, gen_key(model, prompt, temperature, seed), response, ex=GEN_TTL)
+        await call(
+            client().set,
+            gen_key(model, prompt, temperature, seed, num_predict),
+            response,
+            ex=GEN_TTL,
+        )
 
 
 #: What `cache_stats` returns when Redis cannot be read. `hit_rate` is None rather than

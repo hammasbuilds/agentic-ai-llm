@@ -13,7 +13,9 @@ UI says so, because a demo that only works with the full stack up is a demo nobo
 from __future__ import annotations
 
 import asyncio
+import html
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -184,15 +186,44 @@ def create_app(
 
     @app.get("/job/{job_id}/result", response_class=HTMLResponse)
     async def job_result(request: Request, job_id: str):
-        """The rendered result fragment; HTMX swaps this in when the stream ends."""
+        """The rendered result fragment; HTMX swaps this in when the stream ends.
+
+        A result whose shape the template does not expect used to raise out of Jinja
+        and come back as a 500, which HTMX swaps in as nothing at all - the page sits
+        on "Still running…" for a job that finished. Any of these produced it:
+
+          * a result cached by an older version of the app, which is the ordinary case
+            because job state outlives a deploy in Redis;
+          * a run that finished with `{}` because its graph exited early;
+          * a key renamed in the app and not in its template.
+
+        The fragment below says which keys the result actually has, because the thing
+        a reader needs is the difference between "it failed" and "it finished and this
+        page cannot show it". The traceback still goes to the log; it is just not the
+        only place the failure appears.
+        """
         job = await cache.get_job(job_id)
         if job is None or job.get("status") != "done":
             return HTMLResponse('<p class="muted">Still running…</p>')
-        return tpl.TemplateResponse(
-            request,
-            result_template,
-            ctx(request, job=job, result=job.get("result", {}), job_id=job_id),
-        )
+        result = job.get("result", {})
+        try:
+            return tpl.TemplateResponse(
+                request,
+                result_template,
+                ctx(request, job=job, result=result, job_id=job_id),
+            )
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "%s: cannot render the result of job %s", slug, job_id
+            )
+            names = sorted(map(str, result)) if isinstance(result, dict) else []
+            keys = ", ".join(names) if names else "none"
+            return HTMLResponse(
+                '<p class="muted">This job finished, and this page cannot display its '
+                f"result. Keys in it: {html.escape(keys)}. The reason is in the "
+                "server log.</p>",
+                status_code=200,
+            )
 
     @app.get("/history", response_class=HTMLResponse)
     async def history(request: Request):

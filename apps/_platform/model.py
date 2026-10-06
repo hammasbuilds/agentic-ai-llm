@@ -44,7 +44,7 @@ async def generate(
 ) -> str | None:
     """One completion. None only if the model could not be reached."""
     if use_cache:
-        hit = await cache.get_generation(model, prompt, temperature, seed)
+        hit = await cache.get_generation(model, prompt, temperature, seed, num_predict)
         if hit is not None:
             return hit
 
@@ -63,7 +63,7 @@ async def generate(
         return None
 
     if use_cache:
-        await cache.put_generation(model, prompt, temperature, seed, text)
+        await cache.put_generation(model, prompt, temperature, seed, text, num_predict)
     return text
 
 
