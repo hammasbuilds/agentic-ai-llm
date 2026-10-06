@@ -156,3 +156,68 @@ def test_completion_is_announced_on_the_events_topic():
     client.post("/approvals/r1/approve")
     events = rt.bus.poll("crm.events", "audit")
     assert [e.value["event"] for e in events] == ["completed"]
+
+
+# -- a pass that moved nothing forward ------------------------------------
+
+
+def _always_failing_runtime() -> api.Runtime:
+    def boom(state):
+        raise RuntimeError("tool exploded")
+
+    return api.Runtime(
+        domain="crm",
+        bus=InMemoryBus(),
+        store=InMemoryStore(),
+        graph=Graph(nodes={"a": Node("a", graphs.TOOL, boom)}, entry="a", edges={"a": END}),
+    )
+
+
+def test_a_pass_where_every_run_failed_does_not_report_like_a_pass_that_worked():
+    """`drain` returned a count of messages taken off the topic, and nothing else.
+
+    Three runs into the dead-letter queue and three runs completed both answered
+    `handled: 3`. The console drew that number as progress, so a worker whose every
+    execution was failing looked identical to one doing the work.
+    """
+    rt = _always_failing_runtime()
+    client = TestClient(api.create_app(rt))
+    for i in range(3):
+        client.post("/intake", json={"run_id": f"r{i}", "entity": "4192"})
+
+    result = rt.drain()
+    assert result.handled == 3
+    assert (result.done, result.failed, result.awaiting_approval) == (0, 3, 0)
+    assert len(rt.bus.poll("crm.dlq", "humans")) == 3
+    assert result == 3  # the old reading still works, and is now the sum of three
+
+
+def test_an_empty_pass_commits_nothing_and_says_nothing_happened():
+    rt = _always_failing_runtime()
+    result = rt.drain()
+    assert (result.handled, result.done, result.failed, result.awaiting_approval) == (
+        0,
+        0,
+        0,
+        0,
+    )
+
+
+def test_a_batch_is_acknowledged_by_the_worker_rather_than_by_polling():
+    """So a worker that dies part-way through a batch has not consumed it.
+
+    `poll` used to move the committed offset itself, which left `commit` with no
+    callers anywhere in the repository and made the dead-letter queue the only way a
+    message could survive a crash - it was not.
+    """
+    rt = _always_failing_runtime()
+    client = TestClient(api.create_app(rt))
+    client.post("/intake", json={"run_id": "r1", "entity": "4192"})
+
+    assert rt.bus.lag("crm.tasks", rt.group) == 1
+    rt.bus.poll("crm.tasks", rt.group, limit=10)  # polled, then the worker dies
+    assert rt.bus.lag("crm.tasks", rt.group) == 1, "polling is not finishing"
+    rt.bus.restart("crm.tasks", rt.group)
+
+    assert rt.drain().handled == 1, "redelivered to the restarted worker"
+    assert rt.bus.lag("crm.tasks", rt.group) == 0, "and acknowledged once it was handled"

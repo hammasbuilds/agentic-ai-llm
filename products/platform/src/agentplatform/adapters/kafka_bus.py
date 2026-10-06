@@ -16,6 +16,8 @@ import json
 from dataclasses import dataclass, field
 
 from ..ports import Message
+from .probe import Probe
+from .probe import probe as probe_target
 
 
 @dataclass
@@ -135,7 +137,27 @@ class KafkaBus:
         return out[:limit]
 
     def commit(self, topic: str, group: str, offsets: dict | None = None) -> None:
-        self.consumer(topic, group).commit()
+        """Acknowledge, for every assigned partition or for the named ones only.
+
+        The `offsets` argument used to be accepted and discarded: the call was
+        `consumer.commit()` whatever was passed, which acknowledges the consumer's
+        whole position. A worker handing back a partial acknowledgement - the one
+        partition it finished - therefore acknowledged the entire batch, and the rest
+        of it was never redelivered. Silent message loss, from an argument that
+        looked honoured because the signature named it.
+        """
+        consumer = self.consumer(topic, group)
+        if offsets is None:
+            consumer.commit()
+            return
+        from kafka import OffsetAndMetadata, TopicPartition  # noqa: PLC0415 — optional extra
+
+        consumer.commit(
+            {
+                TopicPartition(topic, int(partition)): OffsetAndMetadata(int(offset), "", -1)
+                for partition, offset in offsets.items()
+            }
+        )
 
     def rewind(self, topic: str, group: str) -> None:
         consumer = self.consumer(topic, group)
@@ -171,12 +193,23 @@ class KafkaBus:
             self._producer.close()
             self._producer = None
 
+    def probe(self) -> Probe:
+        """Verify, rather than assume. Constructing a producer is not proof.
+
+        Returns *why*, not just whether: this adapter imports `kafka-python` and the
+        `infra` extra declared `confluent-kafka`, so the common failure here was a
+        missing client library reported as a missing broker.
+        """
+
+        def contact() -> bool:
+            producer = self.producer()
+            return bool(
+                producer.partitions_for("__reachability_probe")
+                or producer.bootstrap_connected()
+            )
+
+        return probe_target(self.bootstrap, contact, requires="kafka-python")
+
     def reachable(self) -> bool:
-        """Verify, rather than assume. Constructing a producer is not proof."""
-        try:
-            return bool(self.producer().partitions_for("__reachability_probe"))
-        except Exception:  # noqa: BLE001 — reachability is a boolean
-            try:
-                return bool(self.producer().bootstrap_connected())
-            except Exception:  # noqa: BLE001
-                return False
+        """Kept for callers that only want the boolean."""
+        return bool(self.probe())

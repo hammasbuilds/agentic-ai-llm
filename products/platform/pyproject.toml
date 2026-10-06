@@ -26,7 +26,11 @@ ollama = ["httpx>=0.27"]
 # Everything runs on graphs.run() without it, which is why it is not required.
 langgraph = ["langgraph>=0.2", "langchain-core>=0.3", "langchain-ollama>=0.2"]
 # What a deployment actually binds the ports to.
-infra = ["redis>=5", "psycopg[binary]>=3.2", "confluent-kafka>=2.5"]
+# kafka-python, not confluent-kafka: the adapter imports `kafka` and uses
+# KafkaProducer/KafkaConsumer. Declaring the other one installed a library
+# nothing here imports, and the adapter failed with ModuleNotFoundError while
+# the contract test skipped blaming the broker.
+infra = ["redis>=5", "psycopg[binary]>=3.2", "kafka-python>=2.0"]
 
 [build-system]
 requires = ["uv_build>=0.12.12,<0.13.0"]

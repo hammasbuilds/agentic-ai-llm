@@ -39,13 +39,65 @@ def test_rewinding_replays_the_log():
     assert len(bus.poll("crm.events", "audit")) == 1
 
 
-def test_lag_is_what_is_not_yet_consumed():
+def test_lag_is_what_is_not_yet_acknowledged():
+    """Polling is not finishing, so polling alone does not reduce lag.
+
+    It used to: `poll` moved the committed offset itself, so a batch read and not
+    yet processed counted as caught up. Lag read zero while the work was still
+    outstanding, and `commit` - which the Bus protocol declares - had no callers
+    anywhere in the repository.
+    """
     bus = InMemoryBus()
     bus.publish("crm.tasks", "deal:1", {"n": 1})
     bus.publish("crm.tasks", "deal:2", {"n": 2})
     assert bus.lag("crm.tasks", "workers") == 2
+
     bus.poll("crm.tasks", "workers", limit=1)
+    assert bus.lag("crm.tasks", "workers") == 2, "read, not acknowledged"
+    assert bus.in_flight("crm.tasks", "workers") == 1
+
+    bus.commit("crm.tasks", "workers")
     assert bus.lag("crm.tasks", "workers") == 1
+    assert bus.in_flight("crm.tasks", "workers") == 0
+
+
+def test_an_uncommitted_message_is_delivered_again_after_a_restart():
+    """At-least-once, which is what a dead-letter queue downstream assumes.
+
+    Before, a worker that polled and then died had consumed the message: the
+    committed offset had already moved past it and nothing would ever hand it back.
+    """
+    bus = InMemoryBus()
+    bus.publish("crm.tasks", "deal:1", {"n": 1})
+
+    first = bus.poll("crm.tasks", "workers", limit=10)
+    assert [m.value["n"] for m in first] == [1]
+    assert bus.poll("crm.tasks", "workers", limit=10) == [], "not redelivered to a live reader"
+
+    bus.restart("crm.tasks", "workers")  # the worker died before committing
+    again = bus.poll("crm.tasks", "workers", limit=10)
+    assert [m.value["n"] for m in again] == [1]
+
+    bus.commit("crm.tasks", "workers")
+    bus.restart("crm.tasks", "workers")
+    assert bus.poll("crm.tasks", "workers", limit=10) == [], "acknowledged, so not again"
+
+
+def test_committing_one_partition_leaves_the_rest_redeliverable():
+    """A worker that handled part of a batch acknowledges only that part."""
+    bus = InMemoryBus(partitions=4)
+    for i in range(8):
+        bus.publish("crm.tasks", f"deal:{i}", {"n": i})
+
+    polled = bus.poll("crm.tasks", "workers", limit=10)
+    assert len(polled) == 8
+    done = polled[0].partition
+    offsets = {done: max(m.offset for m in polled if m.partition == done) + 1}
+    bus.commit("crm.tasks", "workers", offsets)
+
+    bus.restart("crm.tasks", "workers")
+    again = bus.poll("crm.tasks", "workers", limit=10)
+    assert {m.partition for m in again} == {m.partition for m in polled} - {done}
 
 
 def test_the_store_copies_rather_than_aliasing():

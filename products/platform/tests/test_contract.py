@@ -33,7 +33,7 @@ def caches():
     yield pytest.param(
         real,
         id="redis",
-        marks=pytest.mark.skipif(not real.ping(), reason="no redis on " + REDIS),
+        marks=pytest.mark.skipif(not (seen := real.probe()), reason=seen.reason),
     )
 
 
@@ -70,7 +70,7 @@ def stores():
     yield pytest.param(
         real,
         id="postgres",
-        marks=pytest.mark.skipif(not real.reachable(), reason="no postgres"),
+        marks=pytest.mark.skipif(not (seen := real.probe()), reason=seen.reason),
     )
 
 
@@ -104,7 +104,7 @@ def buses():
     yield pytest.param(
         real,
         id="kafka",
-        marks=pytest.mark.skipif(not real.reachable(), reason="no broker on " + KAFKA),
+        marks=pytest.mark.skipif(not (seen := real.probe()), reason=seen.reason),
     )
 
 
@@ -133,3 +133,53 @@ def test_two_groups_read_the_same_topic_independently(bus):
     bus.publish(topic, "deal:1", {"n": 1})
     assert len(bus.poll(topic, "contract-a", limit=10)) == 1
     assert len(bus.poll(topic, "contract-b", limit=10)) == 1
+
+
+# ------------------------------------------------------------------ the skips
+
+
+def test_a_skipped_adapter_names_the_cause_rather_than_blaming_the_service():
+    """Every skip above used to read like the service was down.
+
+    All three probes caught `Exception` and answered a bare False, so a missing
+    client library and an unreachable service were the same answer - and the reasons
+    said "no broker on localhost:9092" and "no postgres" either way. On this machine
+    the `infra` extra declared `confluent-kafka` while the adapter imports `kafka`,
+    so the Kafka contract tests skipped for a reason that sent anyone reading them to
+    look at the wrong thing.
+    """
+    from agentplatform.adapters.probe import NO_CLIENT, OK, UNREACHABLE
+
+    for adapter in (RedisCache(REDIS), PostgresStore(POSTGRES), KafkaBus(KAFKA)):
+        seen = adapter.probe()
+        assert seen.status in {OK, NO_CLIENT, UNREACHABLE}
+        if seen.status == OK:
+            assert seen.reason == ""
+            continue
+        assert seen.reason, f"{type(adapter).__name__} skipped with no reason"
+        if seen.status == NO_CLIENT:
+            # Names the package to install, and does not mention a host or port.
+            assert "pip install" in seen.reason
+            assert "is not installed" in seen.reason
+        else:
+            # Names the target it could not reach, and the error class.
+            assert "(" in seen.reason and ")" in seen.reason
+
+
+def test_the_declared_infra_extra_is_the_client_the_adapter_imports():
+    """`confluent-kafka` was declared and `kafka` imported, which cannot both work."""
+    import re
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    declared = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    infra = declared["project"]["optional-dependencies"]["infra"]
+    names = {re.split(r"[" + chr(92) + "[><=;]", d, maxsplit=1)[0].strip() for d in infra}
+
+    source = (root / "src" / "agentplatform" / "adapters" / "kafka_bus.py").read_text(
+        encoding="utf-8"
+    )
+    assert "from kafka import" in source
+    assert "kafka-python" in names, f"adapter imports `kafka`, infra declares {sorted(names)}"
+    assert "confluent-kafka" not in names

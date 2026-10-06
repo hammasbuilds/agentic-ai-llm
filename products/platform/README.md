@@ -7,7 +7,7 @@ database, no model, no framework. FastAPI, LangGraph and ollama are optional ext
 lazy imports.
 
 ```
-python -m pytest -q                      # 127 passed, 9 skipped
+python -m pytest -q                      # 134 passed, 9 skipped
 ```
 
 ## What is here
@@ -78,14 +78,46 @@ starts calling a real model.
 ## Scope
 
 - **No Kafka, Redis or Postgres client.** `ports.py` defines the protocols; binding them is
-  a deployment concern and the `infra` extra names the libraries.
+  a deployment concern and the `infra` extra names the libraries. The nine skipped tests
+  are the contract suite run against the real three, and each one **names why it skipped**
+  — a missing client library and an unreachable service used to be the same message. The
+  extra declared `confluent-kafka` while the adapter imports `kafka`, so on a machine with
+  a healthy broker those tests skipped saying `no broker on localhost:9092`.
 - **No LLM call anywhere in the tests.** `llm.Ollama` is the only thing that would, and it
   is never constructed in one.
 - **No async.** The runtime is synchronous. FastAPI's handlers are the only async surface
   and they do not need to be.
 - **No retry, backoff or circuit breaking.** That is the client library's job.
 - **No scheduler.** `Runtime.drain()` is one worker pass; what calls it in production is a
-  supervisor, not this package.
+  supervisor, not this package. It reports `done`, `failed` and `awaiting_approval` rather
+  than a count of messages taken off the topic — that count was the same number for a pass
+  that completed every run and one that sent every run to the dead-letter queue.
+
+## At-least-once, and what made it so
+
+`Bus.commit` was declared in the protocol and called nowhere. `poll` advanced the
+committed offset itself, so a worker that read a batch and then died had consumed it:
+nothing would hand those messages back. The module docstring in `adapters/kafka_bus.py`
+said "a worker that crashes mid-generation must redeliver, not skip" and the platform
+delivered the opposite.
+
+There are two cursors now. `position` is how far a consumer has read; `committed` is how
+far it has acknowledged. `restart()` drops the first and keeps the second, which is the
+only way a test can observe the difference:
+
+```python
+bus.publish("crm.tasks", "deal:1", {"n": 1})
+bus.poll("crm.tasks", "workers")        # read
+bus.lag("crm.tasks", "workers")         # 1 - reading is not finishing
+bus.restart("crm.tasks", "workers")     # the worker died
+bus.poll("crm.tasks", "workers")        # delivered again
+```
+
+`lag` counts what is unacknowledged rather than unread, so a batch in flight no longer
+reads as caught up. `Runtime.drain` commits the batch when it is done with it, and
+`KafkaBus.commit` honours the partition offsets it is given — it used to accept them and
+call `consumer.commit()` regardless, which acknowledged the whole batch when a worker
+handed back only the part it had finished.
 
 ## Input / Output
 

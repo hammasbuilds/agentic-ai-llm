@@ -27,6 +27,44 @@ DONE = "done"
 FAILED = "failed"
 
 
+@dataclass(frozen=True)
+class DrainPass:
+    """What one worker pass did, rather than how many messages it took.
+
+    `handled` is kept, as the sum, because a caller asking "did the pass move
+    anything" is asking a fair question - but it is derived from the three outcomes
+    rather than counted independently, so it cannot disagree with them.
+    """
+
+    done: int = 0
+    failed: int = 0
+    awaiting_approval: int = 0
+
+    @property
+    def handled(self) -> int:
+        return self.done + self.failed + self.awaiting_approval
+
+    def __int__(self) -> int:
+        return self.handled
+
+    def __eq__(self, other: object) -> bool:
+        """Compares equal to its own total, so `drain() == 1` still reads naturally."""
+        if isinstance(other, int):
+            return self.handled == other
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash((self.done, self.failed, self.awaiting_approval))
+
+    def as_dict(self) -> dict:
+        return {
+            "handled": self.handled,
+            "done": self.done,
+            "failed": self.failed,
+            "awaiting_approval": self.awaiting_approval,
+        }
+
+
 @dataclass
 class Runtime:
     """Everything a product's HTTP surface and worker need, injected.
@@ -92,13 +130,30 @@ class Runtime:
     def __post_init__(self) -> None:
         self._checkpoints = {}
 
-    def drain(self, limit: int = 10) -> int:
-        """Run one worker pass. Returns how many messages were handled."""
-        handled = 0
+    def drain(self, limit: int = 10) -> DrainPass:
+        """Run one worker pass, and say what happened in it.
+
+        It used to return a bare count of messages taken off the topic, which is a
+        number that cannot go down: a pass where every run failed and went to the
+        dead-letter queue reported the same `handled: 10` as a pass where every run
+        completed. The console printed it as progress.
+
+        The batch is acknowledged at the end rather than by `poll`, so a crash
+        part-way through leaves the rest of it redeliverable.
+        """
+        done = failed = awaiting = 0
         for message in self.bus.poll(self.topics.tasks, self.group, limit=limit):
-            self._execute(message.value["run_id"], state=message.value.get("payload", {}))
-            handled += 1
-        return handled
+            row = self._execute(message.value["run_id"], state=message.value.get("payload", {}))
+            status = row.get("status")
+            if status == DONE:
+                done += 1
+            elif status == AWAITING_APPROVAL:
+                awaiting += 1
+            else:
+                failed += 1
+        if done or failed or awaiting:
+            self.bus.commit(self.topics.tasks, self.group)
+        return DrainPass(done=done, failed=failed, awaiting_approval=awaiting)
 
     def _execute(self, run_id: str, *, state=None, checkpoint=None) -> dict:
         row = self.store.get("runs", run_id) or {"run_id": run_id, "visited": []}
@@ -237,7 +292,7 @@ def create_app(runtime: Runtime):
         Exposed so the console can demonstrate the queue without a supervisor
         process. In a deployment this is a loop in a worker, not a route.
         """
-        return {"handled": runtime.drain(limit)}
+        return runtime.drain(limit).as_dict()
 
     @app.get("/approvals")
     def approvals() -> list[dict]:

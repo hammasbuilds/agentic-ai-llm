@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .probe import Probe
+from .probe import probe as probe_target
+
 
 @dataclass
 class RedisCache:
@@ -39,8 +42,9 @@ class RedisCache:
     def delete(self, key: str) -> None:
         self.client().delete(key)
 
+    def probe(self) -> Probe:
+        """Why, not just whether - a missing `redis` package is not a down Redis."""
+        return probe_target(self.url, lambda: bool(self.client().ping()), requires="redis")
+
     def ping(self) -> bool:
-        try:
-            return bool(self.client().ping())
-        except Exception:  # noqa: BLE001 — reachability is a boolean, not an incident
-            return False
+        return bool(self.probe())

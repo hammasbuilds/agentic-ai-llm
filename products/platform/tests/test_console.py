@@ -74,10 +74,21 @@ def test_the_console_reflects_a_run_waiting_for_approval():
 
 
 def test_the_drain_button_has_a_route_behind_it():
+    """And reports outcomes, not just a count of messages taken off the topic.
+
+    `{"handled": 1}` was the same answer for a pass that completed a run and a pass
+    where the run failed into the dead-letter queue, and the console drew it as
+    progress either way.
+    """
     rt = runtime()
     client = TestClient(api.create_app(rt))
     client.post("/intake", json={"run_id": "r1", "entity": "e1"})
-    assert client.post("/drain").json() == {"handled": 1}
+    assert client.post("/drain").json() == {
+        "handled": 1,
+        "done": 0,
+        "failed": 0,
+        "awaiting_approval": 1,
+    }
 
 
 def test_the_event_feed_does_not_consume_what_the_projector_reads():

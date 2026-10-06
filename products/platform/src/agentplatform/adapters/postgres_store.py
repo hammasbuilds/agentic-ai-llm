@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .probe import Probe
+from .probe import probe as probe_target
+
 DDL = """
 CREATE TABLE IF NOT EXISTS agent_rows (
     tbl  text  NOT NULL,
@@ -57,9 +60,14 @@ class PostgresStore:
         )
         return [r[0] for r in found]
 
-    def reachable(self) -> bool:
-        try:
+    def probe(self) -> Probe:
+        """Why, not just whether - a missing `psycopg` is not a missing database."""
+
+        def contact() -> bool:
             self.conn().execute("SELECT 1")
             return True
-        except Exception:  # noqa: BLE001 — reachability is a boolean
-            return False
+
+        return probe_target(self.dsn, contact, requires="psycopg[binary]")
+
+    def reachable(self) -> bool:
+        return bool(self.probe())
