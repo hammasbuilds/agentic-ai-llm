@@ -133,7 +133,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `customers, documents, identities, list_versions, screening_hits, alerts, media_findings, filings, events`.
 
-**UI:** Next.js App Router — an alert queue, a four-quadrant match view, a filing composer.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Next.js App Router — an alert queue, a four-quadrant match view, a filing composer.
 
 ## Real data
 

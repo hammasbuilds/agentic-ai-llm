@@ -136,7 +136,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `ideas, calendar, post_variants, posts, threads, reply_drafts, metrics, events`.
 
-**UI:** Preact + Signals — four-column calendar, unified inbox, approval tray, one analytics page comparing platforms on the same axis.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Preact + Signals — four-column calendar, unified inbox, approval tray, one analytics page comparing platforms on the same axis.
 
 ## Real data
 

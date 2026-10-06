@@ -105,7 +105,7 @@ both inside `authority.py` itself.
 
 **Postgres:** Postgres for documents and answers; **Neo4j** for the graph itself. `documents, mentions, queries, answers, contradictions, events`.
 
-**UI:** React + Cytoscape.js — the graph is the interface, not a decoration beside it.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): React + Cytoscape.js — the graph is the interface, not a decoration beside it.
 
 ## Real data
 

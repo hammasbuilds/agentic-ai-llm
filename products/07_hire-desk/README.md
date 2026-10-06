@@ -98,7 +98,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `roles, candidates, redacted_views, scores, kits, interviews, audits, events`.
 
-**UI:** Ember Octane, or FastAPI + Jinja + Tailwind if Ember is not worth the learning cost — a role board, a blind-scoring queue, and a standing fairness page.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Ember Octane, or FastAPI + Jinja + Tailwind if Ember is not worth the learning cost — a role board, a blind-scoring queue, and a standing fairness page.
 
 ## Real data
 

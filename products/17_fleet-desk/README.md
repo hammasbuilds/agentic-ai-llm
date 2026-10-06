@@ -118,7 +118,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `orders, stops, vehicles, routes, legs, exceptions, proofs, events`.
 
-**UI:** MapLibre GL, map first — a dispatcher does not read a table.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): MapLibre GL, map first — a dispatcher does not read a table.
 
 ## Real data
 

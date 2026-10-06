@@ -114,7 +114,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `sweeps, trials, tool_calls, writes, metrics, reports, events`.
 
-**UI:** Observable Framework — one page per sweep, with the curve as the artefact.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Observable Framework — one page per sweep, with the curve as the artefact.
 
 ## Real data
 

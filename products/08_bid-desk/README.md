@@ -92,7 +92,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `tenders, requirements, fit_scores, capabilities, proposal_sections, checklists, market_notes, events`.
 
-**UI:** Flutter Web — a deadline board that also works on a phone, which is what a bid manager actually needs.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Flutter Web — a deadline board that also works on a phone, which is what a bid manager actually needs.
 
 ## Real data
 

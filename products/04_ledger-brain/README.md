@@ -86,7 +86,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `documents, invoices, payments, matches, items, stock_moves, projections, events` — `events` is an immutable ledger of every posting.
 
-**UI:** Django 5 + Tailwind, server-rendered — the right shape for a bookkeeping product, and the only server-rendered UI here.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Django 5 + Tailwind, server-rendered — the right shape for a bookkeeping product, and the only server-rendered UI here.
 
 ## Real data
 

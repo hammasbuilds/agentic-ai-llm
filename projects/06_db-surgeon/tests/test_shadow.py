@@ -218,3 +218,83 @@ def test_the_original_connection_is_rolled_back_on_failure():
         apply(conn, "DELETE FROM users; SELECT bad_function();", "up")
     # The failed script must not leave half its work behind.
     assert snapshot(conn).tables["users"].row_count == 3
+
+
+# -- the table and the count must use one definition ----------------------
+
+
+def test_the_corpus_table_and_its_count_agree_on_what_schema_means(capsys):
+    """They did not, and the disagreement was visible in one output.
+
+    The `schema` column printed `schema_restored` - set equality AND original column
+    order - while the summary counted `schema_equivalent`, which ignores order because
+    that is what a schema-diff tool compares. So `drop an unused column` read `NO` in
+    the table and was simultaneously one of the three in "3 match on schema and lose
+    data". By the table's own column the answer was 2, which is the direction that
+    flatters the thesis.
+    """
+    from dbsurgeon.cli import main
+
+    assert main(["corpus"]) == 0
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    header = next(line for line in lines if line.startswith("migration"))
+    assert "schema" in header and "order" in header and "data" in header
+
+    # Parsed by column rather than sniffed for substrings: a first attempt matched
+    # four rows because "ok" and "LOST" both appear on the `drop a lookup table` line,
+    # whose schema column reads NO. Sniffing a fixed-width table is how a check ends
+    # up with a denominator nobody chose.
+    counted = int(
+        next(line for line in lines if "match on schema and lose data" in line)
+        .split(",")[-1]
+        .strip()
+        .split()[0]
+    )
+    assert counted == 3
+
+    rows = []
+    for line in lines:
+        if (
+            not line.startswith(" ")
+            and len(line) > 60
+            and not line.startswith(("migration", "-"))
+        ):
+            schema, order, data = line[36:44].strip(), line[44:51].strip(), line[51:58].strip()
+            if schema in {"ok", "NO"}:
+                rows.append((line[:36].strip(), schema, order, data))
+    assert len(rows) == 10, [r[0] for r in rows]
+
+    schema_ok_and_lost = [r for r in rows if r[1] == "ok" and r[3] == "LOST"]
+    assert len(schema_ok_and_lost) == counted, (
+        f"the summary counts {counted}; {len(schema_ok_and_lost)} rows show schema ok "
+        f"and data LOST: {[r[0] for r in schema_ok_and_lost]}"
+    )
+
+    # And the reordered one is visible rather than folded into the schema column.
+    moved = [line for line in lines if "MOVED" in line]
+    assert len(moved) == 1
+    assert "drop an unused column" in moved[0]
+    assert "1 also moved a column" in out
+
+
+def test_the_two_schema_properties_are_different_questions():
+    """`schema_equivalent` is what a diff tool compares; `schema_restored` adds order."""
+    import sys
+    from pathlib import Path
+
+    from dbsurgeon.plan import build
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "migrations"))
+    from corpus import CASES, SCHEMA, SEED  # type: ignore
+
+    dropped = next(c for c in CASES if c[0] == "drop an unused column")
+    trip = build(dropped[0], SCHEMA, SEED, dropped[1], dropped[2]).trip
+
+    assert trip.schema_equivalent is True, "the column set came back"
+    # Not a bool: it names the tables whose column order changed, which is why the
+    # table can print MOVED and say which one.
+    assert trip.columns_reordered == ["users"], trip.columns_reordered
+    assert trip.schema_restored is False, "so the strict property is false"
+    assert trip.data_restored is False

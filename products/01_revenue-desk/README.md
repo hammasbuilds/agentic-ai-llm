@@ -171,7 +171,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `accounts, contacts, deals, activities, drafts, suppression, agent_runs, approvals, events` — with a provenance column on every agent-writable field.
 
-**UI:** Angular 19 — pipeline board, per-deal timeline showing which agent wrote which field, approvals queue, forecast page.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Angular 19 — pipeline board, per-deal timeline showing which agent wrote which field, approvals queue, forecast page.
 
 ## Real data
 

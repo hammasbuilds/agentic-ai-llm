@@ -108,7 +108,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `field_reports, images, isolates, clusters, advisories, evidence, prices, escalations, events`.
 
-**UI:** Lit 3 as a PWA, offline first — a field has no signal, and an advisory tool that needs one is not a tool.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Lit 3 as a PWA, offline first — a field has no signal, and an advisory tool that needs one is not a tool.
 
 ## Real data
 

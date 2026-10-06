@@ -90,7 +90,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `applicants, applications, cohorts, teachers, rooms, sessions, timetables, fees, payments, events`.
 
-**UI:** HTMX + Jinja2 — an administrator's tool, server-rendered, works on the office machine that exists.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): HTMX + Jinja2 — an administrator's tool, server-rendered, works on the office machine that exists.
 
 ## Real data
 

@@ -126,7 +126,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `readings, jobs, plans, actions, outages, events` — `outages` is what the finding is computed from.
 
-**UI:** A system-tray applet with a timeline page — the only honest shape for something that has to work while the screen is off.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): A system-tray applet with a timeline page — the only honest shape for something that has to work while the screen is off.
 
 ## Real data
 

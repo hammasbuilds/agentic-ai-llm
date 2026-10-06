@@ -92,7 +92,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `conversations, messages, memory_candidates, memories (with supersedes / contradicted_by edges), skills, tool_calls, events` — plus pgvector.
 
-**UI:** Tauri desktop, plus a Telegram surface.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Tauri desktop, plus a Telegram surface.
 
 ## Real data
 

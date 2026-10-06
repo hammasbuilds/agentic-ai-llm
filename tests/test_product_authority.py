@@ -84,3 +84,59 @@ def test_check_refuses_what_level_for_denies(product, package):
     agent = next(iter(table._grants))[0]
     with pytest.raises(NotAuthorisedError):
         table.check(agent, "a.field.nobody.granted")
+
+
+# -- claims about the UI and the route surface ----------------------------
+
+
+def test_no_product_readme_describes_a_frontend_as_though_it_were_built():
+    """All twenty named a framework. None of them exists.
+
+    An independent review looked for a single `package.json`, `.tsx`, `.svelte`,
+    `.vue`, `.dart` or `.astro` file across all twenty products and found none — the
+    lines read `**UI:** Angular 19 — pipeline board, …` and sat flat beside the real
+    topic and schema tables with nothing marking them as intent. What ships is one
+    232-line plain-JavaScript console.
+    """
+    import re
+
+    readmes = sorted(ROOT.glob("products/[0-9][0-9]_*/README.md"))
+    assert len(readmes) == 20, [p.parent.name for p in readmes]
+
+    for readme in readmes:
+        text = readme.read_text(encoding="utf-8")
+        bare = re.search(r"^\*\*UI:\*\*", text, re.MULTILINE)
+        assert not bare, f"{readme.parent.name} claims a UI without saying it is not built"
+        assert "**UI, designed and not built**" in text, readme.parent.name
+
+
+def test_there_really_is_no_frontend_in_the_tree():
+    """The claim the line above makes, checked rather than taken on trust."""
+    patterns = ("*.tsx", "*.jsx", "*.svelte", "*.vue", "*.dart", "*.astro", "package.json")
+    found = [
+        str(path.relative_to(ROOT))
+        for pattern in patterns
+        for path in (ROOT / "products").rglob(pattern)
+        if ".venv" not in path.parts and "node_modules" not in path.parts
+    ]
+    assert found == [], f"a frontend appeared; the README lines need updating: {found}"
+
+
+def test_the_index_counts_the_routes_the_api_registers():
+    """It said "Four routes", counting the four user-facing *actions*. There are ten."""
+    import re
+
+    source = (ROOT / "products" / "platform" / "src" / "agentplatform" / "api.py").read_text(
+        encoding="utf-8"
+    )
+    decorated = source.count("@app.")
+
+    index = (ROOT / "products" / "README.md").read_text(encoding="utf-8")
+    stated = re.search(r"it\. (\w+)\nroutes serving", index)
+    assert stated, "the index no longer states a route count"
+
+    words = {"Four": 4, "Five": 5, "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10}
+    assert words[stated.group(1)] == decorated, (
+        f"the index says {stated.group(1)} routes; api.py declares {decorated}"
+    )
+    assert decorated == 10, "the index and this assertion must move together"

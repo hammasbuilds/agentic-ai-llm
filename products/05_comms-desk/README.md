@@ -99,7 +99,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `threads, messages, meetings, transcripts, commitments, drafts, slots, events`.
 
-**UI:** Svelte 5 (runes) — triage queue, transcript with speaker lanes, and a single commitments board fed by both sources.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Svelte 5 (runes) — triage queue, transcript with speaker lanes, and a single commitments board fed by both sources.
 
 ## Real data
 

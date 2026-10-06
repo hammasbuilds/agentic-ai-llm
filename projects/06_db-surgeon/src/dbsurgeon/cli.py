@@ -81,15 +81,23 @@ def _corpus_command(args: argparse.Namespace) -> int:
     ran = [p for p in plans if p.trip is not None]
     hidden = [p for p in ran if p.trip.schema_equivalent and not p.trip.data_restored]
 
-    print(f"{'migration':36s} {'schema':>7s} {'data':>6s}  verdict")
+    # Three columns, because two were doing the work of three. The `schema` column
+    # printed `schema_restored` - set equality AND original column order - while the
+    # headline counted `schema_equivalent`, which ignores order. So "drop an unused
+    # column" read NO in the table and was one of the three in the count, and the same
+    # output disagreed with itself. `order` is now its own column: a schema-diff tool
+    # compares column sets, so `schema` is what such a tool would pass, and whether the
+    # order survived is reported beside it rather than folded in.
+    print(f"{'migration':36s} {'schema':>7s} {'order':>6s} {'data':>6s}  verdict")
     print("-" * 82)
     for plan in plans:
         if plan.trip is None:
-            print(f"{plan.name:36s} {'-':>7s} {'-':>6s}  did not run")
+            print(f"{plan.name:36s} {'-':>7s} {'-':>6s} {'-':>6s}  did not run")
             continue
         trip = plan.trip
         print(
-            f"{plan.name:36s} {'ok' if trip.schema_restored else 'NO':>7s} "
+            f"{plan.name:36s} {'ok' if trip.schema_equivalent else 'NO':>7s} "
+            f"{'ok' if not trip.columns_reordered else 'MOVED':>6s} "
             f"{'ok' if trip.data_restored else 'LOST':>6s}  {plan.verdict}"
         )
     print("-" * 82)
@@ -97,6 +105,11 @@ def _corpus_command(args: argparse.Namespace) -> int:
         f"{len(plans)} migrations, {len(ran)} ran, "
         f"{sum(1 for p in ran if p.safe)} fully reversible, "
         f"{len(hidden)} match on schema and lose data"
+    )
+    print(
+        f"    of those {len(hidden)}, "
+        f"{sum(1 for p in hidden if p.trip.columns_reordered)} also moved a column, "
+        "which a schema-diff tool does not compare and this table now shows"
     )
     return 0
 

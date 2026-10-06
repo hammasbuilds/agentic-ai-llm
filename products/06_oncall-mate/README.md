@@ -105,7 +105,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `alerts, incidents, hypotheses, evidence, changes, actions, reviews, events`.
 
-**UI:** A dense realtime board, built to live on a wall screen and survive a browser restart.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): A dense realtime board, built to live on a wall screen and survive a browser restart.
 
 ## Real data
 

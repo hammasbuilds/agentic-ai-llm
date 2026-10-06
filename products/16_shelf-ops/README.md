@@ -90,7 +90,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `skus, listings, price_proposals, price_history, orders, returns, suppliers, events`.
 
-**UI:** SolidStart, or an Electron workstation for a warehouse desk that is open all day.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): SolidStart, or an Electron workstation for a warehouse desk that is open all day.
 
 ## Real data
 

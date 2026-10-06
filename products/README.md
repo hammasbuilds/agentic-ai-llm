@@ -192,9 +192,11 @@ Two measured findings are enforced in the runtime rather than written into a pro
 - **A resumed run restarts at the node *after* the interrupt.** A naive pause-and-reinvoke
   wastes exactly one generation per approval — a flat 50% overhead for identical output.
 
-`api.Runtime` is the worker and the write path; `api.create_app()` is FastAPI over it. Four
-routes, because there are four things a person does with an agent product: start work, watch
-it, approve what it paused on, read the audit trail. **`/intake` publishes and returns** —
+`api.Runtime` is the worker and the write path; `api.create_app()` is FastAPI over it. Ten
+routes serving four things a person does with an agent product: start work, watch it, approve
+what it paused on, read the audit trail. (This said "four routes" and counted the four
+*actions*; `grep -c "@app\." platform/src/agentplatform/api.py` is 10 — the four plus
+`/`, `/health`, `/runs/{id}`, `/drain`, and approve and reject as separate verbs.) **`/intake` publishes and returns** —
 it does not run the graph, which is the entire argument for the bus.
 
 `01_revenue-desk` is the worked example: every graph shape appears in it exactly once, and
@@ -227,7 +229,15 @@ are four things a person does with an agent product:
 Deliberately one shared console rather than twenty frontends. Twenty half-implemented
 dashboards is the mistake this portfolio already made once and corrected by deleting them;
 there are tests asserting the page renders, that no `{{placeholder}}` survives, and that
-every route the page calls actually exists.
+every route the page calls actually exists — all eight of them, including the two the
+checker used to skip because they are built with template literals rather than string
+constants.
+
+Each product README also carries a `**UI, designed and not built**` line naming the stack
+it would get. Those lines used to read `**UI:**` with no qualifier, beside the real topic
+and schema tables, which read as a description of something shipped: an independent review
+looked for a single `package.json`, `.tsx`, `.svelte`, `.vue`, `.dart` or `.astro` file
+across all twenty and found none. There is one console, in 232 lines of plain JavaScript.
 
 ## Running the infrastructure
 

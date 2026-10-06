@@ -174,7 +174,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `repos, changes, claims, verdicts, patches, pulls, events`.
 
-**UI:** Astro with React islands — a docs-shaped product deserves a docs-shaped site.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Astro with React islands — a docs-shaped product deserves a docs-shaped site.
 
 ## Real data
 

@@ -125,7 +125,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `assets, packages, feeds, advisories, findings, remediations, exceptions, events`.
 
-**UI:** Textual TUI for the box you are logged into, plus a read-only web board for everything else.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Textual TUI for the box you are logged into, plus a read-only web board for everything else.
 
 ## Real data
 

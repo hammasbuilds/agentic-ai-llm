@@ -118,7 +118,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `policies, policy_versions, claims, coverage, signals, assignments, settlements, events`.
 
-**UI:** Nuxt 4 — a claim queue, a coverage view showing the clause and its version, a settlement composer.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Nuxt 4 — a claim queue, a coverage view showing the clause and its version, a settlement composer.
 
 ## Real data
 

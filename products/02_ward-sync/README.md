@@ -76,7 +76,7 @@ both inside `authority.py` itself.
 
 **Postgres:** `patients, encounters, assignments, orders, results, summaries, claims, events` — `events` is the clinical audit log and the source of truth for state.
 
-**UI:** Refine + Ant Design — floor board, encounter timeline, clinician sign-off queue, pre-auth tray.
+**UI, designed and not built** (what ships is the shared operator console at `/`, see [`../README.md`](../README.md)): Refine + Ant Design — floor board, encounter timeline, clinician sign-off queue, pre-auth tray.
 
 ## Real data
 

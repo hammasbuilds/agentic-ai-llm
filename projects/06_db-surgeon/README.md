@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-42-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-44-success" alt="tests">
   <img src="https://img.shields.io/badge/corpus-12%20migrations-orange" alt="corpus">
 </p>
 
@@ -12,27 +12,35 @@
 
 ## Results
 
-**Of 12 migration pairs written the way people write them, 10 ran. Three of those restore
-the schema exactly and still lose data.** A review that compares schemas - which is what
+**Of 12 migration pairs written the way people write them, 10 ran. Three of those a schema
+check passes, and all three lose data.** A review that compares schemas - which is what
 schema-diff tooling compares - passes all three.
 
+The table used to print one `schema` column while the count used a different definition of
+it. The column showed set equality *and* original column order; the count ignored order,
+which is what a diff tool does. So `drop an unused column` read `NO` in the table and was
+one of the three in the total, and the same output disagreed with itself - by the table's
+own column the answer was 2. `order` is its own column now, and the summary says how many
+of the three moved a column as well.
+
 ```
-migration                             schema   data   verdict
--------------------------------------------------------------------------------
-add a nullable column                     ok     ok   fully reversible
-drop an unused column                     NO   LOST   columns reordered, data lost
-rename a column                           ok     ok   fully reversible
-add an index                              ok     ok   fully reversible
-drop an index                             ok     ok   fully reversible
-backfill a default                         -      -   did not run
-normalise a value in place                ok     ok   fully reversible
-drop a lookup table                       NO   LOST   schema not restored
-widen a column type                       ok     ok   fully reversible
-clear a column before removing it         ok   LOST   schema restored, data lost
-delete soft-deleted rows                  ok   LOST   schema restored, data lost
-add a NOT NULL column with no default      -      -   did not run
--------------------------------------------------------------------------------
+migration                             schema  order   data  verdict
+----------------------------------------------------------------------------------
+add a nullable column                     ok     ok     ok  fully reversible
+drop an unused column                     ok  MOVED   LOST  columns reordered, data lost
+rename a column                           ok     ok     ok  fully reversible
+add an index                              ok     ok     ok  fully reversible
+drop an index                             ok     ok     ok  fully reversible
+backfill a default                         -      -      -  did not run
+normalise a value in place                ok     ok     ok  fully reversible
+drop a lookup table                       NO     ok   LOST  schema not restored
+widen a column type                       ok     ok     ok  fully reversible
+clear a column before removing it         ok     ok   LOST  schema restored, data lost
+delete soft-deleted rows                  ok     ok   LOST  schema restored, data lost
+add a NOT NULL column with no default       -      -      -  did not run
+----------------------------------------------------------------------------------
 12 migrations, 10 ran, 6 fully reversible, 3 match on schema and lose data
+    of those 3, 1 also moved a column, which a schema-diff tool does not compare and this table now shows
 ```
 
 The canonical case is `drop a column`:
@@ -142,7 +150,7 @@ parsing it. The UI's API is `http.server`; only the SolidJS front end needs npm.
 ## Run it
 
 ```bash
-uv run pytest -q                  # 42 tests
+uv run pytest -q                  # 44 tests
 uv run db-surgeon corpus
 uv run python scripts/sweep.py
 uv run python ui/server.py        # then: cd ui && npm install && npm run dev
