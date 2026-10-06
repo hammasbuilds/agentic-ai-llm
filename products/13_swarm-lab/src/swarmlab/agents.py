@@ -27,10 +27,7 @@ def authority() -> Table:
 def triage(state: dict) -> dict:
     """Count, never estimate."""
     if state.get("calls") is not None:
-        calls = [
-            ToolCall(c["agent"], c["tool"], c["args"], c["seq"])
-            for c in state["calls"]
-        ]
+        calls = [ToolCall(c["agent"], c["tool"], c["args"], c["seq"]) for c in state["calls"]]
         writes = [
             Write(w["agent"], w["entity"], w["field"], w["value"], w["seq"])
             for w in state.get("writes", [])

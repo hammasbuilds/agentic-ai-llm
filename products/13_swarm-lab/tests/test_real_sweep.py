@@ -93,3 +93,37 @@ def test_it_used_the_real_redis_if_one_was_up():
     # Not asserted as True: the suite must pass on a laptop with nothing
     # running. Recorded so the result says which it was.
     assert hasattr(trial, "real_redis")
+
+
+def test_the_results_say_which_cache_they_were_produced_by():
+    """The README claimed "the real Redis" and `_redis()` falls back in silence.
+
+    Both paths give the same numbers - what is counted is how often two threads
+    reach for the same entity, which neither cache changes - so the fallback was
+    never going to show up as a wrong result. It showed up as a wrong sentence, and
+    nothing in the package produced the sentence either way.
+    """
+    from swarmlab.sweep import backend
+
+    cells = sweep((1, 2), repeats=3, entities=4, use_lock=True)
+    line = backend(cells)
+    trials = [t for cell in cells.values() for t in cell]
+
+    assert str(len(trials)) in line
+    assert ("real Redis" in line) == all(t.real_redis for t in trials)
+    assert ("in-memory" in line) == any(not t.real_redis for t in trials)
+    assert line  # never empty: a results table with no provenance is the defect
+
+
+def test_the_backend_line_reports_a_mixture_as_a_mixture():
+    """Three trials, one of which saw Redis. Neither "all" answer is true of that."""
+    from swarmlab.sweep import backend
+
+    cells = sweep((1, 2), repeats=3, entities=4)
+    trials = [t for cell in cells.values() for t in cell]
+    trials[0].real_redis = True
+    for trial in trials[1:]:
+        trial.real_redis = False
+
+    line = backend(cells)
+    assert line == f"1 of {len(trials)} trials against a real Redis, the rest in-memory"

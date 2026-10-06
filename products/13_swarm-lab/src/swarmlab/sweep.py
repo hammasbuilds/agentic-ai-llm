@@ -48,7 +48,12 @@ class Trial:
 
 
 def _redis():
-    """Real Redis if it answers, otherwise the in-memory cache."""
+    """Real Redis if it answers, otherwise the in-memory cache.
+
+    Every trial records which it got, in `Trial.real_redis`, and :func:`backend`
+    summarises it for the results table - because a silent fallback behind a claim
+    of "the real Redis" is the claim being wrong rather than the fallback being bad.
+    """
     try:
         from agentplatform.adapters import RedisCache
 
@@ -90,8 +95,7 @@ def run_trial(
         # In a hierarchy a supervisor partitions the work; in a flat swarm every
         # agent sees the whole list. That difference is the topology.
         mine = (
-            range(index, entities, n_agents) if topology == "hierarchical"
-            else range(entities)
+            range(index, entities, n_agents) if topology == "hierarchical" else range(entities)
         )
         for entity in mine:
             key = keys.lock("entity", f"{run_id}:{entity}")
@@ -102,9 +106,7 @@ def run_trial(
             with lock:
                 seq[0] += 1
                 order = seq[0]
-                trial.calls.append(
-                    ToolCall(f"a{index}", "fetch", {"entity": entity}, order)
-                )
+                trial.calls.append(ToolCall(f"a{index}", "fetch", {"entity": entity}, order))
                 trial.writes.append(
                     Write(f"a{index}", f"e{entity}", "status", f"done-by-a{index}", order)
                 )
@@ -133,3 +135,22 @@ def sweep(
         n: [run_trial(n, entities=entities, seed=r, **kw) for r in range(repeats)]
         for n in sizes
     }
+
+
+def backend(cells: dict[int, list[Trial]]) -> str:
+    """Which cache the sweep actually ran against, as a line to print.
+
+    The README said "measured by running N workers against the real Redis" without
+    qualification, and `_redis()` falls back to the in-memory cache whenever Redis
+    does not answer. On a machine with no Redis up, every table in that README was
+    produced by the fallback and said otherwise. The numbers happen to be the same
+    either way - the duplication is structural - but which one ran is not a detail a
+    reader should have to assume.
+    """
+    trials = [t for cell in cells.values() for t in cell]
+    real = sum(1 for t in trials if getattr(t, "real_redis", False))
+    if real == len(trials):
+        return f"all {len(trials)} trials against a real Redis (`SET NX`)"
+    if real == 0:
+        return f"all {len(trials)} trials against the in-memory cache; no Redis answered"
+    return f"{real} of {len(trials)} trials against a real Redis, the rest in-memory"

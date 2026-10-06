@@ -114,3 +114,52 @@ def test_add_is_the_lock_primitive():
     assert cache.add("lock:deal:1", "worker-b") is False
     cache.delete("lock:deal:1")
     assert cache.add("lock:deal:1", "worker-b") is True
+
+
+def test_the_in_memory_lock_is_granted_once_under_contention():
+    """`add` is the lock, and it used to be a check and a set with a gap between.
+
+    Products run several threads against one of these; swarm-lab's "work is done
+    exactly once at every N" is produced by this method whenever Redis is not up. I
+    could not make it double-grant on this build - 400 trials, eight contending
+    threads, switch interval at a nanosecond - which is why it is guarded rather
+    than left correct by an implementation detail of the GIL.
+    """
+    import sys
+    import threading
+
+    cache_class = InMemoryCache
+    granted = 0
+    tally = threading.Lock()
+    was = sys.getswitchinterval()
+    sys.setswitchinterval(1e-9)
+    try:
+        for _ in range(200):
+            cache = cache_class()
+            at_once = threading.Barrier(8)
+
+            def grab(cache=cache, at_once=at_once):
+                nonlocal granted
+                at_once.wait()
+                if cache.add("k", "v"):
+                    with tally:
+                        granted += 1
+
+            threads = [threading.Thread(target=grab) for _ in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+    finally:
+        sys.setswitchinterval(was)
+
+    assert granted == 200, f"the lock was granted {granted} times across 200 trials"
+
+
+def test_the_lock_is_released_by_deleting_the_key():
+    cache = InMemoryCache()
+    assert cache.add("k", "a") is True
+    assert cache.add("k", "b") is False
+    cache.delete("k")
+    assert cache.add("k", "b") is True
+    assert cache.get("k") == "b"

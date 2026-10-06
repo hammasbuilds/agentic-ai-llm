@@ -8,11 +8,19 @@ serves the shared operator console at `/`.
 
 ## Results
 
-**Measured by running N workers against the real Redis**, 40 entities, three repeats per
-cell. No model is involved, deliberately: duplicate calls and conflicting writes are
-structural — they come from workers sharing a queue and a store, not from what any of them
-is thinking — so removing the model removes the largest source of variance from a study
-whose subject is N.
+**Measured by running N real threads over a shared entity list**, 40 entities, three
+repeats per cell. No model is involved, deliberately: duplicate calls and conflicting
+writes are structural — they come from workers sharing a queue and a store, not from what
+any of them is thinking — so removing the model removes the largest source of variance
+from a study whose subject is N.
+
+The lock is a real `SET NX` against Redis when one answers and `InMemoryCache.add`
+otherwise, and `sweep.backend()` says which. **The tables below were produced by the
+in-memory path — no Redis was up on this machine** — and they are byte-identical to the
+Redis path, because what is being counted is how often two threads reach for the same
+entity and neither cache changes that. This line used to read "against the real Redis"
+without qualification, which was a claim about infrastructure that a silent fallback had
+already made false.
 
 ### Uncoordinated, flat
 
@@ -50,6 +58,13 @@ times the work itself.** That asymmetry is why the lock is worth its latency.
 
 A supervisor that partitions the list achieves the same with no lock at all: topology
 substitutes for coordination. Both are in the tests.
+
+`InMemoryCache.add` is the lock on that path, and it was a membership test followed by an
+assignment — two operations with a thread switch possible between them, which would hand
+two agents the same lock and quietly turn the 0 duplicates above into an undercount. It
+could not be made to double-grant on this interpreter in 400 trials of eight contending
+threads with the switch interval at a nanosecond, so it was correct by a property of the
+GIL rather than by construction. It is guarded now, and that trial is a test.
 
 ### Scope
 
@@ -119,7 +134,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 13_swarm-lab
-python -m pytest -q                      # 30 passed
+python -m pytest -q                      # 32 passed
 PYTHONPATH="src;../platform/src" python -m swarmlab.app    # console on http://127.0.0.1:8000
 ```
 

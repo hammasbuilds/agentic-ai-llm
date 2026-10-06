@@ -10,6 +10,7 @@ the real one will, so per-entity ordering is demonstrated rather than assumed.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -172,22 +173,36 @@ class InMemoryStore:
 
 @dataclass
 class InMemoryCache:
-    """Redis-shaped, including the one operation locking depends on."""
+    """Redis-shaped, including the one operation locking depends on.
+
+    `add` is guarded, because it is a lock and the products that use it run several
+    threads against one of these. It was a bare `if key in values: ... values[key] =`
+    - two operations with a thread switch possible between them, so two agents could
+    both be told they held the same lock. I could not provoke that on this CPython
+    build in 400 trials of eight contending threads with the switch interval at a
+    nanosecond, which is the point: it was correct by an implementation detail of the
+    GIL rather than by construction, and swarm-lab's "work is done exactly once at
+    every N" rests on it whenever Redis is not up.
+    """
 
     _values: dict = field(default_factory=dict)
+    _guard: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def set(self, key: str, value: str, ttl_seconds: int | None = None) -> None:
-        self._values[key] = value
+        with self._guard:
+            self._values[key] = value
 
     def get(self, key: str) -> str | None:
         return self._values.get(key)
 
     def add(self, key: str, value: str, ttl_seconds: int | None = None) -> bool:
         """SET NX. Returns False when the key is already held — this is the lock."""
-        if key in self._values:
-            return False
-        self._values[key] = value
-        return True
+        with self._guard:
+            if key in self._values:
+                return False
+            self._values[key] = value
+            return True
 
     def delete(self, key: str) -> None:
-        self._values.pop(key, None)
+        with self._guard:
+            self._values.pop(key, None)
