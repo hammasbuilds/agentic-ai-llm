@@ -61,8 +61,9 @@ shipped beside it covered five of those rows.
   and was then compared against the *majority* class on that sample, which is VULNERABLE.
   The comparison therefore ran the wrong way round. The app now samples the split with a
   seed and returns both constants; the model number is pending a re-run.
-- **17.6% of single-point mutants survive MBPP's three asserts**, and 442 of them are
-  provably wrong. Hand-verification does not fix it: the sanitized split scores 16.0%.
+- **18.0% of 4,055 single-point mutants survive MBPP's three asserts**, and 362 of them are
+  provably wrong — half the survivors; the rest are reported unproven rather than counted.
+  Hand-verification does not fix it: the sanitized split scores 16.5%.
 - **Self-debug rounds 1–2 captured 100% of the gain**; rounds 3–5 added zero tasks for 60%
   of the compute. Independently: **93.3% of first-attempt failures survive both** repair and
   rewrite.

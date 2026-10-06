@@ -10,10 +10,14 @@ value on which the mutant and the reference return different things. A survivor 
 witness is a provably wrong program that MBPP marked correct; one without is reported as
 unproven rather than counted.
 
-Measured over the whole benchmark: 17.6% of 5,116 mutants survive, and 442 of them are
-provably wrong. 227 of 782 problems accept at least one. The hand-verified "sanitized" split
-is no better - 16.0% - because reviewing an assert cannot add the fourth assert that would
-pin down a boundary.
+Measured over the whole benchmark: 18.0% of 4,055 mutants survive, and 362 of them are
+provably wrong. 326 of the 971 usable problems accept at least one. The hand-verified
+"sanitized" split is no better - 16.5% of 1,553 - because reviewing an assert cannot add the
+fourth assert that would pin down a boundary.
+
+Every rate here is over the problems whose reference passes its own tests: 971 of MBPP's 972
+and all 413 of the sanitized split. One reference does not, and a mutant of a solution that
+is already failing says nothing about the suite.
 """
 
 from __future__ import annotations
@@ -146,17 +150,19 @@ async def runner(params: dict, emit) -> dict:
 ABOUT = """
 <p>Single-point mutation of every reference solution, scored against the benchmark's own
 three asserts, with a separating input hunted for each survivor.</p>
-<p><b>17.6%</b> of 5,116 mutants survive across the full split. <b>442</b> of them are
-provably wrong — an input exists on which they differ from the reference — which is 8.6% of
-all mutants. Per problem: <b>227 of 782 (29.0%)</b> accept at least one provably wrong
-program, and seven suites kill nothing at all.</p>
-<p>Off-by-one is what slips through. Comparison mutations (<code>&lt;</code> to
-<code>&lt;=</code>) survive 25.9% of the time and constant nudges 25.3%, against 3.9% for a
-negated condition. A swapped operator breaks the answer loudly enough for three examples to
-notice; a boundary moved by one does not.</p>
-<p>The sanitized split — 427 problems the authors hand-verified — scores 16.0%. Verification
-fixed the reference solutions and left the false accepts alone, because the limit is the
-number of asserts, not their quality.</p>
+<p><b>18.0%</b> of 4,055 mutants survive across the full split. <b>362</b> of them are
+provably wrong — an input exists on which they differ from the reference — which is 8.9% of
+all mutants and 49.5% of the survivors. The other 369 are reported unproven, not counted:
+342 were hunted without a separating input being found and 27 could not be tried. Per
+problem: <b>326 of 971 (33.6%)</b> accept at least one survivor.</p>
+<p>Off-by-one is what slips through. Constant nudges survive 27.0% of the time and
+comparison mutations (<code>&lt;</code> to <code>&lt;=</code>) 25.9%, against 6.8% for a
+swapped arithmetic operator and 4.1% for a negated condition. A swapped operator breaks the
+answer loudly enough for three examples to notice; a boundary moved by one does not.</p>
+<p>The sanitized split — 413 problems the authors hand-verified — scores 16.5% of 1,553
+mutants, and 117 of
+them (28.3%) still accept a survivor. Verification fixed the reference solutions and left
+the false accepts alone, because the limit is the number of asserts, not their quality.</p>
 """
 
 app = create_app(

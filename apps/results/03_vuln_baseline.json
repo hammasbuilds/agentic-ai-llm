@@ -1,0 +1,10 @@
+{
+  "split": "test",
+  "rows": 2732,
+  "safe": 1477,
+  "vulnerable": 1255,
+  "always_safe": 0.5406295754026355,
+  "majority": 0.5406295754026355,
+  "first_800_safe_share": 0.49625,
+  "seeded_800_safe_share": 0.55625
+}

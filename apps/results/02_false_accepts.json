@@ -1,0 +1,98 @@
+{
+  "mbpp": {
+    "problems": 972,
+    "problems_usable": 971,
+    "problems_whose_reference_fails": 1,
+    "problems_with_a_survivor": 326,
+    "mutants": 4055,
+    "survived": 731,
+    "survival_rate": 0.18027127003699137,
+    "proven": 362,
+    "proven_share_of_survivors": 0.4952120383036936,
+    "proven_share_of_all": 0.08927250308261406,
+    "unproven": 369,
+    "unproven_never_tried": 27,
+    "unproven_tried_and_not_separated": 342,
+    "killed_how": {
+      "fail": 2851,
+      "error": 412,
+      "timeout": 61
+    },
+    "caught_by_crash": 0.14229843561973526,
+    "by_kind": {
+      "const": {
+        "run": 1686,
+        "survived": 455,
+        "rate": 0.26986951364175565
+      },
+      "binop": {
+        "run": 1112,
+        "survived": 76,
+        "rate": 0.0683453237410072
+      },
+      "compare": {
+        "run": 648,
+        "survived": 168,
+        "rate": 0.25925925925925924
+      },
+      "negate_if": {
+        "run": 510,
+        "survived": 21,
+        "rate": 0.041176470588235294
+      },
+      "boolop": {
+        "run": 99,
+        "survived": 11,
+        "rate": 0.1111111111111111
+      }
+    }
+  },
+  "mbpp-sanitized": {
+    "problems": 413,
+    "problems_usable": 413,
+    "problems_whose_reference_fails": 0,
+    "problems_with_a_survivor": 117,
+    "mutants": 1553,
+    "survived": 257,
+    "survival_rate": 0.1654861558274308,
+    "proven": 121,
+    "proven_share_of_survivors": 0.4708171206225681,
+    "proven_share_of_all": 0.07791371538956858,
+    "unproven": 136,
+    "unproven_never_tried": 13,
+    "unproven_tried_and_not_separated": 123,
+    "killed_how": {
+      "fail": 1121,
+      "error": 160,
+      "timeout": 15
+    },
+    "caught_by_crash": 0.13503086419753085,
+    "by_kind": {
+      "const": {
+        "run": 651,
+        "survived": 160,
+        "rate": 0.2457757296466974
+      },
+      "binop": {
+        "run": 436,
+        "survived": 25,
+        "rate": 0.05733944954128441
+      },
+      "compare": {
+        "run": 239,
+        "survived": 65,
+        "rate": 0.2719665271966527
+      },
+      "negate_if": {
+        "run": 190,
+        "survived": 4,
+        "rate": 0.021052631578947368
+      },
+      "boolop": {
+        "run": 37,
+        "survived": 3,
+        "rate": 0.08108108108108109
+      }
+    }
+  }
+}
