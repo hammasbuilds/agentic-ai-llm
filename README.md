@@ -44,14 +44,30 @@ Every number below was measured, not estimated — each is the output of the app
 run locally on `qwen2.5-coder` at 14B and 3B over MBPP, HumanEval, SWE-bench and Devign.
 **The run artifacts are not committed**: reproducing one needs Ollama, both model sizes and
 a GPU, so they are a claim about work done on this machine rather than something this
-repository can show you. What it can show you offline is the measurement code, every
-execution rule it applies, and the eleven tools in [`projects/`](projects), whose numbers
-you can reproduce by running them. `repo-cartographer`'s resolution table is the last three
-lines of `cartographer compare <folder>` over every checkout in one folder — it used to
+repository can show you.
+
+What it can show you offline is the measurement code, every execution rule it applies, and
+the eleven tools in [`projects/`](projects), whose numbers you can reproduce by running
+them. "The measurement code" was a set of pieces until recently: `print_report`,
+`commit_listings`, `listing_for` and `find_many` had no caller anywhere here, which is
+the fingerprint of a driver that ran on this machine and was never committed. It is
+committed now, and **the BM25 row of the localization table is reproducible with no model
+and no network**:
+
+```bash
+python -m apps._engine.localize_eval     # 299 of 300 instances, ~30s, nothing installed
+```
+
+It reports the population it scored and the instances it could not, because the one
+instance whose gold file is in no cached listing is excluded rather than counted as a
+retrieval failure. The two model arms and the dense arm are flags on the same command.
+
+`repo-cartographer`'s resolution table is the last three lines of
+`cartographer compare <folder>` over every checkout in one folder — it used to
 quote a median across a chosen 29 that nothing in the tool computed, and the five JSONs
 shipped beside it covered five of those rows.
 
-- **BM25 collapses from 74.5% to 8.4%** depending only on whether the issue quotes the file
+- **BM25 collapses from 74.5% to 8.5%** depending only on whether the issue quotes the file
   path. The same 14B model scores 55.8% on that hard half when naming files freely and
   **17.5% when restricted to reranking** — its advantage is knowing the repository, not
   reading the issue. It also invents one path in five.

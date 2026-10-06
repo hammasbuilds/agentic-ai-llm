@@ -232,8 +232,7 @@ def find_witness(
     return Witness(False, reason=reason, cases_run=ran, candidates=candidates)
 
 
-def find_many(jobs: list[tuple], workers: int = 8) -> list[Witness]:
-    from concurrent.futures import ThreadPoolExecutor
-
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        return list(pool.map(lambda j: find_witness(*j), jobs))
+# `find_many` was here: a ThreadPoolExecutor wrapper over `find_witness` that nothing
+# called. The witness hunt runs untrusted code under a timeout, and app 02 drives it
+# through `run_in_executor` with its own progress reporting, so a second parallel
+# wrapper was a way for the two to disagree about how many workers are safe.

@@ -22,6 +22,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from apps._engine.evaluate import resolve  # noqa: E402
+from apps._engine.locate_prompts import (  # noqa: E402
+    LOCATE_PROMPT,
+    RERANK_PROMPT,
+    parse_choices,
+    parse_paths,
+)
 from apps._engine.retrieval import BM25, cosine_rank  # noqa: E402
 from apps._engine.trees import cached_repos, source_files  # noqa: E402
 from apps._platform import model  # noqa: E402
@@ -29,35 +35,6 @@ from apps._platform.base import Field, create_app  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SLUG = "localizer"
-
-LOCATE_PROMPT = """You are localizing a bug in the {repo} repository.
-
-Below is a bug report. Name the source files most likely to need editing to fix it.
-
-Rules:
-- Output ONLY file paths, one per line, most likely first.
-- Use full repository-relative paths, e.g. django/db/models/query.py
-- At most 10 paths. No prose, no numbering, no backticks.
-
-BUG REPORT:
-{issue}
-"""
-
-RERANK_PROMPT = """You are localizing a bug in the {repo} repository.
-
-Below is a bug report, then a numbered list of candidate files from that repository.
-Choose the 10 candidates most likely to need editing, best first.
-
-Rules:
-- Output ONLY the numbers, one per line, best first.
-- Choose only from the list. Do not invent paths.
-
-BUG REPORT:
-{issue}
-
-CANDIDATES:
-{candidates}
-"""
 
 
 def _repos() -> list[tuple[str, str]]:
@@ -81,22 +58,6 @@ def _repo_hint(options: list[tuple[str, str]]) -> str:
         "no file listings found in data/trees - run the fetch script before this app can "
         "localise anything"
     )
-
-
-def _parse_paths(text: str, k: int = 10) -> list[str]:
-    import re
-
-    out: list[str] = []
-    for line in (text or "").splitlines():
-        line = re.sub(r"^\s*[-*\d.)\s]+", "", line.strip()).strip("`").strip()
-        if not line or " " in line or ("/" not in line and not line.endswith(".py")):
-            continue
-        line = line.lstrip("./")
-        if line not in out:
-            out.append(line)
-        if len(out) >= k:
-            break
-    return out
 
 
 async def runner(params: dict, emit) -> dict:
@@ -130,7 +91,7 @@ async def runner(params: dict, emit) -> dict:
     raw = await model.generate(LOCATE_PROMPT.format(repo=repo, issue=issue[:6000]), num_predict=256)
     # The model names module paths; matplotlib's package lives under lib/, so resolve
     # against the real listing before comparing. Only unambiguous matches resolve.
-    llm_ranked = resolve(_parse_paths(model.require(raw, what="ranking")), set(files))
+    llm_ranked = resolve(parse_paths(model.require(raw, what="ranking")), set(files))
     fabricated = [p for p in llm_ranked if p not in set(files)]
     await emit(4, 5, f"model named {len(llm_ranked)} paths, {len(fabricated)} not in the repo")
 
@@ -141,18 +102,7 @@ async def runner(params: dict, emit) -> dict:
         RERANK_PROMPT.format(repo=repo, issue=issue[:5000], candidates=numbered),
         num_predict=128,
     )
-    import re as _re
-
-    rerank_ranked: list[str] = []
-    for line in model.require(raw2, what="rerank").splitlines():
-        m = _re.search(r"\d+", line)
-        if not m:
-            continue
-        idx = int(m.group()) - 1
-        if 0 <= idx < len(pool) and pool[idx] not in rerank_ranked:
-            rerank_ranked.append(pool[idx])
-        if len(rerank_ranked) >= 10:
-            break
+    rerank_ranked = parse_choices(model.require(raw2, what="rerank"), pool, 10)
     await emit(5, 5, "done")
 
     # --- hybrid fusion (reciprocal rank) --------------------------------------------
@@ -182,9 +132,15 @@ async def runner(params: dict, emit) -> dict:
 ABOUT = """
 <p>Four retrievers over the same candidate set, plus a reciprocal-rank fusion of the two
 cheap ones.</p>
-<p>The measurement behind it, on all 300 SWE-bench Lite instances: <b>BM25 falls from 74.5%
-recall@10 when the issue quotes the file path to 8.4% when it does not.</b> Embeddings get
-29.2% on that hard half, and the coder model naming files from memory gets 55.8%.</p>
+<p>The measurement behind it, on 299 of SWE-bench Lite's 300 instances — one has a gold
+file that is in no cached listing, and it is excluded rather than counted as a miss:
+<b>BM25 falls from 74.5% recall@10 when the issue quotes the file path to 8.5% when it
+does not.</b> Embeddings get 29.2% on that hard half, and the coder model naming files
+from memory gets 55.8%.</p>
+<p>That BM25 row is reproducible offline from this repository:
+<code>python -m apps._engine.localize_eval</code>. It was not, until recently — the
+measurement was a set of pieces in <code>apps/_engine</code> with nothing composing
+them, and the figure quoted here was 8.4%, which is 13/153 rounded the wrong way.</p>
 <p>The reranker column is the control. Restricted to reordering BM25's top-30, the same
 model manages 17.5% on that half — while realising 92% of the ceiling it is handed. It is
 not a better ranker; it proposes candidates first-stage retrieval never surfaces, which is

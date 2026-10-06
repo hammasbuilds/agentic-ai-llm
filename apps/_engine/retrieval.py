@@ -23,7 +23,6 @@ from __future__ import annotations
 import json
 import math
 import re
-import subprocess
 import urllib.error
 import urllib.request
 from collections import Counter
@@ -153,134 +152,11 @@ def cosine_rank(
     return scored[:top]
 
 
-_LLM_PROMPT = """You are localizing a bug in the {repo} repository.
-
-Below is a bug report. Name the source files most likely to need editing to fix it.
-
-Rules:
-- Output ONLY file paths, one per line, most likely first.
-- Use full repository-relative paths, e.g. django/db/models/query.py
-- At most {k} paths. No prose, no numbering, no backticks.
-
-BUG REPORT:
-{issue}
-"""
-
-
-def llm_locate(
-    repo: str,
-    issue: str,
-    k: int = 10,
-    model: str = "qwen2.5-coder:14b",
-    max_chars: int = 6000,
-) -> list[str]:
-    """Ask the model directly. Returns whatever paths it names, in its own order."""
-    r = _ollama(
-        "/api/generate",
-        {
-            "model": model,
-            "prompt": _LLM_PROMPT.format(repo=repo, issue=issue[:max_chars], k=k),
-            "stream": False,
-            # Deterministic: this is a measurement, and a temperature would make the
-            # number depend on a seed nobody reports.
-            "options": {"temperature": 0.0, "num_predict": 256},
-        },
-    )
-    if r is None:
-        return []
-    return _parse_paths(r.get("response", ""), k)
-
-
-def _parse_paths(text: str, k: int) -> list[str]:
-    paths: list[str] = []
-    for line in text.splitlines():
-        # Order matters: strip the list marker first, then the backticks. Done the
-        # other way round, "1. `path`" keeps its opening backtick because the line
-        # starts with the digit, and every such path is then scored as a miss.
-        line = re.sub(r"^\s*[-*\d.)\s]+", "", line.strip())
-        line = line.strip("`").strip()
-        if not line or " " in line.strip():
-            continue
-        if "/" not in line and not line.endswith(".py"):
-            continue
-        line = line.lstrip("./")
-        if line not in paths:
-            paths.append(line)
-        if len(paths) >= k:
-            break
-    return paths
-
-
-_RERANK_PROMPT = """You are localizing a bug in the {repo} repository.
-
-Below is a bug report, then a numbered list of candidate files from that repository.
-Choose the {k} candidates most likely to need editing, best first.
-
-Rules:
-- Output ONLY the numbers, one per line, best first.
-- Choose only from the list. Do not invent paths.
-- At most {k} numbers. No prose.
-
-BUG REPORT:
-{issue}
-
-CANDIDATES:
-{candidates}
-"""
-
-
-def llm_rerank(
-    repo: str,
-    issue: str,
-    candidates: list[str],
-    k: int = 10,
-    model: str = "qwen2.5-coder:14b",
-    max_chars: int = 5000,
-) -> list[str]:
-    """Reorder a real candidate list instead of generating paths.
-
-    This exists to separate two things the direct arm conflates. When the model names
-    a path from memory, a hit may mean it localized the bug or merely that it has seen
-    the repository. Selecting from a supplied list makes fabrication impossible, so
-    what is left is ranking ability - and the gap between the two arms is the size of
-    the memorisation effect.
-    """
-    if not candidates:
-        return []
-    numbered = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(candidates))
-    r = _ollama(
-        "/api/generate",
-        {
-            "model": model,
-            "prompt": _RERANK_PROMPT.format(
-                repo=repo, issue=issue[:max_chars], k=k, candidates=numbered
-            ),
-            "stream": False,
-            "options": {"temperature": 0.0, "num_predict": 128},
-        },
-    )
-    if r is None:
-        return []
-    picked: list[str] = []
-    for line in r.get("response", "").splitlines():
-        m = re.search(r"\d+", line)
-        if not m:
-            continue
-        idx = int(m.group()) - 1
-        if 0 <= idx < len(candidates) and candidates[idx] not in picked:
-            picked.append(candidates[idx])
-        if len(picked) >= k:
-            break
-    # A model that answers with prose returns nothing; falling back to the input order
-    # would silently report BM25's score under the reranker's name.
-    return picked
-
-
-def ollama_ready(model: str) -> bool:
-    try:
-        r = subprocess.run(
-            ["ollama", "list"], capture_output=True, text=True, timeout=30, check=False
-        )
-        return model.split(":")[0] in r.stdout
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return False
+# The model arms used to live here as well: `llm_locate`, `llm_rerank` and
+# `ollama_ready`, each a synchronous copy of what app 01 does through
+# `apps._platform.model`. Nothing called any of them, and that was the lucky part -
+# all three returned `[]` or `False` when ollama did not answer, which is the
+# lost-generation bug `model.require_all` exists to refuse: a ranking of nothing
+# scored as a miss rather than as a call that never happened. One implementation per
+# arm now, and it is the one with the guard. The arms are driven from
+# `localize_eval.py`.
