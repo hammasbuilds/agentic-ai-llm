@@ -224,8 +224,52 @@ def loop(body: Callable, *, max_iterations: int = 2, done: Callable | None = Non
     return _run
 
 
-def to_langgraph(graph: Graph):
-    """Compile the same declaration onto langgraph, once it is installed."""
+def _compiled_node(node: Node) -> Callable:
+    """One node of the declaration, as a callable LangGraph can hold.
+
+    Each wrapper returns the *whole* merged state rather than its own update.
+    `StateGraph(dict)` has no reducer, so a node returning `{"y": 1}` replaces the
+    channel set instead of adding to it: a two-node graph seeded with `{"seed": 0}`
+    came back as `{"y": 1}`, having dropped both the seed and the first node's
+    output. Every product's state is a free-form dict, so every product lost
+    everything but its last node's keys.
+    """
+    if node.kind == FANOUT:
+        # `run` is None on a fan-out, and the old compiler substituted a no-op for
+        # it - so `branches`, `branch_status` and `branches_failed` never entered the
+        # state and the synthesis node downstream was never told a branch had died.
+        # That is the 0% disclosure this module's docstring cites as the reason the
+        # status list is handed over explicitly. Compiling it away reintroduced it.
+        return lambda state: {**state, **_run_fanout(node, state)}
+    if node.kind == INTERRUPT:
+        # The body of an interrupt is the pause itself, which LangGraph performs with
+        # `interrupt_before` on the following node rather than inside this one. The
+        # node still clears the flags the pause consumed.
+        def resume(state: dict) -> dict:
+            carried = {k: v for k, v in state.items() if k not in (APPROVED, "_interrupt")}
+            return carried
+
+        return resume
+    return lambda state: {**state, **(node.run(state) or {})}
+
+
+def to_langgraph(graph: Graph, *, checkpointer: object | None = None):
+    """Compile the same declaration onto langgraph, once it is installed.
+
+    "A product describes its graph once either way" was not true of three things, and
+    none of them had a test: state did not accumulate between nodes, every interrupt
+    became a no-op so the approval gate vanished from the compiled graph, and every
+    fan-out became a no-op so a dead branch went unreported.
+
+    An interrupt compiles to LangGraph's `interrupt_before` on the node after it,
+    which needs a checkpointer; one is supplied if the caller does not pass theirs.
+    Invoke it with a `thread_id`, as LangGraph requires:
+
+        app = to_langgraph(graph)
+        config = {"configurable": {"thread_id": run_id}}
+        app.invoke(state, config)   # runs up to the gate and stops
+        app.invoke(None, config)    # the approval; resumes after it
+    """
     try:
         from langgraph.graph import StateGraph  # noqa: PLC0415 — optional extra
     except ImportError as exc:  # pragma: no cover - exercised only without the extra
@@ -236,8 +280,13 @@ def to_langgraph(graph: Graph):
 
     builder = StateGraph(dict)
     for name, node in graph.nodes.items():
-        builder.add_node(name, node.run or (lambda s: {}))
+        builder.add_node(name, _compiled_node(node))
     builder.set_entry_point(graph.entry)
+
+    # Where the compiled graph must stop for a person: the node each interrupt
+    # leads to. A conditional edge out of an interrupt cannot be resolved at compile
+    # time, so it is refused rather than silently compiled without the gate.
+    pause_before: list[str] = []
     for source, target in graph.edges.items():
         if callable(target):
             builder.add_conditional_edges(source, target)
@@ -245,4 +294,20 @@ def to_langgraph(graph: Graph):
             builder.set_finish_point(source)
         else:
             builder.add_edge(source, target)
-    return builder.compile()
+        if graph.nodes[source].kind == INTERRUPT:
+            if callable(target) or target == END:
+                raise ValueError(
+                    f"interrupt {source!r} leads to "
+                    f"{'a conditional edge' if callable(target) else 'END'}; LangGraph "
+                    "pauses before a named node, so this cannot be compiled with its "
+                    "gate intact"
+                )
+            pause_before.append(target)
+
+    if pause_before and checkpointer is None:
+        from langgraph.checkpoint.memory import MemorySaver  # noqa: PLC0415 — optional
+
+        checkpointer = MemorySaver()
+    if pause_before:
+        return builder.compile(checkpointer=checkpointer, interrupt_before=pause_before)
+    return builder.compile(checkpointer=checkpointer) if checkpointer else builder.compile()

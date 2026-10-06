@@ -176,6 +176,14 @@ A graph is declared as data — nodes, edges, and which node is an interrupt. It
 declaration onto LangGraph once that extra is present. A product describes its graph once
 either way, so **LangGraph is a deployment choice rather than a rewrite**.
 
+It is now. `to_langgraph` had no test, and an interrupt node and a fan-out node both carry
+no `run` function — the pause and the branch set *are* their bodies — so the compiler's
+`lambda s: {}` fallback compiled **the approval gate out of every product's graph**, along
+with the branch status list below. `StateGraph(dict)` also has no reducer, so state did not
+accumulate between nodes at all. Nine tests in
+[`platform/tests/test_langgraph.py`](platform/tests/test_langgraph.py) now hold the compiled
+graph to the runtime's behaviour; eight of them failed against the old compiler.
+
 Two measured findings are enforced in the runtime rather than written into a prompt:
 
 - **A fan-out always hands the next node the branch status list.** A silently failed branch

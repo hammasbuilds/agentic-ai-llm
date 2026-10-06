@@ -2,12 +2,14 @@
 
 The shared platform the twenty products in [`../`](../) sit on.
 
-**Nothing is required to import this package or to run its tests** — no broker, no
-database, no model, no framework. FastAPI, LangGraph and ollama are optional extras behind
-lazy imports.
+**Nothing is required to import this package** — no broker, no database, no model, no
+framework. FastAPI, LangGraph and ollama are optional extras behind lazy imports. The nine
+skipped tests are the contract suite against a real Redis, Postgres and Kafka; the nine
+LangGraph ones skip too when that extra is absent, each naming the package rather than
+pretending the feature is untested for some other reason.
 
 ```
-python -m pytest -q                      # 134 passed, 9 skipped
+python -m pytest -q                      # 143 passed, 9 skipped
 ```
 
 ## What is here
@@ -35,6 +37,29 @@ A graph is declared as data — nodes, edges, and which node is an interrupt. It
 `graphs.run()` with nothing installed, and `graphs.to_langgraph()` compiles the same
 declaration onto LangGraph once the extra is present. A product describes its graph once
 either way.
+
+That sentence was false of three things at once, and `to_langgraph` had no test of any
+kind. An interrupt node and a fan-out node both carry no `run` function — the pause and the
+branch set *are* their bodies — and the compiler substituted `lambda s: {}` wherever `run`
+was missing. So **the approval gate was compiled out of every product's graph**, and so was
+the branch status list, which is the one thing the fan-out exists to guarantee. Separately,
+`StateGraph(dict)` has no reducer, so each node's return replaced the channel set instead of
+adding to it: a two-node graph seeded with `{"seed": 0}` came back as `{"y": 1}`.
+
+Each node now returns the merged state, a fan-out runs the branch set, and an interrupt
+compiles to LangGraph's `interrupt_before` on the node behind it, with a checkpointer
+supplied if the caller has none:
+
+```python
+app = graphs.to_langgraph(graph)
+config = {"configurable": {"thread_id": run_id}}
+app.invoke(state, config)   # runs to the gate and stops; nothing behind it has run
+app.invoke(None, config)    # the approval; resumes after the gate
+```
+
+An interrupt whose outgoing edge is conditional, or which leads straight to `END`, has no
+named node to pause before. That is refused with an error rather than compiled into a graph
+with no gate in it.
 
 Two findings from `langgraph-lab` are enforced in the runtime rather than written in a
 prompt:
