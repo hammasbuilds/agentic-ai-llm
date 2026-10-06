@@ -183,12 +183,48 @@ def _sniff(sample: str) -> str:
         return ","
 
 
+class NotDelimitedTextError(ValueError):
+    """The file is not text with delimiters in it, so there is nothing to profile.
+
+    The latin-1 fallback below decodes any byte sequence whatsoever, which is what it
+    is for - but it also means a PNG decodes cleanly and goes on to be profiled. An
+    independent review pointed `report` at one and got "2 rows and 1 columns (1 text),
+    delimiter ',', read as latin-1", under a footer reading "Every figure above was
+    computed by a query that ran and passed validation. No number here was written by
+    a language model." Both sentences were true and the file was an image.
+
+    A NUL byte is the discriminator. No delimited text file contains one, every common
+    binary format does, and the alternative was worse in both directions: with a NUL in
+    a header this crashed with `sqlite3.ProgrammingError: the query contains a null
+    character` out of `CREATE TABLE`, a traceback from the storage layer for something
+    the reader should have refused.
+    """
+
+
+#: How much of the file to look at before deciding it is not text. A NUL in a header
+#: is in the first few bytes; one further in belongs to a binary payload, and reading
+#: the whole of a large file to find it is not worth the time.
+BINARY_SNIFF = 65_536
+
+
 def _read(path: Path, limit: int | None) -> tuple[list[str], list[list[str]], str, str]:
     """Read a CSV, trying utf-8 then falling back.
 
     Real files are not always utf-8. Failing on a byte in row 40,000 after a
     minute of work is worse than decoding it approximately and saying so.
+
+    What that tolerance must not extend to is a file that is not text at all - see
+    `NotDelimitedTextError`.
     """
+    with path.open("rb") as handle:
+        head = handle.read(BINARY_SNIFF)
+    if b"\x00" in head:
+        where = "in its header" if b"\x00" in head.split(b"\n", 1)[0] else "in its contents"
+        raise NotDelimitedTextError(
+            f"{path.name} holds a NUL byte {where}, so it is not delimited text. "
+            "No CSV contains one; most binary formats do."
+        )
+
     encoding = "utf-8"
     try:
         text = path.read_text(encoding="utf-8")

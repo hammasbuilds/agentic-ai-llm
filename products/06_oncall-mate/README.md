@@ -65,7 +65,7 @@ into 12 templates — is the kind of thing five samples cannot tell you.
 Reproduce it:
 
 ```bash
-cd 06_oncall-mate && python -m pytest tests/test_real_logs.py -q     # 13 passed
+cd 06_oncall-mate && python -m pytest tests/test_real_logs.py -q     # 19 passed
 ```
 
 ## Agents and write authority
@@ -125,7 +125,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 06_oncall-mate
-python -m pytest -q                      # 31 passed
+python -m pytest -q                      # 37 passed
 PYTHONPATH="src;../platform/src" python -m oncall.app    # console on http://127.0.0.1:8000
 ```
 
@@ -146,8 +146,17 @@ triage ──(early exit)──► exit ──► END
         [alpha, beta]          [model]      [model]            [pauses]
 ```
 
-`triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
-anything the model wrote that no tool receipt supports, before a person ever sees it.
+`triage`, the early exit and `commit` are rules. Two nodes call the model.
+
+The gate drops any claim whose receipts were not issued, before a person ever sees it -
+and it reports where the claims came from, because that decides what the number means.
+This paragraph used to read "drops anything the model wrote that no tool receipt
+supports", which is not what happens: no node here writes `claims` or
+`issued_receipts`, both arrive in the request body (they are in the input keys below),
+and the two model nodes write `summary` and `draft`, which the gate never reads. So the
+filtering is a real audit of a draft the caller supplied, and `drop_rate` is `null`
+rather than a figure, because a rate over the caller's own input is not a measurement of
+the model.
 
 ## Scope
 
@@ -185,7 +194,7 @@ After `POST /approvals/{run}/approve`:
 | Status | `done` |
 | Nodes visited | `triage` → `gather` → `synthesise` → `compose` → `gate` → `approve` → `commit` |
 | Model calls | **2** — resuming added none |
-| Result keys | `action.proposed`, `alerts`, `branch_status`, `branches`, `branches_failed`, `claims`, `draft`, `drop_rate`, `dropped_claims`, `executed`, `incidents`, `issued_receipts`, `kept_claims`, `model`, `reduction`, `summary`, `summary_subject` |
+| Result keys | `action.proposed`, `alerts`, `branch_status`, `branches`, `branches_failed`, `claims`, `claims_checked`, `claims_source`, `draft`, `drop_rate`, `dropped_claims`, `executed`, `incidents`, `issued_receipts`, `kept_claims`, `model`, `receipts_source`, `reduction`, `summary`, `summary_subject` |
 
 **The early exit**, on a payload that trips `no_incident`:
 

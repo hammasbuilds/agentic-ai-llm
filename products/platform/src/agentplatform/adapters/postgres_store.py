@@ -44,6 +44,9 @@ class PostgresStore:
             (table, key, Jsonb(row)),
         )
 
+    def delete(self, table: str, key: str) -> None:
+        self.conn().execute("DELETE FROM agent_rows WHERE tbl = %s AND key = %s", (table, key))
+
     def get(self, table: str, key: str) -> dict | None:
         found = (
             self.conn()

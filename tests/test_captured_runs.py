@@ -19,7 +19,6 @@ It takes about a second for all twenty, so there is no excuse for the gap.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -74,40 +73,65 @@ def test_the_script_reproduces_the_committed_file_exactly():
     )
 
 
-def test_a_partial_run_leaves_the_committed_file_alone():
+def test_a_partial_run_leaves_the_committed_file_alone(tmp_path):
     """The destructive half, driven by making one product fail.
 
-    `capture()` is monkeypatched to raise for a single product; the script must report
-    the failure, exit non-zero, and not write. Previously it wrote twenty error stubs
-    and exited 0.
+    In a subprocess, and that is not fussiness. `capture.py` deletes every
+    `agentplatform*` entry from `sys.modules` before each product so each gets a clean
+    import. Importing it into the test process therefore leaves the session holding
+    module objects that no longer match the ones later imports bind to - and
+    `except ControlKeyError` cannot catch a class from the other copy. Doing it in
+    process turned 140 tests in `tests/test_product_intake.py` red while that file
+    passed on its own, which is the worst kind of test failure to read.
     """
-    spec = importlib.util.spec_from_file_location("capture_probe", CAPTURE)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["capture_probe"] = module
-    for src in sorted(PRODUCTS.glob("*/src")):
-        sys.path.insert(0, str(src))
-    spec.loader.exec_module(module)
+    driver = tmp_path / "probe.py"
+    driver.write_text(
+        chr(10).join(
+            [
+                "import importlib.util, sys",
+                "from pathlib import Path",
+                f"CAPTURE = Path(r{str(CAPTURE)!r})",
+                f"PRODUCTS = Path(r{str(PRODUCTS)!r})",
+                "for src in sorted(PRODUCTS.glob('*/src')):",
+                "    sys.path.insert(0, str(src))",
+                "spec = importlib.util.spec_from_file_location('capture_probe', CAPTURE)",
+                "module = importlib.util.module_from_spec(spec)",
+                "sys.modules['capture_probe'] = module",
+                "spec.loader.exec_module(module)",
+                "real = module.capture",
+                "def failing(product):",
+                "    if product.name == '01_revenue-desk':",
+                "        raise RuntimeError('probe')",
+                "    return real(product)",
+                "module.capture = failing",
+                "try:",
+                "    module.main()",
+                "except SystemExit as exited:",
+                "    print('EXIT', exited.code)",
+                "else:",
+                "    print('EXIT 0-no-raise')",
+            ]
+        ),
+        encoding="utf-8",
+    )
 
     before = RUNS.read_bytes()
-    real = module.capture
-    module.capture = lambda product: (
-        (_ for _ in ()).throw(RuntimeError("probe"))
-        if (product.name == "01_revenue-desk")
-        else real(product)
+    done = subprocess.run(
+        [sys.executable, str(driver)],
+        cwd=str(PRODUCTS),
+        capture_output=True,
+        text=True,
+        errors="replace",
+        timeout=600,
     )
-    try:
-        with pytest.raises(SystemExit) as exited:
-            module.main()
-        assert exited.value.code == 1
-    finally:
-        module.capture = real
-        # Put it back BEFORE asserting. The first version asserted first, so when the
-        # guard was corrupted to prove this test bites, the test failed and left
-        # runs.json overwritten - a test about not destroying an artefact, destroying
-        # it on the way to reporting that.
-        written = RUNS.read_bytes()
-        if written != before:
-            RUNS.write_bytes(before)
+    written = RUNS.read_bytes()
+    if written != before:
+        # Before asserting. A test about not destroying an artefact must not destroy it
+        # on the way to reporting that - which is what happened the first time this was
+        # driven against a corrupted guard.
+        RUNS.write_bytes(before)
+
+    assert "EXIT 1" in done.stdout, (done.stdout + done.stderr)[-1200:]
     assert written == before, "a failed run overwrote the committed artefact"
 
 
@@ -129,3 +153,56 @@ def test_capture_reads_the_checkpoint_through_the_public_accessor():
     ]
     offending = [line.strip() for line in code if "_checkpoints" in line]
     assert not offending, f"the private dict is back: {offending}"
+
+
+# -- the Input/Output rows each README publishes -------------------------------
+
+
+def _readme_row(product: str, label: str) -> str | None:
+    import re
+
+    text = (PRODUCTS / product / "README.md").read_text(encoding="utf-8")
+    found = re.search(rf"^\| {re.escape(label)} \|(.*)\|$", text, re.M)
+    return found.group(1) if found else None
+
+
+def test_every_products_result_keys_row_is_the_run_it_quotes():
+    """A published list of keys that nothing compared to the run.
+
+    `capture.py` records `result_keys` per product and the READMEs print them, and the
+    two were never checked against each other - so when the grounding gate started
+    returning `claims_source`, `receipts_source` and `claims_checked`, twenty tables
+    went stale and every suite stayed green. The same row would have gone stale for any
+    node that gained or lost an output.
+    """
+    import re
+
+    recorded = json.loads(RUNS.read_text(encoding="utf-8"))
+    assert len(recorded) == 20, sorted(recorded)
+
+    for product, row in sorted(recorded.items()):
+        keys = row["done"]["result_keys"]
+        assert keys, product
+        published = _readme_row(product, "Result keys")
+        assert published is not None, f"{product}: no Result keys row"
+        quoted = sorted(re.findall(r"`([^`]+)`", published))
+        assert quoted == sorted(keys), (
+            f"{product}: the README lists {len(quoted)} keys and the run produced "
+            f"{len(keys)}; gone {sorted(set(quoted) - set(keys))}, "
+            f"new {sorted(set(keys) - set(quoted))}"
+        )
+
+
+def test_the_gate_reports_its_source_in_every_products_run():
+    """The correction to the README sentence, visible in the artefact.
+
+    Every one of the twenty receives `claims` through `POST /intake`, so every captured
+    run must say `payload` - and must not publish a drop rate over it.
+    """
+    recorded = json.loads(RUNS.read_text(encoding="utf-8"))
+    for product, row in sorted(recorded.items()):
+        keys = row["done"]["result_keys"]
+        if "claims" not in row.get("input_keys", []):
+            continue
+        assert "claims_source" in keys, product
+        assert "receipts_source" in keys, product

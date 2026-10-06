@@ -1,6 +1,8 @@
 import pytest
 
-from agentplatform import gate
+from agentplatform import gate, graphs
+from agentplatform.graphs import Graph, Node
+from agentplatform.ports import InMemoryBus, InMemoryStore
 
 ISSUED = {"src_a41", "src_b22", "src_c07"}
 
@@ -52,3 +54,96 @@ def test_an_empty_run_has_no_drop_rate_rather_than_dividing_by_zero():
 def test_min_sources_must_be_sane():
     with pytest.raises(ValueError):
         gate.run([], ISSUED, min_sources=0)
+
+
+# -- where the claims came from, which is the whole question ------------------
+
+
+def test_the_gate_says_the_claims_came_from_the_request():
+    """All twenty READMEs said this gate "drops anything the model wrote that no tool
+    receipt supports". No node in any of the twenty writes `claims` or
+    `issued_receipts`: both arrive in the request body, which the same READMEs list as
+    input keys fifteen lines later. So the gate filtered the caller's claims against
+    the caller's own receipt list - correct arithmetic, and not a statement about the
+    model. The LLM nodes write `summary` and `draft`, which the gate never reads.
+    """
+    state = {
+        "_supplied": ("claims", "issued_receipts"),
+        "claims": [{"text": "a", "receipts": ["src_1"]}, {"text": "b", "receipts": []}],
+        "issued_receipts": ["src_1"],
+    }
+    out = gate.from_state(state)
+
+    assert out["claims_source"] == gate.FROM_PAYLOAD
+    assert out["receipts_source"] == gate.FROM_PAYLOAD
+    assert out["kept_claims"] == ["a"]
+    assert len(out["dropped_claims"]) == 1
+    assert out["claims_checked"] == 2
+    # None, not 0.5. A rate there reads as "this fraction of what the model said was
+    # unsupported", and over the request body it measures nothing.
+    assert out["drop_rate"] is None
+
+
+def test_the_gate_reports_a_rate_when_a_node_produced_the_claims():
+    """The other half: once something upstream writes them, the rate means what it says."""
+    state = {
+        "_supplied": ("encounter", "events"),
+        "claims": [{"text": "a", "receipts": ["src_1"]}, {"text": "b", "receipts": []}],
+        "issued_receipts": ["src_1"],
+    }
+    out = gate.from_state(state)
+    assert out["claims_source"] == gate.FROM_NODES
+    assert out["receipts_source"] == gate.FROM_NODES
+    assert out["drop_rate"] == 0.5
+
+
+def test_the_two_sources_are_reported_separately():
+    """Receipts from a tool and claims from the caller is the shape worth distinguishing:
+    it is a real audit of a draft, and it is still not a measurement of the model."""
+    out = gate.from_state(
+        {
+            "_supplied": ("claims",),
+            "claims": [{"text": "a", "receipts": ["src_1"]}],
+            "issued_receipts": ["src_1"],
+        }
+    )
+    assert (out["claims_source"], out["receipts_source"]) == (
+        gate.FROM_PAYLOAD,
+        gate.FROM_NODES,
+    )
+    assert out["drop_rate"] is None
+
+
+def test_the_runner_records_the_callers_keys_and_does_not_return_them():
+    """The marker is plumbing: present while the graph runs, absent from the result."""
+    seen: list[tuple] = []
+
+    def look(state: dict) -> dict:
+        seen.append(state.get(graphs.SUPPLIED))
+        return {}
+
+    graph = Graph(nodes={"a": Node("a", graphs.TOOL, look)}, entry="a", edges={"a": graphs.END})
+    out = graphs.run(graph, {"claims": [], "entity": "e"})
+    assert seen == [("claims", "entity")]
+    assert graphs.SUPPLIED not in out.state
+
+
+def test_the_marker_cannot_be_set_from_a_request_body():
+    """It is underscore-prefixed, so `Runtime.submit` refuses it - the same guard that
+    closed the approval bypass. A caller setting `_supplied` to `()` would make every
+    payload-sourced drop rate look like a measured one."""
+    from agentplatform import api
+
+    assert graphs.SUPPLIED.startswith("_")
+    rt = api.Runtime(
+        domain="d",
+        bus=InMemoryBus(),
+        store=InMemoryStore(),
+        graph=Graph(
+            nodes={"a": Node("a", graphs.TOOL, lambda s: {})},
+            entry="a",
+            edges={"a": graphs.END},
+        ),
+    )
+    with pytest.raises(api.ControlKeyError):
+        rt.submit("r", "e", {graphs.SUPPLIED: ()})

@@ -104,7 +104,7 @@ dashboard.
 ## Run it
 
 ```bash
-uv run pytest -q                    # 39 tests
+uv run pytest -q                    # 46 tests
 uv run log-detective cost data/
 uv run --extra ui panel serve ui/app.py --show
 ```

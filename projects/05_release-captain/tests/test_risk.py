@@ -290,12 +290,109 @@ def test_the_readme_quotes_the_pairs_the_command_prints():
     quoted = dict(re.findall(r"\| (\w+ vs \w+) \| \*\*\+(\d+)%\*\* \|", readme))
     assert quoted, "the agreement table no longer parses"
 
-    produced = set(rank_disagreement(_history([make("a", "x", [("src/a.py", 1, 0)])]), top=1))
-    if not produced:
-        produced = {"churn vs files", "churn vs spread", "files vs spread"}
+    # Two commits, because `rank_disagreement` returns {} for fewer than two - which is
+    # what the substituted set was papering over.
+    produced = set(
+        rank_disagreement(
+            _history(
+                [
+                    make("a", "x", [("src/a.py", 10, 0)]),
+                    make("b", "y", [("src/b.py", 1, 0), ("docs/c.md", 1, 0)]),
+                ]
+            ),
+            top=2,
+        )
+    )
+    # `if not produced: produced = {...}` was here, so when the call returned nothing
+    # the test asserted the README against a set the test itself had just supplied. A
+    # one-commit history does produce pairs; if it ever stops, that is a finding and not
+    # something to substitute around.
+    assert produced, "rank_disagreement returned no pairs, so this test has nothing to check"
     assert set(quoted) == produced, (
         f"the README names {sorted(quoted)}; the command produces {sorted(produced)}"
     )
+    # And the VALUES, recomputed. This checked only the keys, so "+41%" could become
+    # "+99%" with the test green - and the three figures had in fact drifted to
+    # +42/+33/+41 while the README still said +41/+33/+42.
+    measured = _measured_agreement()
+    if measured is None:
+        pytest.skip("no folder of checkouts here; REPOS_ROOT names one")
+    for pair, stated in quoted.items():
+        assert pair in measured, (pair, sorted(measured))
+        assert int(stated) == measured[pair], (
+            f"the README says {pair} +{stated}%; `captain compare` measures +{measured[pair]}%"
+        )
+
+
+def _measured_agreement() -> dict[str, int] | None:
+    """`captain compare`'s three figures over the folder of checkouts, or None.
+
+    Over the live folder, so it moves when anyone commits - which is why the README
+    carries a measurement date beside the table. What this catches is the drift the
+    key-only check could not see at all.
+    """
+    import os
+    import re
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    folder = Path(os.environ.get("REPOS_ROOT") or root.parents[2])
+    if not folder.is_dir() or len(list(folder.glob("*/.git"))) < 10:
+        return None
+    done = subprocess.run(
+        [sys.executable, "-m", "captain.cli", "compare", str(folder)],
+        cwd=str(root),
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+        errors="replace",
+        timeout=900,
+    )
+    if done.returncode != 0:
+        return None
+    found = re.findall(r"(\w+ vs \w+)\s+mean excess over chance = \+(\d+)%", done.stdout)
+    return {pair: int(value) for pair, value in found} or None
+
+
+# -- the headline, which no command computed ----------------------------------
+
+
+def test_the_extremes_headline_is_the_one_the_command_prints():
+    """The README's first sentence had no producer.
+
+    `gate`, `explain`, `rank`, `sweep` and `compare` are all per-repository, so nothing
+    computed a maximum across the folder - and the quoted figure was wrong in both
+    halves: 196,743 lines in 11 files, where the real maximum is 215,924 across 240.
+    The 11 was what made the breadth ratio read 164x; against the real commit it is 8x.
+
+    Driven on a constructed pair of repositories rather than the live folder, because
+    the live figures move when anyone commits. What is checked against the live folder
+    is only that the command runs and reports the same repository count the README
+    states.
+    """
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert "captain extremes" in readme, "the README no longer names the command"
+    stated = re.search(
+        r"changed the most lines changed\s+([\d,]+) of them across ([\d,]+) files",
+        readme.replace(chr(10), " "),
+    )
+    assert stated, "the headline no longer states the maximum by lines"
+    lines, files = (int(g.replace(",", "")) for g in stated.groups())
+    # The old pair, pinned as gone. 11 files beside a six-figure churn is the shape of
+    # the error - a commit that large touching eleven files is not a plausible maximum.
+    assert (lines, files) != (196743, 11), "the figure with no producer is back"
+    assert files > 100, f"{files} files beside {lines:,} lines is the old mistake"
+
+    ratio = re.search(r"the first is (\d+) times the second", readme)
+    assert ratio, "the headline no longer states the ratio"
+    second = re.search(r"changed 510\s+lines across ([\d,]+)", readme.replace(chr(10), " "))
+    assert second, "the headline no longer states the maximum by files"
+    assert int(ratio.group(1)) == round(lines / 510), (ratio.group(1), lines)
 
 
 def test_the_metric_names_in_the_readme_are_the_ones_the_code_uses():
@@ -314,3 +411,60 @@ def test_the_rank_pairs_are_exactly_three():
     commits = [make(str(i), "x", [(f"src/a{i}.py", 10 * i, 0)]) for i in range(1, 7)]
     pairs = rank_disagreement(_history(commits), top=3)
     assert set(pairs) == {"churn vs files", "churn vs spread", "files vs spread"}
+
+
+# -- a path argument that is wrong in the ordinary ways -----------------------
+
+
+def test_a_folder_command_given_a_file_says_so(tmp_path, capsys):
+    """`NotADirectoryError` out of `main()` for the commonest mistake there is.
+
+    `sweep`, `compare` and `extremes` all take a folder of checkouts and all did
+    `Path(raw).resolve()` then `iterdir()`. Giving a file - or a path that is not there
+    at all - produced a stack trace naming this module's `iterdir`, which is not what
+    the reader got wrong.
+    """
+    from captain.cli import main
+
+    a_file = tmp_path / "notes.txt"
+    a_file.write_text("x", encoding="utf-8")
+
+    for command in ("sweep", "compare", "extremes"):
+        assert main([command, str(a_file)]) == 2, command
+        err = capsys.readouterr().err
+        assert "is a file" in err, (command, err)
+        assert "Traceback" not in err
+
+
+def test_a_folder_command_given_a_missing_path_says_so(tmp_path, capsys):
+    from captain.cli import main
+
+    for command in ("sweep", "compare", "extremes"):
+        assert main([command, str(tmp_path / "nope")]) == 2, command
+        assert "no such path" in capsys.readouterr().err, command
+
+
+def test_every_subcommand_answers_a_non_repository_the_same_way(tmp_path, capsys):
+    """`gate` caught `NotAGitRepository` and returned 2; `rank`, `explain` and
+    `extremes` did not, so the same mistake was a readable message from one subcommand
+    and a stack trace from the next."""
+    from captain.cli import main
+
+    for argv in (
+        ["gate", str(tmp_path)],
+        ["rank", str(tmp_path), "--by", "churn"],
+        ["explain", str(tmp_path), "HEAD"],
+    ):
+        assert main(argv) == 2, argv
+        err = capsys.readouterr().err
+        assert err.strip(), argv
+        assert "Traceback" not in err
+
+
+def test_extremes_refuses_a_folder_with_no_history(tmp_path, capsys):
+    """Exit 2 rather than printing a maximum over nothing."""
+    from captain.cli import main
+
+    (tmp_path / "empty").mkdir()
+    assert main(["extremes", str(tmp_path)]) == 2
+    assert "no checkout" in capsys.readouterr().err

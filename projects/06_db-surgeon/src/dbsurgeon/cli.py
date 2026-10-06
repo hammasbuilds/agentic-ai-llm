@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from .operations import classify_script, summarise
-from .plan import build, render
+from .plan import NothingToCheckError, build, render
 
 
 def _read(path: str | None) -> str:
@@ -18,16 +18,33 @@ def _read(path: str | None) -> str:
 
 
 def _check_command(args: argparse.Namespace) -> int:
-    plan = build(
+    try:
+        plan = _planned(args)
+    except NothingToCheckError as empty:
+        print(f"{args.up}: {empty}", file=sys.stderr)
+        return 2
+    print(render(plan))
+
+    if args.json:
+        _write_json(args.json, plan)
+
+    if args.strict and not plan.safe:
+        return 1
+    return 0
+
+
+def _planned(args: argparse.Namespace):
+    return build(
         name=args.name or Path(args.up).stem,
         schema=_read(args.schema),
         seed=_read(args.seed),
         up=_read(args.up),
         down=_read(args.down),
     )
-    print(render(plan))
 
-    if args.json:
+
+def _write_json(path: str, plan) -> None:
+    if True:
         trip = plan.trip
         payload = {
             "name": plan.name,
@@ -39,6 +56,8 @@ def _check_command(args: argparse.Namespace) -> int:
             "data_restored": trip.data_restored if trip else None,
             "columns_reordered": trip.columns_reordered if trip else [],
             "columns_lost": trip.columns_lost if trip else [],
+            "columns_added": trip.columns_added if trip else [],
+            "extra_tables": trip.extra_tables if trip else [],
             "rows_lost": trip.rows_lost if trip else None,
             "up": [
                 {"kind": o.kind, "category": o.category, "target": o.target, "reason": o.reason}
@@ -46,12 +65,8 @@ def _check_command(args: argparse.Namespace) -> int:
             ],
             "disagreements": plan.disagreements,
         }
-        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        print(f"wrote {args.json}")
-
-    if args.strict and not plan.safe:
-        return 1
-    return 0
+        Path(path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"wrote {path}")
 
 
 def _classify_command(args: argparse.Namespace) -> int:

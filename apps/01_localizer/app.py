@@ -5,7 +5,7 @@ fix goes: BM25 over paths, embeddings over paths, the coder model naming files f
 knowledge, and the same model reranking BM25's shortlist.
 
 The finding this was built from: BM25 scores 75% (38 of 51) when the issue quotes the file
-path and **8.5% (13 of 153) when it does not**, on SWE-bench Lite. The model naming files
+path and **8.4% (13 of 154) when it does not**, on SWE-bench Lite. The model naming files
 freely gets 55.8% on that hard half — but only 17.5% when restricted to reranking, which
 is the evidence that its advantage is knowing the repository rather than reading the issue.
 
@@ -132,23 +132,36 @@ async def runner(params: dict, emit) -> dict:
 ABOUT = """
 <p>Four retrievers over the same candidate set, plus a reciprocal-rank fusion of the two
 cheap ones.</p>
-<p>The measurement behind it, on 299 of SWE-bench Lite's 300 instances — one has a gold
-file that is in no cached listing, and it is excluded rather than counted as a miss:
-<b>BM25 falls from 38 of 51 instances when the issue quotes the file path to 13 of 153
+<p>The measurement behind it, over all 300 of SWE-bench Lite's instances:
+<b>BM25 falls from 38 of 51 instances when the issue quotes the file path to 13 of 154
 when it does not.</b> Embeddings get 29.2% on that hard half, and the coder model naming files
 from memory gets 55.8%.</p>
 <p>That BM25 row is reproducible offline from this repository:
 <code>python -m apps._engine.localize_eval</code>. It was not, until recently — the
 measurement was a set of pieces in <code>apps/_engine</code> with nothing composing
-them. The figures here were also rates to one decimal place - 74.5% on 51 instances,
-where one instance is two points, and 8.4% where 13/153 is 8.5% - so the fractions are
-quoted instead and the tier table prints them beside every rate.</p>
+them.</p>
+<p>Two things about the second figure, which was published as <b>8.5%</b> and before
+that as 8.4%. The driver dropped the one instance whose gold file is absent from its
+repo listing, which made the fraction 13/153; <code>apps/_engine/evaluate.py</code>
+states the rule it is graded by - that such an instance stays in the denominator and
+is scored as a miss, because dropping it flatters every retriever by an amount nobody
+can see - and this driver was its only caller doing the opposite. So 8.4% was right
+all along: it is 13/154. A note here previously dismissed it as "13/153 rounded the
+wrong way", which answered a rounding complaint by keeping the flattering
+denominator.</p>
+<p>And the rates were quoted to one decimal on samples that cannot carry one - 74.5%
+on 51 instances, where a single instance is two percentage points. The fractions are
+quoted instead, and the tier table prints them beside every rate.</p>
 <p>The reranker column is the control. Restricted to reordering BM25's top-30, the same
 model manages 17.5% on that half — while realising 92% of the ceiling it is handed. It is
 not a better ranker; it proposes candidates first-stage retrieval never surfaces, which is
 what knowing a codebase looks like.</p>
-<p>It also invents about one path in five, which is why fabrications are counted here
-rather than quietly resolved away.</p>
+<p>A fabrication rate used to be quoted here as "about one path in five". It is
+withdrawn: the parser that produced it read a bolded, quoted or line-numbered path as a
+path absent from the repository, so part of that fifth was the harness failing to read
+an answer rather than the model inventing a file. Fabrications are still counted rather
+than quietly resolved away, and the count of lines the parser could not read is now
+reported beside them so neither can absorb the other.</p>
 """
 
 app = create_app(

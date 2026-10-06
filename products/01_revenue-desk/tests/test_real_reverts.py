@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 
+from revenue import churn
 from revenue.churn import REPOS, Edit, find_reverts, is_authored, is_code, survey
 
 FIXTURE = Path(__file__).parent / "fixtures/portfolio_survey.json"
@@ -306,3 +307,46 @@ def test_the_readme_table_is_what_the_fixture_says(frozen):
     # and the multiple quoted in the sentence under it
     ratio = (total("reverts") / total("edits")) / (total("code_reverts") / total("code_edits"))
     assert f"{ratio:.2f}\u00d7" in readme or f"{ratio:.2f}x" in readme
+
+
+# --- the figures written into the source itself ---------------------------------------
+
+
+def test_in_code_figures_match_the_frozen_survey(frozen):
+    """Two docstrings in `churn.py` quote numbers. Both had drifted.
+
+    `code_rate` said "of 138 authored reverts, 88 were in Markdown" where the
+    README and the fixture both say 92, and wrote the rates as bare fractions.
+    `survey` closed with "12 repositories reported 0.063%, all 35 report
+    0.285%" — a survey of 35 checkouts, when what ships covers 74 at 0.1155%.
+
+    Neither number is reachable from any test that exercises behaviour, which
+    is exactly why they rotted: a figure in a comment is only as fresh as the
+    last person who read it. This reads them back out of the source and
+    compares them against the same fixture the README table comes from, so the
+    comments fail the suite rather than quietly misinform.
+    """
+    # Collapsed to one line: these figures live in wrapped docstrings, and a
+    # reflow by the formatter must not be able to break the check.
+    source = " ".join(Path(churn.__file__).read_text(encoding="utf-8").split())
+
+    authored_reverts = sum(r["authored_reverts"] for r in frozen)
+    prose_reverts = authored_reverts - sum(r["code_reverts"] for r in frozen)
+    authored = rate(frozen, "authored_reverts", "authored_edits")
+    naive = rate(frozen, "reverts", "edits")
+
+    assert (authored_reverts, prose_reverts) == (138, 92)
+    assert f"the {authored_reverts} authored reverts, {prose_reverts} are in prose" in source
+    assert f"to {authored * 100:.4f}%. The cause" in source
+    assert f"covers {len(frozen)} repositories" in source
+    assert f"naive rate over it is {naive * 100:.4f}%" in source
+
+    # The retracted figures are allowed to appear exactly once each, inside the
+    # quotation that retracts them - naming what was wrong is the point of the
+    # note. What must not come back is either of them stated as current, so each
+    # occurrence has to sit inside the quoted phrase.
+    quoted = '"12 repositories reported 0.063%, all 35 report 0.285%"'
+    assert source.count(quoted) == 1
+    outside = source.replace(quoted, "")
+    for stale in ("0.063%", "0.285%", "88 were", "from 0.000101 to", "0.000234"):
+        assert stale not in outside, stale

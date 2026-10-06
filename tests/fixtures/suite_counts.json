@@ -1,19 +1,31 @@
 {
   "measured": "2026-10-06",
   "fresh": [
+    "CSV_CORPUS",
+    "HF_DATASETS_CACHE",
     "HF_HOME",
     "HF_HUB_CACHE",
+    "KAFKA_BOOTSTRAP",
+    "OLLAMA_HOST",
+    "OLLAMA_URL",
+    "POSTGRES_DSN",
+    "REDIS_URL",
     "REPOS_ROOT"
   ],
   "note": "What every suite really did on a fresh clone, recorded by scripts/test_all.py --write-counts with the variables in 'fresh' pointed at an empty directory. The READMEs quote these, so they are the numbers a reader reproduces rather than the ones this machine happens to produce - 20_driftwatch ran 21 more tests here than anywhere else, and its README said so.",
   "suites": {
+    "(root)": {
+      "passed": 706,
+      "skipped": 74,
+      "outcome": "ok"
+    },
     "products/01_revenue-desk": {
-      "passed": 37,
+      "passed": 38,
       "skipped": 1,
       "outcome": "ok"
     },
     "products/02_ward-sync": {
-      "passed": 25,
+      "passed": 28,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -33,7 +45,7 @@
       "outcome": "ok"
     },
     "products/06_oncall-mate": {
-      "passed": 31,
+      "passed": 37,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -43,7 +55,7 @@
       "outcome": "ok"
     },
     "products/08_bid-desk": {
-      "passed": 25,
+      "passed": 27,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -58,12 +70,12 @@
       "outcome": "ok"
     },
     "products/11_watchtower": {
-      "passed": 34,
+      "passed": 35,
       "skipped": 0,
       "outcome": "ok"
     },
     "products/12_powerguard": {
-      "passed": 35,
+      "passed": 48,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -73,8 +85,8 @@
       "outcome": "ok"
     },
     "products/14_graph-clinic": {
-      "passed": 28,
-      "skipped": 0,
+      "passed": 17,
+      "skipped": 12,
       "outcome": "ok"
     },
     "products/15_claims-floor": {
@@ -83,17 +95,17 @@
       "outcome": "ok"
     },
     "products/16_shelf-ops": {
-      "passed": 27,
+      "passed": 30,
       "skipped": 0,
       "outcome": "ok"
     },
     "products/17_fleet-desk": {
-      "passed": 32,
+      "passed": 36,
       "skipped": 0,
       "outcome": "ok"
     },
     "products/18_campus-ops": {
-      "passed": 30,
+      "passed": 36,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -108,22 +120,22 @@
       "outcome": "ok"
     },
     "products/platform": {
-      "passed": 161,
+      "passed": 198,
       "skipped": 12,
       "outcome": "ok"
     },
     "projects/01_repo-cartographer": {
-      "passed": 36,
+      "passed": 42,
       "skipped": 13,
       "outcome": "ok"
     },
     "projects/02_test-smith": {
-      "passed": 44,
+      "passed": 46,
       "skipped": 0,
       "outcome": "ok"
     },
     "projects/03_review-bot": {
-      "passed": 43,
+      "passed": 46,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -133,37 +145,37 @@
       "outcome": "ok"
     },
     "projects/05_release-captain": {
-      "passed": 45,
-      "skipped": 0,
+      "passed": 49,
+      "skipped": 1,
       "outcome": "ok"
     },
     "projects/06_db-surgeon": {
-      "passed": 44,
+      "passed": 63,
       "skipped": 0,
       "outcome": "ok"
     },
     "projects/07_compliance-auditor": {
-      "passed": 46,
-      "skipped": 1,
+      "passed": 45,
+      "skipped": 2,
       "outcome": "ok"
     },
     "projects/08_csv-analyst": {
-      "passed": 56,
-      "skipped": 0,
+      "passed": 52,
+      "skipped": 9,
       "outcome": "ok"
     },
     "projects/09_log-detective": {
-      "passed": 39,
+      "passed": 46,
       "skipped": 0,
       "outcome": "ok"
     },
     "projects/10_contract-reader": {
-      "passed": 34,
+      "passed": 41,
       "skipped": 0,
       "outcome": "ok"
     },
     "projects/11_study-tutor": {
-      "passed": 28,
+      "passed": 43,
       "skipped": 0,
       "outcome": "ok"
     }

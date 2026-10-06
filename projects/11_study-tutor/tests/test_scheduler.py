@@ -184,3 +184,86 @@ def test_recall_at_review_lands_near_the_target():
     """If the scheduler works, cards are tested when recall is around 90%."""
     outcome = simulate("fsrs", days=365, cards=30, seed=5)
     assert 0.6 < outcome.mean_recall < 0.95
+
+
+# -- a deck path that is wrong in the four ordinary ways -----------------------
+
+
+def _run(argv, capsys):
+    from tutor.cli import main
+
+    code = main(argv)
+    return code, capsys.readouterr()
+
+
+@pytest.mark.parametrize(
+    "contents,expect",
+    [
+        ("", "is empty"),
+        ("   \n", "is empty"),
+        ("not json at all", "not valid JSON"),
+        ('{"a": 1}', "holds a dict"),
+        ("[1, 2, 3]", "card 1 is a int"),
+        ('[{"answer": "a"}]', "card 1 has no 'question'"),
+        ('[{"question": "q"}]', "card 1 has no 'answer'"),
+        ('[{"question": "q", "answer": "a", "state": 5}]', "non-object 'state'"),
+        ('[{"question": "q", "answer": "a", "state": {"due": "yesterday"}}]', "YYYY-MM-DD"),
+        ('[{"question": "q", "answer": "a", "state": {"due": 7}}]', "YYYY-MM-DD"),
+    ],
+    ids=lambda v: str(v)[:34],
+)
+def test_a_malformed_deck_is_one_line_and_exit_two(contents, expect, tmp_path, capsys):
+    """Every one of these was a traceback out of `main()`.
+
+    `study-tutor due <deck>` is the first command the README gives. An unreadable deck
+    gave `JSONDecodeError`, a missing one `FileNotFoundError`, a locked one
+    `PermissionError`, and an empty file the first of those - four stack traces for the
+    four ordinary ways a path argument goes wrong, each pointing at this program's
+    `json.loads` rather than at what the reader got wrong.
+    """
+    deck = tmp_path / "deck.json"
+    deck.write_text(contents, encoding="utf-8")
+
+    code, out = _run(["due", str(deck)], capsys)
+    assert code == 2, out.out + out.err
+    assert expect in out.err, out.err
+    assert "Traceback" not in out.err
+
+
+def test_a_missing_deck_says_so(tmp_path, capsys):
+    code, out = _run(["due", str(tmp_path / "nope.json")], capsys)
+    assert code == 2
+    assert "no deck at" in out.err
+
+
+def test_a_directory_given_as_a_deck_says_so(tmp_path, capsys):
+    code, out = _run(["due", str(tmp_path)], capsys)
+    assert code == 2
+    assert "is a directory" in out.err
+
+
+def test_a_deck_that_is_not_utf8_says_so(tmp_path, capsys):
+    deck = tmp_path / "deck.json"
+    deck.write_bytes(b"\xff\xfe[]")
+    code, out = _run(["due", str(deck)], capsys)
+    assert code == 2
+    assert "not UTF-8" in out.err
+
+
+def test_an_empty_deck_still_works(tmp_path, capsys):
+    """A refusal that refuses everything is not validation. `[]` is a valid deck."""
+    deck = tmp_path / "deck.json"
+    deck.write_text("[]", encoding="utf-8")
+    code, _ = _run(["due", str(deck)], capsys)
+    assert code == 0
+
+
+def test_a_real_deck_still_works(tmp_path, capsys):
+    deck = tmp_path / "deck.json"
+    deck.write_text(
+        '[{"question": "q", "answer": "a", "state": {"due": "2020-01-01", "reps": 2}}]',
+        encoding="utf-8",
+    )
+    code, out = _run(["due", str(deck)], capsys)
+    assert code == 0, out.err
+    assert "q" in out.out

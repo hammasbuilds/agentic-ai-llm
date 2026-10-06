@@ -158,7 +158,13 @@ def test_each_retriever_is_scored_separately():
 
 
 def test_fabrication_counts_only_paths_that_exist():
-    """ "It invents one path in five" is a published number from this function."""
+    """This function is the producer of any fabrication figure the repository quotes.
+
+    The README's "one path in five" was withdrawn, because `parse_paths` used to hand
+    this function mangled strings - a bolded or line-numbered path - which it correctly
+    reported as paths that do not exist. The arithmetic here was never the problem; its
+    input was. What it must keep doing is count, and never resolve a near-miss away.
+    """
     results = [{"repo": "r", "ranked": ["real.py", "invented.py"]}]
     out = fabrication_rate(results, {"r": ["real.py", "other.py"]})
     assert out["paths_named"] == 2

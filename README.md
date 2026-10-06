@@ -58,7 +58,7 @@ committed now, and **the BM25 row of the localization table is reproducible with
 and no network**:
 
 ```bash
-python -m apps._engine.localize_eval     # 299 of 300 instances, ~30s, no model, no network
+python -m apps._engine.localize_eval     # all 300 instances, ~30s, no model, no network
 ```
 
 It reports the population it scored and the instances it could not, because the one
@@ -76,18 +76,35 @@ every offline check was reading the real cache.
 The columns these apps read are committed under
 [`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
 `data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
-guarantee by pointing both variables at an empty directory, and the full suite gives the
-same **317 passed, 38 skipped** either way.
+guarantee by pointing both variables at an empty directory, and the suite gives the same
+result either way: **780 tests collected**. Measured 2026-10-06, 742 of them pass and 38
+skip here; on a fresh clone the split moves because three suites read data that is not in
+the repository.
+
+That first figure said "317 passed, 38 skipped" for a long time - wrong by 348. Nothing
+checked it: `tests/test_documented_counts.py` sweeps `projects/` and `products/`, so the
+module whose whole job is catching a drifted count had a blind spot at the repository's
+own front door. The 703 is asserted against `pytest --collect-only`, which is the only
+form of this claim a suite can check about itself: a suite cannot assert its own pass and
+skip counts without running itself, and the two figures beside it are measured and dated
+rather than pinned. `scripts/test_all.py` runs the root suite too, so a fresh-clone
+failure in it shows up beside the other 32.
 
 `repo-cartographer`'s resolution table is the last three lines of
 `cartographer compare <folder>` over every checkout in one folder — it used to
 quote a median across a chosen 29 that nothing in the tool computed, and the five JSONs
 shipped beside it covered five of those rows.
 
-- **BM25 collapses from 75% (38 of 51) to 8.5% (13 of 153)** depending only on whether the
+- **BM25 collapses from 75% (38 of 51) to 8.4% (13 of 154)** depending only on whether the
   issue quotes the file path. The same 14B model scores 55.8% on that hard half when naming files freely and
   **17.5% when restricted to reranking** — its advantage is knowing the repository, not
-  reading the issue. It also invents one path in five.
+  reading the issue. The fabrication rate that used to be quoted here — "one path in
+  five" — is withdrawn: it was measured with a parser that read a bolded, quoted or
+  line-numbered path as a path that does not exist, so part of that fifth was this
+  harness failing to read an answer rather than the model inventing a file. The parser
+  now reads the shapes a model actually returns and `fabrication_rate` reports
+  `lines_unparsed` beside the rate, so the two can no longer be summed. The figure
+  returns when the arm is re-run.
 - **Devign's always-SAFE baseline is 54.1%**, against published accuracies around 62% —
   eight points of headroom, not sixty-two. The model figure this line used to quote was
   measured against the first 800 rows of the file, which are 49.6% safe rather than 54.1%,

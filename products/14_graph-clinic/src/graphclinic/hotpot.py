@@ -21,7 +21,28 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-CACHE = Path.home() / ".cache/huggingface/datasets/hotpotqa___hotpot_qa"
+
+#: Where HotpotQA is read from. This was `Path.home() / ".cache/huggingface/..."`, which
+#: ignores the environment entirely - so `scripts/test_all.py --fresh`, whose whole
+#: purpose is to run every suite as a reader without the data would, pointed `HF_HOME`
+#: at an empty directory and this module went on reading the real cache. All 28 tests
+#: ran in a sweep whose recorded counts are published as a fresh clone's.
+#:
+#: `apps/_engine/hf_cache.py` already fixed this shape for the hub cache, where three
+#: duplicate resolvers each appended the default UNDERNEATH the overrides. This is the
+#: datasets cache and was missed, and the same rule applies: an override replaces the
+#: default, never adds to it.
+def _datasets_cache() -> Path:
+    import os  # noqa: PLC0415
+
+    if env := os.environ.get("HF_DATASETS_CACHE"):
+        return Path(env)
+    if env := os.environ.get("HF_HOME"):
+        return Path(env) / "datasets"
+    return Path.home() / ".cache" / "huggingface" / "datasets"
+
+
+CACHE = _datasets_cache() / "hotpotqa___hotpot_qa"
 _WORD = re.compile(r"[a-z0-9']+")
 
 STOP = frozenset(

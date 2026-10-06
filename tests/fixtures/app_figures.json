@@ -1,0 +1,130 @@
+{
+  "note": "Every distinct number in each app's prose. This was a table of COUNTS - `{'05_debug_ceiling': 11}` - so changing a value left the count at 11 and passed: an independent review rewrote a headline from 93.3% to 99.9% and all 470 tests stayed green. Only apps 02 and 03 have a committed run to check values against, which left 56 of these 104 figures with no value-level protection at all. The set is pinned instead of its size, so a changed value is a figure appearing and a figure vanishing, and both fail.",
+  "how_to_update": "python scripts/freeze_app_figures.py, after checking the new number is right",
+  "apps": {
+    "01_localizer": [
+      "13",
+      "30",
+      "38",
+      "51",
+      "75",
+      "92",
+      "153",
+      "154",
+      "300",
+      "8.4",
+      "8.5",
+      "17.5",
+      "29.2",
+      "55.8",
+      "74.5"
+    ],
+    "02_false_accepts": [
+      "27",
+      "117",
+      "326",
+      "342",
+      "362",
+      "369",
+      "4.1",
+      "413",
+      "6.8",
+      "8.9",
+      "971",
+      "972",
+      "1553",
+      "16.5",
+      "18.0",
+      "25.9",
+      "27.0",
+      "28.3",
+      "33.6",
+      "4055",
+      "49.5"
+    ],
+    "03_vuln_baseline": [
+      "0",
+      "62",
+      "800",
+      "1255",
+      "1477",
+      "2732",
+      "49.6",
+      "54.1",
+      "55.6",
+      "0.003",
+      "54.06",
+      "54.07"
+    ],
+    "04_size_curve": [
+      "8",
+      "16",
+      "48",
+      "52",
+      "142",
+      "198",
+      "250",
+      "7.6",
+      "19.2",
+      "60.0",
+      "75.8",
+      "76.0"
+    ],
+    "05_debug_ceiling": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "40",
+      "60",
+      "100",
+      "150",
+      "78.0",
+      "93.3"
+    ],
+    "06_kill_rate": [
+      "3",
+      "100",
+      "150",
+      "16.0",
+      "40.7",
+      "85.0",
+      "93.4"
+    ],
+    "07_repair_rewrite": [
+      "1",
+      "3",
+      "5",
+      "56",
+      "60",
+      "250",
+      "93.3"
+    ],
+    "08_prompt_shapes": [
+      "0",
+      "1",
+      "94"
+    ],
+    "09_temperature": [
+      "0",
+      "1",
+      "10"
+    ],
+    "10_roundtrip": [
+      "04",
+      "05",
+      "07",
+      "08",
+      "09",
+      "16",
+      "78",
+      "200",
+      "445",
+      "32.5",
+      "48.0",
+      "76.0",
+      "80.5"
+    ]
+  }
+}

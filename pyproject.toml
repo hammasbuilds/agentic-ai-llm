@@ -6,7 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 keywords = [
-    "llm", "agents", "kafka", "redis", "langgraph", "langchain",
+    # "langchain" was here for two dependencies nothing imported.
+    "llm", "agents", "kafka", "redis", "langgraph",
     "fastapi", "htmx", "evaluation", "mbpp", "humaneval", "swe-bench",
 ]
 
@@ -25,10 +26,15 @@ dependencies = [
     # State, cache and pub/sub. Generation caching moved here from the filesystem so
     # several apps share one cache.
     "redis>=5.2",
-    # Orchestration for the multi-step runs.
+    # Orchestration for the multi-step runs. One file imports it:
+    # `apps/05_debug_ceiling/app.py` builds its repair loop as a StateGraph.
+    #
+    # `langchain-core>=0.3` and `langchain-ollama>=0.2` were declared beside it and
+    # imported nowhere in the repository - `grep -rn langchain --include=*.py` finds
+    # only the name of a sibling checkout. langgraph pulls langchain-core itself, so
+    # declaring it added a line nothing here asks for, in a tree with a compliance
+    # control named `deps-used`.
     "langgraph>=0.2",
-    "langchain-core>=0.3",
-    "langchain-ollama>=0.2",
     "httpx>=0.28",
     # Data
     "pandas>=2.2",

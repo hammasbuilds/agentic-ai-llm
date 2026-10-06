@@ -25,6 +25,7 @@ import pytest
 from biddesk.rfc import (
     DATA,
     MANDATORY,
+    _documents,
     by_keyword,
     compare_mandatory,
     loose,
@@ -73,18 +74,27 @@ def test_a_case_insensitive_reader_cannot_miss_a_mandatory_item():
 
 
 def test_but_one_flagged_obligation_in_five_is_not_one():
-    # THE FINDING. 465 lines contain the word "must" without being requirements,
+    # THE FINDING. 501 lines contain the word "must" without being requirements,
     # and a checklist built by reading for the word carries every one of them.
     #
-    # Measured first on six RFCs (precision 0.830) and again on seventeen
-    # (0.827). Tripling the corpus moved it by three thousandths, which is the
-    # reason to trust it.
+    # Measured on six RFCs (0.830), then seventeen (0.827), now twenty-four (0.825).
+    # Quadrupling the corpus moved it by five thousandths, which is the reason to
+    # trust it.
+    #
+    # The band was `abs=0.015` - 0.812 through 0.842 - which is wide enough to hold
+    # three different corpora, so the README went on saying 0.827 over "seventeen RFCs"
+    # while `rfc._documents()` globbed twenty-four and this test said nothing. It is
+    # `abs=0.002` now: tight enough that adding documents fails here, with the new
+    # figure in the message, which is the moment to update the prose.
     result = compare_mandatory()
-    assert result.precision == pytest.approx(0.827, abs=0.015)
+    assert result.precision == pytest.approx(0.825, abs=0.002), (
+        f"precision is {result.precision:.4f} over {len(_documents())} documents; "
+        "re-measure and update the README table"
+    )
     # About one flagged obligation in five is not one. Asserted as a share
     # rather than a count, because the count tracks the corpus and the share
-    # does not: 465 false positives over seventeen documents and 501 over
-    # twenty-four, both close to a fifth of everything flagged.
+    # does not: 465 false positives over seventeen documents and 501 over the
+    # twenty-four here, both close to a fifth of everything flagged.
     assert 0.15 < result.false_positives / result.found < 0.25
 
 
@@ -116,3 +126,51 @@ def test_missing_documents_are_reported_rather_than_faked():
 
     with pytest.raises(DocumentsMissingError):
         strict(str(DATA / "nowhere"))
+
+
+# -- the README's table against the measurement it quotes ---------------------
+
+
+def test_every_row_of_the_readme_table_is_the_measured_value():
+    """The test above pins the MEASUREMENT. Nothing pinned the README.
+
+    So the table said "seventeen RFCs" and 4,036 / 2,242 / 5,750 / 0.827 / 465 while
+    the tool globbed twenty-four documents and measured 4,304 / 2,389 / 6,143 / 0.825 /
+    501 - and corrupting any single figure in the table left the suite green, because
+    the only assertion about it was a band on the precision the code produces.
+    """
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    rows = dict(re.findall(r"^\| ([^|]+?) \| \*{0,2}([\d.,]+)\*{0,2} \|$", readme, re.M))
+    assert rows, "the README table no longer parses"
+
+    comparison = compare_mandatory()
+    mandatory = f"{len(mandatory_only(strict())):,}"
+    expected = {
+        "Requirements (RFC 2119, upper case)": f"{len(strict()):,}",
+        "Of those, mandatory (`MUST`, `MUST NOT`, `SHALL`, `REQUIRED`)": mandatory,
+        "What a case-insensitive reader finds": f"{len(loose()):,}",
+        "**Recall on mandatory items**": f"{comparison.recall:.3f}",
+        "**Precision**": f"{comparison.precision:.3f}",
+        "**False positives**": f"{comparison.false_positives:,}",
+    }
+    for label, value in expected.items():
+        assert label in rows, f"the table has no row for {label!r}: {sorted(rows)}"
+        assert rows[label] == value, f"{label}: README says {rows[label]}, measured {value}"
+
+
+def test_the_readme_names_the_corpus_size_it_measured():
+    """The phrase "seventeen RFCs" survived four more documents being added."""
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    words = {17: "seventeen", 24: "twenty-four", 25: "twenty-five", 26: "twenty-six"}
+    found = len(_documents())
+    assert found in words, f"{found} documents; add the word to this test"
+    assert words[found] in readme, (
+        f"the README does not say {words[found]!r}, and there are {found} documents"
+    )
+    for wrong in set(words.values()) - {words[found]}:
+        assert f"{wrong} RFCs" not in readme, f"the README still says {wrong!r}"

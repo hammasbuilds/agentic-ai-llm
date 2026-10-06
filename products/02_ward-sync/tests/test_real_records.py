@@ -112,3 +112,70 @@ def test_missing_records_are_reported_rather_than_faked():
 
     with pytest.raises(RecordsMissingError):
         medications(str(ARCHIVE.parent / "nope.zip"))
+
+
+# -- the branch that reads the records, not the records themselves -------------
+
+
+def test_the_agent_reads_one_patients_records_when_no_events_are_supplied(meds):
+    """`agents._events` has two branches and only one was ever run.
+
+    Every test in `test_domain.py` and `test_graph.py` supplies `events`, so the
+    `state.get("events") is not None` branch is the tested one; the other rebuilds the
+    stream from Synthea. Mutating `m.patient == patient` to `!=` on that path returns
+    every OTHER patient's medications - 3,814 of them instead of 36 - and the whole
+    suite stayed green, including this file, which tested the data layer underneath it.
+    """
+    from ward import agents
+
+    patient = sorted({m.patient for m in meds})[0]
+    theirs = [m for m in meds if m.patient == patient]
+    assert theirs, patient
+
+    out = agents.triage({"patient": patient, "encounter": "e1"})
+    drugs = set(out["active_medications"]) | set(out["must_not_mention"])
+    assert drugs, "the Synthea branch produced no medications at all"
+    assert drugs <= {m.description for m in theirs}, (
+        "the agent returned a medication this patient was never prescribed, so the "
+        "patient filter is reading the wrong rows"
+    )
+
+
+def test_asking_for_no_patient_picks_one_rather_than_mixing_them(meds):
+    """`patient is None` takes the first row's patient and filters to it. Without that
+    second filter the stream is 105 patients' prescriptions interleaved, and
+    `active_medications` is a list no single person was ever on."""
+    from ward import agents
+
+    out = agents.triage({"encounter": "e1"})
+    drugs = set(out["active_medications"]) | set(out["must_not_mention"])
+    assert drugs
+
+    by_patient = {}
+    for m in meds:
+        by_patient.setdefault(m.patient, set()).add(m.description)
+    assert any(drugs <= theirs for theirs in by_patient.values()), (
+        "the medications returned do not all belong to any one patient"
+    )
+
+
+def test_a_discontinued_drug_is_in_must_not_mention_on_the_real_branch(meds):
+    """The product's whole claim, over records rather than a fixture."""
+    from ward import agents
+
+    patient = next(
+        (
+            m.patient
+            for m in meds
+            if m.stopped and any(o.patient == m.patient and not o.stopped for o in meds)
+        ),
+        None,
+    )
+    if patient is None:
+        pytest.skip("no patient in the sample has both a stopped and an active drug")
+
+    out = agents.triage({"patient": patient, "encounter": "e1"})
+    assert out["must_not_mention"], patient
+    assert not set(out["must_not_mention"]) & set(out["active_medications"]), (
+        "a drug is both discontinued and active, so the event stream is being read out of order"
+    )

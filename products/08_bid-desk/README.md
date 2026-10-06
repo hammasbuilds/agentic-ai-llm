@@ -15,20 +15,27 @@ case** — so `MUST` is an obligation and `must` in the next sentence is prose. 
 ground truth with no annotation, in documents where missing a mandatory item genuinely
 means rejection.
 
-Across seventeen RFCs:
+Across the twenty-four RFCs in [`products/data/`](../data):
 
 | | |
 |---|---:|
-| Requirements (RFC 2119, upper case) | 4,036 |
-| Of those, mandatory (`MUST`, `MUST NOT`, `SHALL`, `REQUIRED`) | 2,242 |
-| What a case-insensitive reader finds | 5,750 |
+| Requirements (RFC 2119, upper case) | 4,304 |
+| Of those, mandatory (`MUST`, `MUST NOT`, `SHALL`, `REQUIRED`) | 2,389 |
+| What a case-insensitive reader finds | 6,143 |
 | **Recall on mandatory items** | **1.000** |
-| **Precision** | **0.827** |
-| **False positives** | **465** |
+| **Precision** | **0.825** |
+| **False positives** | **501** |
 
-Measured first on six RFCs and then on seventeen. Precision moved from 0.830 to 0.827 —
-three thousandths across a corpus nearly three times the size, which is the reason to
+Measured on six RFCs, then seventeen, now twenty-four. Precision went 0.830 → 0.827 →
+0.825: five thousandths across a corpus four times the size, which is the reason to
 believe it rather than the first number.
+
+The table said "seventeen" and 4,036 / 2,242 / 5,750 / 465 until this was re-run.
+`rfc._documents()` globs `rfc*.txt`, so adding files to the shared corpus moved every
+figure and the prose did not follow - and the test that guards the headline used
+`approx(0.827, abs=0.015)`, a band wide enough to hold 0.812 through 0.842, so it
+absorbed the drift without a word. Its own docstring already recorded "0.825 over
+twenty-four".
 
 ### This reverses the asymmetry this README predicted
 
@@ -38,7 +45,7 @@ problem**: upper case is a subset of case-insensitive, so a naive reader cannot 
 binding clause. It cannot miss, and it over-reports by twenty per cent.
 
 One flagged obligation in five is not one. A compliance checklist built by reading for the
-word "must" carries 465 phantom requirements, and a bid team works through every one of
+word "must" carries 501 phantom requirements, and a bid team works through every one of
 them — costing time, and worse, **over-scoping the bid** against obligations nobody imposed.
 
 So the guard that matters here is the opposite of the one originally designed: the checklist
@@ -52,7 +59,7 @@ them in a given portal's formatting is the thing an extractor must not normalise
 Reproduce it:
 
 ```bash
-cd 08_bid-desk && python -m pytest tests/test_real_requirements.py -q     # 9 passed
+cd 08_bid-desk && python -m pytest tests/test_real_requirements.py -q     # 11 passed
 ```
 
 ## Agents and write authority
@@ -112,7 +119,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 08_bid-desk
-python -m pytest -q                      # 25 passed
+python -m pytest -q                      # 27 passed
 PYTHONPATH="src;../platform/src" python -m biddesk.app    # console on http://127.0.0.1:8000
 ```
 
@@ -133,8 +140,17 @@ triage ──(early exit)──► exit ──► END
         [alpha, beta]          [model]      [model]            [pauses]
 ```
 
-`triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
-anything the model wrote that no tool receipt supports, before a person ever sees it.
+`triage`, the early exit and `commit` are rules. Two nodes call the model.
+
+The gate drops any claim whose receipts were not issued, before a person ever sees it -
+and it reports where the claims came from, because that decides what the number means.
+This paragraph used to read "drops anything the model wrote that no tool receipt
+supports", which is not what happens: no node here writes `claims` or
+`issued_receipts`, both arrive in the request body (they are in the input keys below),
+and the two model nodes write `summary` and `draft`, which the gate never reads. So the
+filtering is a real audit of a draft the caller supplied, and `drop_rate` is `null`
+rather than a figure, because a rate over the caller's own input is not a measurement of
+the model.
 
 ## Scope
 
@@ -172,7 +188,7 @@ After `POST /approvals/{run}/approve`:
 | Status | `done` |
 | Nodes visited | `triage` → `gather` → `synthesise` → `compose` → `gate` → `approve` → `commit` |
 | Model calls | **2** — resuming added none |
-| Result keys | `branch_status`, `branches`, `branches_failed`, `claims`, `draft`, `drop_rate`, `dropped_claims`, `evidenced`, `issued_receipts`, `kept_claims`, `missing_mandatory`, `model`, `requirements`, `section.draft`, `submittable`, `submitted`, `summary`, `summary_subject`, `tender` |
+| Result keys | `branch_status`, `branches`, `branches_failed`, `claims`, `claims_checked`, `claims_source`, `draft`, `drop_rate`, `dropped_claims`, `evidenced`, `issued_receipts`, `kept_claims`, `missing_mandatory`, `model`, `receipts_source`, `requirements`, `section.draft`, `submittable`, `submitted`, `summary`, `summary_subject`, `tender` |
 
 **The early exit**, on a payload that trips `blocked`:
 

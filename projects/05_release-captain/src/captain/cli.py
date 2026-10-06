@@ -13,6 +13,27 @@ from .history import NotAGitRepository, is_repository, read_history
 from .risk import Baseline, rank_by, rank_disagreement, score_commit
 
 
+class FolderError(ValueError):
+    """The folder argument is not a folder, or is not there."""
+
+
+def _folder(raw: str) -> Path:
+    """A path that must be a directory of checkouts.
+
+    `Path(raw).resolve()` then `iterdir()` raised `NotADirectoryError` straight out of
+    `main()` for the commonest mistake there is - giving a file where a folder was
+    wanted - and a path that does not exist at all gave `FileNotFoundError`. Both are
+    the caller's argument, and neither deserves a stack trace naming this module's
+    `iterdir`.
+    """
+    path = Path(raw).resolve()
+    if not path.exists():
+        raise FolderError(f"no such path: {path}")
+    if not path.is_dir():
+        raise FolderError(f"{path} is a file; this command takes a folder of checkouts")
+    return path
+
+
 def _gate_command(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     try:
@@ -79,7 +100,7 @@ def _compare_command(args: argparse.Namespace) -> int:
     Raw top-N overlap is confounded: with 8 commits and a top-5 list, chance
     alone gives 62%. The excess over chance is the only readable number.
     """
-    parent = Path(args.parent).resolve()
+    parent = _folder(args.parent)
     rows = []
     for d in sorted(parent.iterdir()):
         if not d.is_dir() or not is_repository(d):
@@ -126,7 +147,7 @@ def _sweep_command(args: argparse.Namespace) -> int:
     subset suggested, and most of the ones that remain rest on a check that had
     nothing to look at.
     """
-    parent = Path(args.parent).resolve()
+    parent = _folder(args.parent)
     verdicts: dict[str, list[str]] = {"GO": [], "GO WITH WARNINGS": [], "NO-GO": []}
     unmeasured: list[str] = []
     blocked_by: dict[str, int] = {}
@@ -168,6 +189,65 @@ def _sweep_command(args: argparse.Namespace) -> int:
             print(f"    {count:3d}  {name}")
     if skipped:
         print(f"\n{skipped} checkout(s) had no commits in range and were not counted")
+    return 0
+
+
+def _extremes_command(args: argparse.Namespace) -> int:
+    """The widest and the longest commit in a folder of checkouts, and their ratios.
+
+    The README's headline is this: "the commit that changed the most lines changed
+    196,743 of them in 11 files. The commit that reached the most files changed 510
+    lines across 1,809." No command here computed it - `gate`, `explain`, `rank`,
+    `sweep` and `compare` are all per-repository - so the figure had no producer in the
+    tool that is supposed to produce it, and it was wrong: the real maximum by lines is
+    larger, and in a repository the stated population left out.
+
+    Every checkout under the folder, including the one this tool ships in. A survey that
+    excludes its own repository is choosing its population.
+    """
+    parent = _folder(args.parent)
+    by_lines: tuple[int, int, str, str, str] | None = None
+    by_files: tuple[int, int, str, str, str] | None = None
+    looked_at = 0
+    no_history = 0
+
+    for d in sorted(parent.iterdir()):
+        if not d.is_dir() or not is_repository(d):
+            continue
+        try:
+            history = read_history(d, limit=args.scan)
+        except NotAGitRepository:
+            continue
+        if not history.commits:
+            no_history += 1
+            continue
+        looked_at += 1
+        for commit in history.commits:
+            row = (commit.churn, len(commit.files), d.name, commit.sha[:8], commit.subject[:44])
+            if by_lines is None or commit.churn > by_lines[0]:
+                by_lines = row
+            if by_files is None or len(commit.files) > by_files[1]:
+                by_files = row
+
+    if by_lines is None or by_files is None:
+        print(f"no checkout under {parent} has any history", file=sys.stderr)
+        return 2
+
+    print(f"{looked_at} repositories with history under {parent}")
+    print()
+    for label, row in (("most lines", by_lines), ("most files", by_files)):
+        churn, files, repo, sha, subject = row
+        print(f"  {label:10s} {churn:>9,d} lines  {files:>6,d} files  {repo}/{sha}  {subject}")
+    print()
+    # The ratio each way, which is the point of printing both: a single-number metric
+    # ranks one of these two wrongly, and how wrongly is the number worth quoting.
+    print(
+        f"  by lines, the first is {by_lines[0] / max(by_files[0], 1):.0f} times the second; "
+        f"by files, the second is {by_files[1] / max(by_lines[1], 1):.0f} times the first"
+    )
+    if no_history:
+        print()
+        print(f"{no_history} checkout(s) had no commits in range and were not counted")
     return 0
 
 
@@ -215,6 +295,11 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--scan", type=int, default=None, help="read at most N commits of history")
     w.set_defaults(func=_sweep_command)
 
+    x = sub.add_parser("extremes", help="the longest and widest commit in a folder")
+    x.add_argument("parent")
+    x.add_argument("--scan", type=int, default=400)
+    x.set_defaults(func=_extremes_command)
+
     c = sub.add_parser("compare", help="do single metrics agree, above chance?")
     c.add_argument("parent")
     c.add_argument("--top", type=int, default=5)
@@ -226,7 +311,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except FolderError as bad:
+        print(f"{bad}", file=sys.stderr)
+        return 2
+    except NotAGitRepository as bad:
+        # `gate` caught this and returned 2; `rank`, `explain` and `extremes` did not,
+        # so the same mistake was a readable message from one subcommand and a stack
+        # trace from the next. Handled here so every subcommand answers the same way.
+        print(f"{bad}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

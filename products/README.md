@@ -14,8 +14,8 @@ data — is in its own README.
 
 ```
 python -m venv .venv && .venv/Scripts/pip install -e platform[api,infra] pytest ruff
-cd platform        && python -m pytest -q     # 161 passed, 12 skipped
-cd 01_revenue-desk && python -m pytest -q     #  37 passed, 1 skipped
+cd platform        && python -m pytest -q     # 198 passed, 12 skipped
+cd 01_revenue-desk && python -m pytest -q     #  38 passed, 1 skipped
 
 python scripts/capture.py       # runs all 20 for real, writes scripts/runs.json
 python scripts/smoke_serve.py   # boots all 20 on uvicorn, writes scripts/served.json
@@ -173,7 +173,15 @@ Four of its decisions are worth knowing before reading any product:
 - **Authority is default-deny**, so a column added to a schema next month is closed rather
   than open.
 - **The gate catches invented receipts, not just missing ones.** A claim citing `src_z99`
-  when no such receipt was issued looks exactly like a real citation to a reviewer.
+  when no such receipt was issued looks exactly like a real citation to a reviewer. What
+  it is *not* is a check on the model: no node in any of the twenty writes `claims` or
+  `issued_receipts` - both come in through `POST /intake`, and the LLM nodes write
+  `summary` and `draft`, which the gate never reads. So it audits a draft the caller
+  supplied, and reports `claims_source: payload` with `drop_rate: null` when it does,
+  because a rate over the request body is not a figure about anything the model said.
+  Making it a check on the model means a node that turns generated text into claims and
+  a tool node that issues receipts from what it really read; neither exists yet, and
+  saying so is better than a sentence that implies both.
 - **`llm.Recorded` raises on an unscripted prompt.** A fake that answers plausibly is how a
   test stops testing anything — and how a suite quietly starts calling a real model.
 

@@ -40,7 +40,22 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/audit":
             params = parse_qs(parsed.query)
-            target = Path((params.get("path") or [""])[0] or ".")
+            raw = (params.get("path") or [""])[0]
+            # Required, not defaulted to ".". `/api/audit` with no path audited the
+            # package's own source directory and answered with a confident
+            # `{"rate": 0.0833}` - a real-looking figure about whatever the server
+            # happened to be started in, which a reader has no way to distinguish from
+            # a figure about the folder they meant.
+            if not raw:
+                self._send(
+                    json.dumps(
+                        {"error": "path is required: /api/audit?path=<folder of checkouts>"}
+                    ).encode(),
+                    "application/json",
+                    400,
+                )
+                return
+            target = Path(raw)
             if not target.is_dir():
                 self._send(
                     json.dumps({"error": f"not a directory: {target}"}).encode(),
@@ -48,7 +63,17 @@ class Handler(BaseHTTPRequestHandler):
                     400,
                 )
                 return
-            audit = audit_folder(target)
+            try:
+                audit = audit_folder(target)
+            except OSError as unreadable:
+                # `?path=C:/Windows/Temp` raised PermissionError out of the handler,
+                # which closes the socket with no response at all.
+                self._send(
+                    json.dumps({"error": f"{target} could not be read: {unreadable}"}).encode(),
+                    "application/json",
+                    400,
+                )
+                return
             payload = json.loads(to_json(audit))
             payload["policies"] = {c.id: c.policy for c in CONTROLS}
             payload["unmeasured"] = sum(

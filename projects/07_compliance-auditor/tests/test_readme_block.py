@@ -139,6 +139,7 @@ def test_the_repositories_the_remote_claim_names_all_exist():
     first version flagged `ast`, `tomllib`, `git` and three control ids, which is a
     heuristic failing in the direction that cries wolf.
     """
+    import os
     import re
     from pathlib import Path as _Path
 
@@ -148,9 +149,13 @@ def test_the_repositories_the_remote_claim_names_all_exist():
     named = re.findall(r"`([^`]+)`", sentence.group(1))
     assert named, "the claim names no repository"
 
-    root = _Path("D:/github")
-    if not root.is_dir():
-        pytest.skip("the portfolio folder is not on this machine")
+    # `REPOS_ROOT` like every other test that reads the checkouts. This was
+    # `_Path("D:/github")`, which ignores the variable the fresh-clone sweep empties -
+    # so this test went on reading the real folder during a run whose whole purpose was
+    # to see what a reader without it gets.
+    root = _Path(os.environ.get("REPOS_ROOT") or _Path(__file__).resolve().parents[4])
+    if not root.is_dir() or not any(root.glob("*/.git")):
+        pytest.skip(f"no tree of checkouts at {root}")
     missing = sorted(name for name in named if not (root / name).exists())
     assert missing == [], f"the remote claim names directories that do not exist: {missing}"
 

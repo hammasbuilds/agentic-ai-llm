@@ -14,7 +14,12 @@ license = "MIT"
 # Every dependency this product will eventually need (FastAPI, a Kafka
 # client, redis-py, psycopg) is a deployment concern. The deterministic core
 # below it has none, so the tests run offline with no broker and no model.
-dependencies = ["agentplatform"]
+# `agentplatform[api,ollama]`, not bare `agentplatform`. The deterministic core needs
+# nothing, which is why the tests run offline - but `app.py:main()`, the command this
+# product's README gives, imports uvicorn and builds `api.create_app(...)` around an
+# `Ollama` model. Declared bare, a clean install of this product cannot run the thing
+# it documents, and the failure is a ModuleNotFoundError at the first line of main().
+dependencies = ["agentplatform[api,ollama]"]
 
 # From the workspace, not from an index: it is not published anywhere.
 [tool.uv.sources]

@@ -15,6 +15,7 @@ answer that cannot itself drift.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -60,7 +61,37 @@ def collected(package: Path) -> int:
 COUNTS = ROOT / "tests" / "fixtures" / "suite_counts.json"
 
 
+def runner():
+    """`scripts/test_all.py` loaded by path; it is a script, not a package."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("test_all", ROOT / "scripts" / "test_all.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def skip_during_the_counting_sweep() -> None:
+    """These tests compare the READMEs against the fixture that sweep is writing.
+
+    So during the sweep they are checking the PREVIOUS fixture, which is the stale one
+    by definition - and the cycle is otherwise unbreakable, because the runner refuses
+    to write a fixture from a red sweep and the sweep is red because the fixture has
+    not been written yet. The runner sets `AAL_COUNTING_SWEEP` for this one suite.
+    """
+    if os.environ.get(runner().SWEEP_MARKER):
+        pytest.skip("inside `test_all.py --write-counts`, which is writing this fixture")
+
+
 def recorded() -> dict[str, dict[str, int]]:
+    """The fixture, or a skip if the run writing it is in progress.
+
+    The skip lives here rather than in each caller. It was in two of the six tests that
+    read this file, and the other four went red inside the sweep for the same reason -
+    they were comparing against the fixture the sweep had not written yet. One place
+    cannot be missed; six can.
+    """
+    skip_during_the_counting_sweep()
     assert COUNTS.is_file(), (
         f"{COUNTS.relative_to(ROOT)} is missing; run `python scripts/test_all.py --write-counts`"
     )
@@ -255,7 +286,19 @@ def test_the_recorded_counts_still_match_collection():
     split is stale, so a `passed` claim could be one too high until the next
     `--write-counts`. Narrow, and named rather than left to be discovered.
     """
-    ran = recorded()
+
+    ran = dict(recorded())
+    # `(root)` is in the fixture as information - whether the repository's own suite is
+    # green in a fresh environment - and not as a published count: the sweep runs it
+    # with the fixture-reading tests suppressed, so its passed/skipped are the in-sweep
+    # figures. The root README's claim is checked by collection instead, below.
+    root_entry = ran.pop(runner().ROOT_LABEL, None)
+    assert root_entry is not None, (
+        "the fixture has no root entry, so the repository's own suite is outside the "
+        "sweep; run `python scripts/test_all.py --write-counts`"
+    )
+    assert root_entry["outcome"] == "ok", root_entry
+
     assert sorted(ran) == sorted(label(p) for p in PACKAGES), (
         "the fixture does not cover the same 32 packages; "
         "run `python scripts/test_all.py --write-counts`"
@@ -290,6 +333,9 @@ def test_the_recorded_counts_are_a_fresh_clones_and_not_this_machines():
     spec.loader.exec_module(runner)
     FRESH_ENV = runner.FRESH_ENV
 
+    # Reads the file directly for its `fresh` key, so it needs the sweep guard that
+    # `recorded()` carries for everything else.
+    skip_during_the_counting_sweep()
     recorded = json.loads(COUNTS.read_text(encoding="utf-8"))
     assert recorded.get("fresh") == sorted(FRESH_ENV), (
         "the fixture does not record which inputs were withheld; re-run "
@@ -303,3 +349,312 @@ def test_the_recorded_counts_are_a_fresh_clones_and_not_this_machines():
             f"{name} was recorded with nothing skipped, so the sweep saw a tree of "
             "checkouts it should not have"
         )
+
+
+#: Variables a suite may read without it changing whether anything runs: a tuning knob,
+#: a colour setting, pytest's own. Each is here because it was looked at, not because it
+#: was unrecognised.
+NOT_GATING = {
+    "TERM",
+    "PY_COLORS",
+    "NO_COLOR",
+    "FORCE_COLOR",
+    "HOME",
+    "PATH",
+    "TMPDIR",
+    "PYTEST_CURRENT_TEST",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+    "PYTEST_DEBUG_TEMPROOT",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    # Timeouts and retry windows. They change how long a probe waits, never whether a
+    # test is collected.
+    "OLLAMA_RETRY_AFTER",
+    "OLLAMA_PROBE_TIMEOUT",
+    "OLLAMA_TAGS_TTL",
+    "REDIS_CONNECT_TIMEOUT",
+    "REDIS_OP_TIMEOUT",
+    "REDIS_RETRY_AFTER",
+    "BUS_RETRY_AFTER",
+    "BUS_START_TIMEOUT",
+    "GEN_CONCURRENCY",
+    "MODEL",
+}
+
+
+def test_the_withheld_list_is_checked_against_the_tree_not_against_itself():
+    """The reason the `CSV_CORPUS` leak survived.
+
+    The test above compares `recorded["fresh"]` with `FRESH_ENV` - the runner's own
+    list - so a list missing a variable certifies itself and the fixture agrees. It
+    stayed green while `08_csv-analyst` read a sibling checkout through all of it.
+
+    This reads the variables out of the tree instead: every `os.environ.get("NAME")` in
+    a `tests/` or `src/` file under `projects/` or `products/` either withholds in
+    `FRESH_ENV` or is named in `NOT_GATING` with a reason. A new data-gated suite then
+    fails here on the day it is added, which is the only moment anyone is looking.
+    """
+    import importlib.util
+    import re
+
+    spec = importlib.util.spec_from_file_location("test_all", ROOT / "scripts" / "test_all.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+
+    read: dict[str, list[str]] = {}
+    for tree in ("projects", "products"):
+        for path in (ROOT / tree).rglob("*.py"):
+            parts = set(path.parts)
+            if "__pycache__" in parts or ".venv" in parts or "site-packages" in parts:
+                continue
+            for name in re.findall(
+                r'os\.environ(?:\.get)?\(\s*"([A-Z][A-Z0-9_]*)"',
+                path.read_text(encoding="utf-8", errors="replace"),
+            ):
+                read.setdefault(name, []).append(str(path.relative_to(ROOT)))
+
+    assert read, "no environment reads found at all, so this test is checking nothing"
+    # The sweep's own marker is accounted for here rather than in NOT_GATING, because
+    # it DOES gate - it suppresses three tests - and the honest place to say so is
+    # beside the list it is an exception to.
+    unaccounted = sorted(set(read) - set(runner.FRESH_ENV) - NOT_GATING - {runner.SWEEP_MARKER})
+    assert not unaccounted, (
+        "these variables are read by a suite and are neither withheld by the fresh "
+        "sweep nor listed as non-gating: "
+        + "; ".join(f"{name} ({', '.join(sorted(set(read[name]))[:2])})" for name in unaccounted)
+    )
+
+
+def test_every_withheld_variable_is_one_something_actually_reads():
+    """The other direction. A list that withholds variables nothing reads looks
+    thorough and proves nothing, and it is how a renamed variable goes unnoticed: the
+    old name sits in the tuple, the new one gates freely."""
+    import importlib.util
+    import re
+
+    spec = importlib.util.spec_from_file_location("test_all", ROOT / "scripts" / "test_all.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+
+    everywhere = ""
+    for tree in ("projects", "products", "apps", "tests"):
+        base = ROOT / tree
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*.py"):
+            if "__pycache__" in path.parts or "site-packages" in path.parts:
+                continue
+            everywhere += path.read_text(encoding="utf-8", errors="replace")
+
+    orphans = [name for name in runner.FRESH_ENV if not re.search(rf'"{name}"', everywhere)]
+    assert not orphans, f"withheld but read nowhere: {orphans}"
+
+
+# -- the per-file counts, which this module's own regex did not match ----------
+
+#: A count beside a command that names ONE test file: `pytest tests/test_real_x.py -q
+#: # 17 passed`. `QUOTED` above requires the literal "pytest -q", so every one of these
+#: was invisible to the module whose job is catching a drifted count - twenty-one
+#: claims across nineteen READMEs, checked by nothing.
+#:
+#: Six of them were wrong when this test was written: revenue-desk 17 against 18,
+#: bid-desk 9 against 11, watchtower 15 against 16, swarm-lab 10 against 12,
+#: graph-clinic 11 against 12, driftwatch 17 against 20. Every one was a test added to
+#: the file by work that had no reason to reread the README beside it, which is the
+#: same failure the module already catches one line higher up and could not see here.
+PER_FILE = re.compile(
+    r"python -m pytest (tests/[\w./]+\.py) -q\s*#\s*(\d+)\s+passed(?:,\s*(\d+)\s+skipped)?"
+)
+
+
+def _per_file_claims() -> list[tuple[Path, str, int]]:
+    claims = []
+    for package in PACKAGES:
+        text = (package / "README.md").read_text(encoding="utf-8")
+        for m in PER_FILE.finditer(text):
+            claims.append((package, m.group(1), int(m.group(2)) + int(m.group(3) or 0)))
+    return claims
+
+
+PER_FILE_CLAIMS = _per_file_claims()
+
+
+def test_the_per_file_claims_are_still_there_to_check():
+    """A sweep over an empty list passes. These were found by reading the READMEs, so
+    if the convention changes this says so rather than going quiet."""
+    assert len(PER_FILE_CLAIMS) >= 20, len(PER_FILE_CLAIMS)
+    assert len({package.name for package, _, _ in PER_FILE_CLAIMS}) >= 19
+
+
+@pytest.mark.parametrize(
+    "package,rel,stated",
+    PER_FILE_CLAIMS,
+    ids=[f"{package.name}/{rel.split('/')[-1]}" for package, rel, _ in PER_FILE_CLAIMS],
+)
+def test_each_per_file_count_is_the_one_pytest_collects(package: Path, rel: str, stated: int):
+    """Collection, which cannot drift, against the sum the README promises.
+
+    Compared against collected total rather than passes, because collection cannot tell
+    a pass from a skip - so a README quoting "31 passed, 1 skipped" is checked as 32.
+    Two of these files have no skips to split and the rest state none, so the sum is
+    the whole claim either way.
+    """
+    done = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--collect-only", "-p", "no:cacheprovider", rel],
+        cwd=str(package),
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+    found = re.search(r"(\d+) tests? collected", done.stdout)
+    assert found, done.stdout[-500:]
+    assert int(found.group(1)) == stated, (
+        f"{package.name}/{rel} says {stated}; pytest collects {found.group(1)}"
+    )
+
+
+# -- the repository's own suite, which was not swept at all -------------------
+
+
+def test_the_root_readme_states_the_number_this_suite_collects():
+    """The blind spot at the front door, closed the only way it can be.
+
+    `PACKAGES` above is every directory under `projects/` and `products/` with a
+    `tests/`, so the root suite - the one a reader runs first - was the one suite whose
+    published count nothing compared to anything. `README.md` said "317 passed, 38
+    skipped" where it gives 606 / 38: wrong by 329, through every round of correcting
+    the sub-packages' counts.
+
+    Checked by COLLECTION, not against the recorded fixture. A suite cannot assert its
+    own pass and skip counts without running itself, and the sweep that records them
+    runs this suite with the fixture-reading tests suppressed - so the recorded entry is
+    the in-sweep count, not a reader's. Collection has no such cycle, and it catches the
+    thing that actually drifts: a test added or removed.
+    """
+    import re
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    stated = re.search(r"\*\*(\d[\d,]*) tests collected\*\*", readme)
+    assert stated, "the root README no longer states what the suite collects"
+    assert int(stated.group(1).replace(",", "")) == collected(ROOT), (
+        f"README.md says {stated.group(1)} tests collected; pytest collects {collected(ROOT)}"
+    )
+
+
+def test_the_root_suite_is_in_the_sweep_not_just_in_the_fixture():
+    """A fixture entry nothing regenerates goes stale the moment a test is added."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("test_all", ROOT / "scripts" / "test_all.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+
+    swept = runner.suites(runner.TREES)
+    assert ROOT in swept, "scripts/test_all.py does not sweep the repository's own suite"
+    # And a single-tree sweep does not, because `--write-counts` refuses a partial tree
+    # anyway and running the root suite inside `test_all.py projects` would be surprising.
+    assert ROOT not in runner.suites(("projects",))
+
+
+def test_no_suite_reads_a_home_directory_path_the_sweep_cannot_withhold():
+    """The leak the variable check above is blind to.
+
+    `test_the_withheld_list_is_checked_against_the_tree_not_against_itself` finds every
+    `os.environ.get("NAME")` in the two trees and insists the sweep withholds it. A
+    module that hardcodes a path reads no variable at all, so it is invisible:
+    `14_graph-clinic` had `CACHE = Path.home() / ".cache/huggingface/datasets/..."` as a
+    module constant and ran all 28 of its tests inside a sweep that had pointed
+    `HF_HOME` at an empty directory. On a fresh clone 17 run and 11 skip.
+
+    `Path.home()` inside a function that consults the environment first is fine - that
+    is the documented default. The check is per FUNCTION, not per file: a file-wide
+    exemption let the corrupted version through, because the file still contained the
+    resolver that reads `HF_HOME` while the constant beside it reached for home
+    directly. Module-level use is refused outright, since there is no earlier branch it
+    can be the fallback of.
+    """
+    import ast
+
+    def reaches_home(nodes) -> bool:
+        """`Path.home()` called anywhere in these statements.
+
+        Matched as a CALL to an attribute named `home`, not as the string "home"
+        anywhere in the dump - the first version did the latter and flagged
+        `DOMAIN = "home"` in a product that has nothing to do with filesystem paths.
+        """
+        for statement in nodes:
+            for node in ast.walk(statement):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "home"
+                ):
+                    return True
+        return False
+
+    def reads_environment(nodes) -> bool:
+        """`os.environ`, `os.getenv`, or pytest's `monkeypatch.setenv`/`delenv`.
+
+        The monkeypatch forms count: a test that sets and unsets a variable and then
+        asserts the fallback is consulting the environment, and is the test that keeps
+        the fallback honest. Without them, the one test asserting what the default IS
+        was flagged by the check that exists because of it.
+        """
+        for statement in nodes:
+            for node in ast.walk(statement):
+                if isinstance(node, ast.Attribute) and node.attr in (
+                    "environ",
+                    "getenv",
+                    "setenv",
+                    "delenv",
+                ):
+                    return True
+                if isinstance(node, ast.Name) and node.id in ("environ", "getenv"):
+                    return True
+        return False
+
+    allowed = {
+        # The resolver itself: the default branch, after both overrides.
+        "apps/_engine/hf_cache.py",
+        # Asserts what that default IS, so it has to name it.
+        "tests/test_hermetic.py",
+        # A form's initial value in a notebook UI, not a data path a test reads.
+        "projects/08_csv-analyst/ui/notebook.py",
+        # A test asserting the string is absent from another file.
+        "projects/02_test-smith/tests/test_runner.py",
+    }
+    offenders: list[str] = []
+    for tree in ("projects", "products", "apps", "scripts", "tests"):
+        base = ROOT / tree
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            if "__pycache__" in path.parts or "site-packages" in path.parts:
+                continue
+            rel = path.relative_to(ROOT).as_posix()
+            if rel in allowed:
+                continue
+            try:
+                parsed = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(parsed):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Module)):
+                    continue
+                # This scope's own statements. A nested function is walked separately,
+                # so a parent is not held responsible for what one of its children does.
+                own = [
+                    n
+                    for n in node.body
+                    if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                ]
+                if not reaches_home(own) or reads_environment(own):
+                    continue
+                offenders.append(f"{rel}:{getattr(node, 'name', '<module level>')}")
+
+    assert not offenders, (
+        "these reach for the home directory without consulting the environment in the "
+        f"same scope, so `test_all.py --fresh` cannot withhold it: {offenders}"
+    )

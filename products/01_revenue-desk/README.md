@@ -130,7 +130,7 @@ measurement that was never made.
 Reproduce it:
 
 ```bash
-cd 01_revenue-desk && python -m pytest tests/test_real_reverts.py -q     # 16 passed
+cd 01_revenue-desk && python -m pytest tests/test_real_reverts.py -q     # 18 passed
 ```
 
 ## Agents and write authority
@@ -191,7 +191,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 01_revenue-desk
-python -m pytest -q                      # 37 passed, 1 skipped
+python -m pytest -q                      # 38 passed, 1 skipped
 PYTHONPATH="src;../platform/src" python -m revenue.app    # console on http://127.0.0.1:8000
 ```
 
@@ -212,8 +212,17 @@ triage ──(early exit)──► exit ──► END
         [alpha, beta]          [model]      [model]            [pauses]
 ```
 
-`triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
-anything the model wrote that no tool receipt supports, before a person ever sees it.
+`triage`, the early exit and `commit` are rules. Two nodes call the model.
+
+The gate drops any claim whose receipts were not issued, before a person ever sees it -
+and it reports where the claims came from, because that decides what the number means.
+This paragraph used to read "drops anything the model wrote that no tool receipt
+supports", which is not what happens: no node here writes `claims` or
+`issued_receipts`, both arrive in the request body (they are in the input keys below),
+and the two model nodes write `summary` and `draft`, which the gate never reads. So the
+filtering is a real audit of a draft the caller supplied, and `drop_rate` is `null`
+rather than a figure, because a rate over the caller's own input is not a measurement of
+the model.
 
 ## Scope
 
@@ -251,7 +260,7 @@ After `POST /approvals/{run}/approve`:
 | Status | `done` |
 | Nodes visited | `classify` → `qualify` → `enrich` → `synthesise` → `draft` → `gate` → `approve` → `send` |
 | Model calls | **2** — resuming added none |
-| Result keys | `branch_status`, `branches`, `branches_failed`, `claims`, `draft.body`, `drop_rate`, `dropped_claims`, `issued_receipts`, `iterations`, `kept_claims`, `lead.score`, `lead.stage`, `model`, `reply`, `reply.intent`, `sent`, `signals`, `summary` |
+| Result keys | `branch_status`, `branches`, `branches_failed`, `claims`, `claims_checked`, `claims_source`, `draft.body`, `drop_rate`, `dropped_claims`, `issued_receipts`, `iterations`, `kept_claims`, `lead.score`, `lead.stage`, `model`, `receipts_source`, `reply`, `reply.intent`, `sent`, `signals`, `summary` |
 
 **The early exit**, on a payload that trips `suppressed`:
 

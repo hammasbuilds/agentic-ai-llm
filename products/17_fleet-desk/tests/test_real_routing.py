@@ -166,3 +166,75 @@ def test_a_missing_instance_is_reported_rather_than_faked():
 
     with pytest.raises(InstanceMissingError):
         cities(str(INSTANCE.parent / "nope.tsp"))
+
+
+# -- the branch that builds the real instance ---------------------------------
+
+
+def test_the_real_instance_is_a_tour_of_every_stop():
+    """`_instance` has two branches and only the supplied one was ever run.
+
+    Its own docstring says so: "Supplied directly by the unit tests. Otherwise the real
+    TSPLIB berlin52 instance." Every test in `test_domain.py` and `test_graph.py`
+    supplies `matrix`, so a mutation on the other path - the `s != depot` that keeps the
+    challenger from visiting the depot twice in the middle - mangles the route, and the
+    whole suite stayed green.
+    """
+    from fleetdesk.agents import _instance
+
+    matrix, stops, depot, solver, challenger = _instance({})
+
+    assert len(stops) == 51, len(stops)
+    assert len(matrix) == 52 * 51, len(matrix)
+
+    for name, route in (("solver", solver), ("challenger", challenger)):
+        assert route[0] == depot and route[-1] == depot, (name, route[0], route[-1])
+        middle = route[1:-1]
+        assert sorted(middle) == sorted(stops), (
+            f"{name} does not visit every stop exactly once: "
+            f"{len(middle)} hops over {len(stops)} stops"
+        )
+        assert depot not in middle, f"{name} returns to the depot mid-route"
+
+
+def test_every_hop_in_both_routes_has_a_distance():
+    """A route is only costable if the matrix covers it. A missing pair is a KeyError
+    inside the cost function, which is where a mangled route shows up."""
+    from fleetdesk.agents import _instance
+
+    matrix, _, _, solver, challenger = _instance({})
+    for name, route in (("solver", solver), ("challenger", challenger)):
+        missing = [
+            (a, b) for a, b in zip(route, route[1:], strict=False) if (a, b) not in matrix
+        ]
+        assert not missing, (name, missing[:3])
+
+
+def test_the_solver_route_is_not_worse_than_the_challenger():
+    """berlin52's optimum is proven, so this direction is not a coin flip - and it is
+    the product's entire claim."""
+    from fleetdesk.agents import _instance
+
+    matrix, _, _, solver, challenger = _instance({})
+
+    def cost(route):
+        return sum(matrix[(a, b)] for a, b in zip(route, route[1:], strict=False))
+
+    assert cost(solver) <= cost(challenger), (cost(solver), cost(challenger))
+
+
+def test_a_supplied_matrix_is_still_used_rather_than_the_real_one():
+    """The other direction: the unit tests' instance must not be silently replaced."""
+    from fleetdesk.agents import _instance
+
+    matrix, stops, depot, solver, challenger = _instance(
+        {
+            "matrix": {"d->a": 1, "a->d": 1},
+            "stops": ["a"],
+            "depot": "d",
+            "solver_route": ["d", "a", "d"],
+            "challenger_route": ["d", "a", "d"],
+        }
+    )
+    assert matrix == {("d", "a"): 1, ("a", "d"): 1}
+    assert (stops, depot) == ({"a"}, "d")

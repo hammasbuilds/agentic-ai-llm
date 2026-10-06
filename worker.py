@@ -84,11 +84,46 @@ async def handle(job_id: str, app: str, params: dict, runner) -> None:
         print(f"  FAILED {job_id} ({app}): {exc}")
 
 
-async def main() -> int:
+async def consume_one(ev: object, runners: dict) -> None:
+    """One message off `jobs.requested`. Never raises for a malformed one.
+
+    Each outcome a message can have is named, because two of them were previously
+    indistinguishable from nothing happening: a message for an app this worker does not
+    serve was skipped with no log line at all, and one missing `job_id` killed the
+    process rather than being reported.
+    """
+    if not isinstance(ev, dict):
+        print(f"  !! ignored: a message that is not an object ({type(ev).__name__})")
+        return
+    job_id, app = ev.get("job_id"), ev.get("app")
+    if not isinstance(job_id, str) or not job_id:
+        print(f"  !! ignored: no job_id in {sorted(ev)[:6]}")
+        return
+    if not isinstance(app, str) or not app:
+        print(f"  !! ignored: job {job_id} names no app")
+        return
+    runner = runners.get(app)
+    if runner is None:
+        # Logged, not silent. This branch's offset handling is also why `--apps` takes
+        # a consumer group of its own.
+        print(f"  -- not mine: {job_id} ({app}); this worker serves {sorted(runners)}")
+        return
+    print(f"  picked {job_id} ({app})")
+    params = ev.get("params")
+    await handle(job_id, app, params if isinstance(params, dict) else {}, runner)
+
+
+async def main(argv: list[str] | None = None, stop: asyncio.Event | None = None) -> int:
+    """Consume until stopped.
+
+    `argv` and `stop` are injectable so the loop can be driven in a test. It had
+    none, and all three defects an independent review found were in this loop - a
+    test exercising only the helper it calls left every one of them passing.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--apps", nargs="*", help="only consume jobs for these slugs")
     ap.add_argument("--group", default="workers")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     print("loading apps...")
     runners = load_runners()
@@ -104,11 +139,27 @@ async def main() -> int:
         print("  docker compose up -d")
         return 1
 
-    consumer = bus.consumer(bus.TOPIC_REQUESTED, group=args.group, from_beginning=False)
+    # A filtered worker gets its own group. With `--apps`, a job for an app this
+    # process does not serve was skipped by `continue` below - and the consumer
+    # auto-commits, so the offset advanced and no worker in the group could ever see
+    # that job again. It stayed `queued` in Redis for ever, which on the documented
+    # single-worker deployment means the run the user submitted silently never happens.
+    #
+    # Deriving the group from the filter keeps those offsets out of the shared group's,
+    # so an unfiltered worker started later still picks the job up.
+    group = args.group
+    if args.apps:
+        group = f"{args.group}-{'+'.join(sorted(runners))}"
+        print(
+            f"  --apps given, so consuming as group {group!r} rather than "
+            f"{args.group!r}: a filtered worker sharing the group commits past the "
+            "jobs it declines, and then nothing serves them."
+        )
+    consumer = bus.consumer(bus.TOPIC_REQUESTED, group=group, from_beginning=False)
     await consumer.start()
-    print(f"consuming {bus.TOPIC_REQUESTED} as group {args.group!r}. ctrl-c to stop.\n")
+    print(f"consuming {bus.TOPIC_REQUESTED} as group {group!r}. ctrl-c to stop.\n")
 
-    stopping = asyncio.Event()
+    stopping = stop if stop is not None else asyncio.Event()
 
     def _stop(*_):
         stopping.set()
@@ -122,13 +173,17 @@ async def main() -> int:
             batch = await consumer.getmany(timeout_ms=1000, max_records=1)
             for records in batch.values():
                 for rec in records:
-                    ev = rec.value
-                    app = ev.get("app", "")
-                    runner = runners.get(app)
-                    if runner is None:
-                        continue  # another worker owns this app
-                    print(f"  picked {ev['job_id']} ({app})")
-                    await handle(ev["job_id"], app, ev.get("params", {}), runner)
+                    # Every message inside a try. `ev['job_id']` was a direct index out
+                    # here, outside `handle`'s except - so one message without that key
+                    # raised KeyError straight out of `main()` and killed the only
+                    # process that owns the GPU. The topic is created with
+                    # `KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"` and validates nothing,
+                    # so anything at all can be published to it.
+                    try:
+                        await consume_one(rec.value, runners)
+                    except Exception as exc:  # noqa: BLE001
+                        traceback.print_exc()
+                        print(f"  !! skipped a message: {type(exc).__name__}: {exc}")
     finally:
         await consumer.stop()
         await bus.close()

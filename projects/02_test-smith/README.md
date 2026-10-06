@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-44-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-46-success" alt="tests">
   <img src="https://img.shields.io/badge/repos%20measured-8-orange" alt="repos">
 </p>
 
@@ -12,9 +12,20 @@
 
 ## Results
 
-**Across 8 repositories and 320 mutants, 62 deliberate bugs survived on lines the test
-suite had just executed.** Those lines are green in any coverage report. The test ran
-them, the code was wrong, and nothing failed.
+**Across 8 repositories, 320 mutants sampled and 313 scored, 62 deliberate bugs survived
+on lines the test suite had just executed.** Those lines are green in any coverage
+report. The test ran them, the code was wrong, and nothing failed.
+
+320 and 313 are different numbers and the headline used to quote only the first. The
+`Mutants` column below is the sample size - 40 per repository by construction - and
+`Killed + Survived` is the scored denominator: seven mutants broke the import and are
+excluded rather than counted as kills, six in `pak-law-assistant` and one in
+`doc-intelligence-api`. Every rate in this README is over 313.
+
+Measured 2026-10-06 over eight checkouts on one machine. They are live repositories and
+a score moves when their tests change: `credit-risk-engine` has since gone from 57% to
+78%. The shape is what reproduces - values checked far less than control flow, in every
+suite measured - and the per-repository numbers are a dated snapshot, not a constant.
 
 And the failures are not spread evenly. Split by what was mutated:
 
@@ -167,7 +178,7 @@ imports it.
 ## Run it
 
 ```bash
-uv run pytest -q                                   # 44 tests
+uv run pytest -q                                   # 46 tests
 uv run testsmith run <repo> --limit 40
 uv run python scripts/sweep.py 40                  # reproduces the table above
 # It reads the eight checkouts from the folder this repository sits in. Set REPOS_ROOT

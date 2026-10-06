@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-36%20%2B%2013%20skipped-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-39%20%2B%2013%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/median%20resolution-81%25-orange" alt="resolution">
   <img src="https://img.shields.io/badge/pooled%20resolution-75%25-orange" alt="pooled">
 </p>
@@ -169,7 +169,7 @@ questions this tool exists for.
 ## Run it
 
 ```bash
-uv run pytest -q                      # 36 passed, 13 skipped
+uv run pytest -q                      # 42 passed, 13 skipped
 uv run cartographer map <repo>
 uv run cartographer compare <folder>  # every checkout under it
 ```

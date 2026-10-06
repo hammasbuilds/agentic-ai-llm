@@ -7,6 +7,8 @@ title mentions between paragraphs, not invented.
 Every figure asserted here was produced by running this code over that cache.
 """
 
+from pathlib import Path
+
 import pytest
 
 from graphclinic.hotpot import (
@@ -110,9 +112,48 @@ def test_the_baseline_returns_two_paragraphs():
     assert len(lexical_top2(ITEMS[0])) == 2
 
 
-def test_a_missing_cache_is_reported_rather_than_faked():
-    from graphclinic.hotpot import DatasetMissingError, _validation_file
+def test_a_missing_cache_is_reported_rather_than_faked(monkeypatch, tmp_path):
+    """This raised the exception itself and caught it.
 
-    assert _validation_file().exists()
-    with pytest.raises(DatasetMissingError):
-        raise DatasetMissingError("shape of the failure when the cache is absent")
+        with pytest.raises(DatasetMissingError):
+            raise DatasetMissingError("shape of the failure when the cache is absent")
+
+    There is no code under test in those two lines: `pytest.raises` was handed the
+    thing it was asserting. Deleting the whole `if not found: raise` branch from
+    `hotpot.py` left this green.
+
+    The cache is pointed at an empty directory instead, which is also how
+    `scripts/test_all.py --fresh` runs it.
+    """
+    from graphclinic import hotpot
+
+    assert hotpot._validation_file().exists()
+
+    monkeypatch.setenv("HF_DATASETS_CACHE", str(tmp_path))
+    monkeypatch.setattr(hotpot, "CACHE", hotpot._datasets_cache() / "hotpotqa___hotpot_qa")
+    with pytest.raises(hotpot.DatasetMissingError) as raised:
+        hotpot._validation_file()
+    # The message has to name where it looked, or the reader cannot tell a missing
+    # dataset from a misconfigured path.
+    assert str(tmp_path) in str(raised.value)
+    assert "never downloaded here" in str(raised.value)
+
+
+def test_the_cache_follows_the_environment_not_the_home_directory(monkeypatch, tmp_path):
+    """`CACHE` was `Path.home() / ".cache/huggingface/datasets/..."`, a module constant.
+
+    So all 28 tests here ran inside `scripts/test_all.py --fresh`, which had pointed
+    `HF_HOME` at an empty directory precisely to find out what a reader without the
+    data gets. An override replaces the default; it does not add to it.
+    """
+    from graphclinic import hotpot
+
+    monkeypatch.setenv("HF_DATASETS_CACHE", str(tmp_path / "explicit"))
+    monkeypatch.setenv("HF_HOME", str(tmp_path / "home"))
+    assert hotpot._datasets_cache() == tmp_path / "explicit"
+
+    monkeypatch.delenv("HF_DATASETS_CACHE")
+    assert hotpot._datasets_cache() == tmp_path / "home" / "datasets"
+
+    monkeypatch.delenv("HF_HOME")
+    assert hotpot._datasets_cache() == Path.home() / ".cache" / "huggingface" / "datasets"

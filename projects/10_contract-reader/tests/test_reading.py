@@ -343,6 +343,12 @@ def test_the_readme_counts_the_tests_this_file_holds():
     which is exactly when nobody rereads the README. Asked of pytest rather than
     counted with a regex, because `def test_` and parametrize cases are not the same
     number and the regex version of this test was wrong about its own file.
+
+    It used to require every count in the README to be the same number, which was
+    true only while the package had one test file. A second file made the whole-suite
+    figure and the per-file figure legitimately differ, and an assertion that they
+    must match would have been satisfied by deleting the more informative of the two.
+    So each claim is now checked against what it actually claims.
     """
     import re
     import subprocess
@@ -350,21 +356,43 @@ def test_the_readme_counts_the_tests_this_file_holds():
 
     package = Path(__file__).resolve().parent.parent
     readme = (package / "README.md").read_text(encoding="utf-8")
-    claimed = {int(n) for n in re.findall(r"(\d+) tests\b", readme)}
-    assert claimed, "the README no longer states a test count"
 
-    collected = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "--collect-only", "-p", "no:cacheprovider"],
-        cwd=str(package),
-        capture_output=True,
-        text=True,
-        timeout=120,
+    def collects(*target: str) -> int:
+        done = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-q",
+                "--collect-only",
+                "-p",
+                "no:cacheprovider",
+                *target,
+            ],
+            cwd=str(package),
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        found = re.search(r"(\d+) tests? collected", done.stdout)
+        assert found, done.stdout[-500:]
+        return int(found.group(1))
+
+    whole = re.search(r"pytest -q\s*#\s*(\d+) tests\b", readme)
+    assert whole, "the README no longer states what the suite collects"
+    assert int(whole.group(1)) == collects(), (
+        f"README says {whole.group(1)} tests; pytest collects {collects()}"
     )
-    found = re.search(r"(\d+) tests? collected", collected.stdout)
-    assert found, collected.stdout[-500:]
-    assert claimed == {int(found.group(1))}, (
-        f"README says {sorted(claimed)}; pytest collects {found.group(1)}"
-    )
+
+    per_file = re.findall(r"(tests/test_\w+\.py)\s+(\d+) tests\b", readme)
+    assert per_file, "the layout block no longer counts the test files"
+    for rel, stated in per_file:
+        assert int(stated) == collects(rel), f"{rel}: README says {stated}"
+
+    # Every test file is named, or a file could be added and counted nowhere.
+    named = {rel for rel, _ in per_file}
+    on_disk = {f"tests/{f.name}" for f in (package / "tests").glob("test_*.py")}
+    assert named == on_disk, f"README names {sorted(named)}; on disk {sorted(on_disk)}"
 
 
 def test_the_readme_states_one_unidentified_file_in_both_places():

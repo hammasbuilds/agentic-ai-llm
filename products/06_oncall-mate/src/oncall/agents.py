@@ -31,8 +31,14 @@ def _alerts(state: dict) -> list[Alert]:
         return [Alert(a["id"], a["service"], a["template"], a["at"]) for a in state["alerts"]]
     system = state.get("system", "hdfs")
     lines = [line for line in read() if line.system == system]
+    # Labelled with the system the LINE came from, not the one that was asked for.
+    # Both were `system`, so an alert carried the request rather than its source: with
+    # the filter inverted this function returned fifteen other systems' log lines, every
+    # one of them stamped `hdfs`, and nothing downstream could tell. A record that
+    # cannot say where it came from cannot be audited, and the id could collide across
+    # systems too - `hdfs_41` and `spark_41` are different lines with the same number.
     return [
-        Alert(f"{system}_{line.n}", system, line.template, line.n * 30)
+        Alert(f"{line.system}_{line.n}", line.system, line.template, line.n * 30)
         for line in lines[: state.get("limit", 500)]
     ]
 

@@ -181,7 +181,7 @@ findings it had not checked, which is the failure this project is built to avoid
 ## Run it
 
 ```bash
-uv run pytest -q                              # 43 tests
+uv run pytest -q                              # 46 tests
 uv run review-bot scan <path> --show-retracted
 uv run review-bot diff <repo> --ref HEAD~1
 uv run python ui/server.py                    # then: cd ui && npm install && npm run dev

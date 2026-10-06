@@ -78,15 +78,21 @@ says so rather than quietly reframing.
 
 ### An honest negative, on the machine that matters
 
-Scanning this environment's 32 installed packages found 14 carrying advisories and 17
+Scanning this environment's 71 installed packages found 31 carrying advisories and 17
 genuine findings — and the shortcut and interval logic **agreed on all 17**. A small,
 current environment rarely holds a version old enough to sit before an introduction point.
 The 14.2% is a property of the advisory population, not a promise about your laptop.
 
+Measured 2026-10-06, and the population moves with the virtualenv: it read "32 installed
+packages, 14 carrying advisories" until this was re-run. The conclusion did not move -
+17 findings, agreement on all 17 - which is the half worth trusting, and it is why the
+figures are now compared against the scan by a test rather than guarded by
+`assert len(here) > 10`, a floor that held for 32 and for 71 alike.
+
 Reproduce it:
 
 ```bash
-cd 11_watchtower && python -m pytest tests/test_real_osv.py -q     # 15 passed, ~70s
+cd 11_watchtower && python -m pytest tests/test_real_osv.py -q     # 16 passed, ~70s
 ```
 
 ## Agents and write authority
@@ -145,7 +151,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 11_watchtower
-python -m pytest -q                      # 34 passed
+python -m pytest -q                      # 35 passed
 PYTHONPATH="src;../platform/src" python -m watchtower.app    # console on http://127.0.0.1:8000
 ```
 
@@ -166,8 +172,17 @@ triage ──(early exit)──► exit ──► END
         [alpha, beta]          [model]      [model]            [pauses]
 ```
 
-`triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
-anything the model wrote that no tool receipt supports, before a person ever sees it.
+`triage`, the early exit and `commit` are rules. Two nodes call the model.
+
+The gate drops any claim whose receipts were not issued, before a person ever sees it -
+and it reports where the claims came from, because that decides what the number means.
+This paragraph used to read "drops anything the model wrote that no tool receipt
+supports", which is not what happens: no node here writes `claims` or
+`issued_receipts`, both arrive in the request body (they are in the input keys below),
+and the two model nodes write `summary` and `draft`, which the gate never reads. So the
+filtering is a real audit of a draft the caller supplied, and `drop_rate` is `null`
+rather than a figure, because a rate over the caller's own input is not a measurement of
+the model.
 
 ## Scope
 
@@ -206,7 +221,7 @@ After `POST /approvals/{run}/approve`:
 | Status | `done` |
 | Nodes visited | `triage` → `gather` → `synthesise` → `compose` → `gate` → `approve` → `commit` |
 | Model calls | **2** — resuming added none |
-| Result keys | `advisories`, `applied`, `branch_status`, `branches`, `branches_failed`, `claims`, `draft`, `drop_rate`, `dropped_claims`, `host`, `issued_receipts`, `kept_claims`, `model`, `out_of_scope`, `packages`, `remediation.draft`, `scope`, `summary`, `summary_subject`, `vulnerable` |
+| Result keys | `advisories`, `applied`, `branch_status`, `branches`, `branches_failed`, `claims`, `claims_checked`, `claims_source`, `draft`, `drop_rate`, `dropped_claims`, `host`, `issued_receipts`, `kept_claims`, `model`, `out_of_scope`, `packages`, `receipts_source`, `remediation.draft`, `scope`, `summary`, `summary_subject`, `vulnerable` |
 
 **The early exit**, on a payload that trips `refused`:
 

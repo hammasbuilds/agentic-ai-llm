@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-44-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-63-success" alt="tests">
   <img src="https://img.shields.io/badge/corpus-12%20migrations-orange" alt="corpus">
 </p>
 
@@ -24,23 +24,28 @@ own column the answer was 2. `order` is its own column now, and the summary says
 of the three moved a column as well.
 
 ```
-migration                             schema  order   data  verdict
+migration                             schema  order   data                      verdict
+--------------------------------------------------------------------------------------
+add a nullable column                     ok     ok     ok             fully reversible
+drop an unused column                     ok  MOVED   LOST columns reordered, data lost
+rename a column                           ok     ok     ok             fully reversible
+add an index                              ok     ok     ok             fully reversible
+drop an index                             ok     ok     ok             fully reversible
+backfill a default                         -      -      -                  did not run
+normalise a value in place                ok     ok     ok             fully reversible
+drop a lookup table                       NO     ok   LOST          schema not restored
+widen a column type                       ok     ok     ok             fully reversible
+clear a column before removing it         ok     ok   LOST   schema restored, data lost
+delete soft-deleted rows                  ok     ok   LOST   schema restored, data lost
+add a NOT NULL column with no default       -      -      -                  did not run
 ----------------------------------------------------------------------------------
-add a nullable column                     ok     ok     ok  fully reversible
-drop an unused column                     ok  MOVED   LOST  columns reordered, data lost
-rename a column                           ok     ok     ok  fully reversible
-add an index                              ok     ok     ok  fully reversible
-drop an index                             ok     ok     ok  fully reversible
-backfill a default                         -      -      -  did not run
-normalise a value in place                ok     ok     ok  fully reversible
-drop a lookup table                       NO     ok   LOST  schema not restored
-widen a column type                       ok     ok     ok  fully reversible
-clear a column before removing it         ok     ok   LOST  schema restored, data lost
-delete soft-deleted rows                  ok     ok   LOST  schema restored, data lost
-add a NOT NULL column with no default       -      -      -  did not run
-----------------------------------------------------------------------------------
-12 migrations, 10 ran, 6 fully reversible, 3 match on schema and lose data
-    of those 3, 1 also moved a column, which a schema-diff tool does not compare and this table now shows
+total migrations              : 12
+  ran                         : 10
+  refused to run              : 2
+  fully reversible            : 6
+  lost data                   : 4
+  columns silently reordered  : 1
+  SCHEMA MATCHES, DATA LOST   : 3  <- invisible to a schema-only check
 ```
 
 The canonical case is `drop a column`:
@@ -64,6 +69,26 @@ The columns match as a *set* and not as a *sequence*, so anything relying on `SE
 ordering, or an `INSERT` without a column list, silently changes meaning.
 
 Reported as its own outcome rather than folded into "schema restored".
+
+## A third: what `down` left behind
+
+Every comparison here asked what the round trip **lost** - missing tables, dropped
+columns, changed types. None asked what it **gained**, though `schema_equivalent`'s own
+docstring said "same tables, same columns". So a `down` that failed to drop the column
+its `up` added reported `schema restored: yes` and **FULLY REVERSIBLE**, exit 0 under
+`--strict`, on a schema that still has the column. It is not cosmetic: re-applying `up`
+fails with "column already exists", so a migration called reversible cannot be run
+twice. `columns_added` and `extra_tables` are the mirrors, and the report names them.
+
+## And a verdict it must never give by accident
+
+An `up` with no statements - an empty file, or one that is all comments - used to produce
+**FULLY REVERSIBLE**, `schema restored: yes`, `data restored: yes`, exit 0. Running
+nothing and reversing nothing does restore everything; it is true, and it is not an
+answer about a migration. A mistyped path or a file that failed to write read as a clean
+bill of health from the tool whose premise is refusing unsafe migrations. It now exits 2
+and says so. Garbage SQL was handled correctly throughout, so the gap was exactly
+between "could not run" and "nothing to run".
 
 ## Input / Output
 
@@ -150,7 +175,7 @@ parsing it. The UI's API is `http.server`; only the SolidJS front end needs npm.
 ## Run it
 
 ```bash
-uv run pytest -q                  # 44 tests
+uv run pytest -q                  # 63 tests
 uv run db-surgeon corpus
 uv run python scripts/sweep.py
 uv run python ui/server.py        # then: cd ui && npm install && npm run dev

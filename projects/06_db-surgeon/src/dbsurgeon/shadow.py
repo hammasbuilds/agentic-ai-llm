@@ -248,6 +248,34 @@ class RoundTrip:
         return sorted(out)
 
     @property
+    def extra_tables(self) -> list[str]:
+        """Tables `down` created or failed to drop."""
+        return sorted(self.after_down.table_names - self.before.table_names)
+
+    @property
+    def columns_added(self) -> list[str]:
+        """Columns absent before and present after the round trip.
+
+        The mirror of `columns_lost`, and it was missing. Every comparison here looked
+        for things the round trip LOST, so a `down` that failed to drop the column its
+        `up` added left the schema changed and `schema_equivalent` said "same tables,
+        same columns" anyway - the docstring describing a symmetric comparison over an
+        implementation that only ran one way.
+
+        It is not cosmetic: an extra column means the next `up` fails with "column
+        already exists", so a migration reported as fully reversible cannot in fact be
+        re-applied.
+        """
+        out = []
+        for name, restored in self.after_down.tables.items():
+            original = self.before.tables.get(name)
+            if original is None:
+                continue
+            for column in set(restored.column_names) - set(original.column_names):
+                out.append(f"{name}.{column}")
+        return sorted(out)
+
+    @property
     def columns_reordered(self) -> list[str]:
         """Tables whose columns all came back, but in a different order.
 
@@ -284,8 +312,17 @@ class RoundTrip:
 
     @property
     def schema_equivalent(self) -> bool:
-        """Same tables, same columns, same types - order not considered."""
-        if self.missing_tables or self.columns_lost or self.types_changed:
+        """Same tables, same columns, same types - order not considered.
+
+        Both directions. This checked `missing_tables`, `columns_lost` and
+        `types_changed` only, so a `down` that failed to drop what its `up` added was
+        "equivalent": the docstring said "same columns" and the code asked whether any
+        had gone. `ALTER TABLE t ADD COLUMN c` with an empty `down` reported FULLY
+        REVERSIBLE, on a schema that still has `c` and an `up` that can no longer run.
+        """
+        if self.missing_tables or self.extra_tables:
+            return False
+        if self.columns_lost or self.columns_added or self.types_changed:
             return False
         return self.before.indexes == self.after_down.indexes
 

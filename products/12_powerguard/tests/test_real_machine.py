@@ -216,3 +216,74 @@ def test_mains_restored_never_touches_their_work_either():
         theirs = {j.pid for j in jobs_ if not j.owned}
         for action in plan(machine, jobs_):
             assert action.pid not in theirs
+
+
+# -- the power reading itself, not just its type -------------------------------
+
+
+CSV_HEADER = '"EstimatedChargeRemaining","BatteryStatus","EstimatedRunTime"'
+
+
+def _power_reading(monkeypatch, rows: list[str]):
+    """`power()` over a crafted PowerShell response.
+
+    `test_the_power_state_is_read_not_assumed` asserted `isinstance(m, Machine)` and
+    `0 <= battery_pct <= 100` - both true for every possible reading, including an
+    inverted one. Mutating `on_mains=status == 2` to `!=` inverts the AC-power state of
+    the machine this product plans around, and the whole suite stayed green.
+
+    The real battery cannot be made to report a chosen status, so the one layer below it
+    is stubbed and the parsing and mapping are what get checked.
+    """
+    from powerguard import machine
+
+    monkeypatch.setattr(machine, "_run", lambda *a, **k: chr(10).join(rows))
+    return machine.power()
+
+
+@pytest.mark.parametrize(
+    "status,on_mains",
+    [
+        (2, True),  # 2 is "AC connected"; every other code is not
+        (1, False),
+        (3, False),
+        (4, False),
+        (5, False),
+    ],
+)
+def test_only_battery_status_two_means_on_mains(monkeypatch, status, on_mains):
+    reading = _power_reading(monkeypatch, [CSV_HEADER, f'"80","{status}","120"'])
+    assert reading.on_mains is on_mains, status
+    assert reading.battery_pct == 80
+    assert reading.minutes_remaining == 120
+
+
+@pytest.mark.parametrize(
+    "pct,expected", [("-5", 0), ("0", 0), ("50", 50), ("100", 100), ("140", 100)]
+)
+def test_the_charge_is_clamped_to_a_percentage(monkeypatch, pct, expected):
+    """A reading outside 0-100 is the sensor's problem, not a reason to plan on it."""
+    assert (
+        _power_reading(monkeypatch, [CSV_HEADER, f'"{pct}","2","60"']).battery_pct == expected
+    )
+
+
+def test_a_machine_with_no_battery_reads_as_on_mains(monkeypatch):
+    """A desktop returns a header and no row. "On mains, 100%" is the honest reading;
+    an error would stop a product whose whole job is deciding what to suspend."""
+    reading = _power_reading(monkeypatch, [CSV_HEADER])
+    assert (reading.on_mains, reading.battery_pct) == (True, 100)
+    assert reading.minutes_remaining == 10_000
+
+
+def test_an_unparseable_reading_falls_back_rather_than_raising(monkeypatch):
+    reading = _power_reading(monkeypatch, [CSV_HEADER, '"not a number","x","y"'])
+    assert (reading.on_mains, reading.battery_pct) == (True, 100)
+
+
+def test_the_remaining_minutes_are_capped(monkeypatch):
+    """Windows reports 71582788 minutes on mains, which is not a planning horizon."""
+    assert (
+        _power_reading(monkeypatch, [CSV_HEADER, '"100","2","71582788"']).minutes_remaining
+        == 10_000
+    )

@@ -342,14 +342,56 @@ def test_the_json_carries_the_denominator_too(tmp_path):
     assert held["proposed"] == held["confirmed"] + held["retracted"]
 
 
-def test_a_rate_is_never_printed_without_its_denominator(tmp_path, capsys):
-    """An empty folder gives 0 of 0 rather than a rate over nothing."""
+def test_a_review_of_nothing_is_refused_rather_than_reported(tmp_path, capsys):
+    """This test used to assert the opposite, and the opposite was wrong.
+
+    It read "an empty folder gives 0 of 0 rather than a rate over nothing" and checked
+    for `files=0` and exit 0. But `files=0 proposed=0 confirmed=0 retracted=0 (0%)` IS
+    a rate over nothing, and 0% retracted is this tool's best possible result printed
+    for a folder it never looked at. An independent review reached it through the shape
+    that matters - `scan` on a path that does not exist - where `rglob` yields nothing
+    and the output is identical. A typo was reported as a clean review.
+
+    So the refusal is the behaviour, and exit 2 is how a caller tells the two apart.
+    """
     from reviewbot.cli import main
 
-    assert main(["scan", str(tmp_path)]) == 0
-    out = capsys.readouterr().out
-    assert "files=0" in out
-    assert "proposed=0" in out
+    assert main(["scan", str(tmp_path)]) == 2
+    captured = capsys.readouterr()
+    assert "nothing to review" in captured.err
+    assert "files=" not in captured.out, captured.out
+
+
+def test_a_path_that_does_not_exist_is_refused(tmp_path, capsys):
+    """The shape the review used. It is not the same bug as an empty folder - this one
+    cannot be a real review at all - but it printed the same thing."""
+    from reviewbot.cli import main
+
+    assert main(["scan", str(tmp_path / "nope")]) == 2
+    captured = capsys.readouterr()
+    assert "no such file or directory" in captured.err
+    assert "files=" not in captured.out, captured.out
+
+
+def test_a_file_that_is_not_python_is_refused(tmp_path, capsys):
+    """`scan README.md` used to review the file as Python, fail to parse it, and print
+    `files=0` with one unparseable - a 0% retraction rate over a markdown file."""
+    from reviewbot.cli import main
+
+    readme = tmp_path / "README.md"
+    readme.write_text("# notes\n", encoding="utf-8")
+    assert main(["scan", str(readme)]) == 2
+    assert "not Python" in capsys.readouterr().err
+
+
+def test_one_python_file_is_still_reviewable(tmp_path, capsys):
+    """A refusal that refuses the working case is not a fix."""
+    from reviewbot.cli import main
+
+    one = tmp_path / "m.py"
+    one.write_text("def f(x=[]):\n    return x\n", encoding="utf-8")
+    assert main(["scan", str(one)]) == 0
+    assert "files=1" in capsys.readouterr().out
 
 
 # -- a file no rule could run over is not a reviewed file ---------------------

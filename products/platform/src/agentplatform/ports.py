@@ -39,6 +39,11 @@ class Store(Protocol):
     def put(self, table: str, key: str, row: dict) -> None: ...
     def get(self, table: str, key: str) -> dict | None: ...
     def rows(self, table: str) -> list[dict]: ...
+    #: Needed because a run can be deliberately replaced, and leaving its checkpoint
+    #: behind meant `approve` on the new run resumed the old one's paused state - a
+    #: different entity's draft, approved by someone looking at this one. Absent keys
+    #: are not an error: the caller is expressing "make sure this is gone".
+    def delete(self, table: str, key: str) -> None: ...
 
 
 class Cache(Protocol):
@@ -177,6 +182,9 @@ class InMemoryStore:
 
     def rows(self, table: str) -> list[dict]:
         return [dict(r) for _, r in sorted(self._tables.get(table, {}).items())]
+
+    def delete(self, table: str, key: str) -> None:
+        self._tables.get(table, {}).pop(key, None)
 
 
 @dataclass

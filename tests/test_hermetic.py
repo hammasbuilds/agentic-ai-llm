@@ -27,7 +27,9 @@ directory, the datasets still load and the flagship measurement still reproduces
 from __future__ import annotations
 
 import os
+import re
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -152,11 +154,11 @@ def test_the_flagship_measurement_reproduces_with_no_cache_and_no_network(empty_
     out = localize_eval.run()
     tiers = out["recall"]["bm25"]["by_tier"]
 
-    assert out["population"]["scored"] == 299
+    assert out["population"]["scored"] == 300
     # Fractions, not rates to one decimal: 51 instances do not support the decimal
     # place, and the same headline was written as both 8.4% and 8.5% elsewhere.
     assert (tiers["full_path"]["hits@10"], tiers["full_path"]["n"]) == (38, 51)
-    assert (tiers["not_mentioned"]["hits@10"], tiers["not_mentioned"]["n"]) == (13, 153)
+    assert (tiers["not_mentioned"]["hits@10"], tiers["not_mentioned"]["n"]) == (13, 154)
 
 
 def test_the_readme_does_not_promise_a_download(empty_cache):
@@ -167,15 +169,61 @@ def test_the_readme_does_not_promise_a_download(empty_cache):
     )
 
 
-def test_no_test_in_this_suite_needs_the_real_cache_to_pass():
-    """The guarantee, stated as a command anyone can run.
+def test_no_module_in_this_suite_reads_the_cache_at_import_time():
+    """The guarantee, over the thing that can actually be checked from inside.
 
-    Printed rather than asserted on the count, because the suite's own pass total is
-    pinned in `test_documented_counts.py` and duplicating it here would be two places
-    to update. What matters is that the two runs agree, and the command to check it is
-    in the failure message.
+    This asserted
+
+        os.environ.get("HF_HUB_CACHE") is None or Path(os.environ["HF_HUB_CACHE"]).exists()
+
+    which is true in every intended configuration: unset, or set to a directory that
+    was created before the run. Its docstring said the count was "printed rather than
+    asserted" and nothing was printed. Deleting `data/benchmarks` entirely left it
+    green.
+
+    What a test inside the suite CAN establish is that collection does not touch the
+    cache: every module here imports and is collected with the cache pointed at an
+    empty directory, so a module-level `load()` or a path resolved at import fails here
+    rather than two hundred tests later. The run-time half is the sweep's job -
+    `scripts/test_all.py --write-counts` runs every suite with the cache emptied and
+    refuses to record a red one.
     """
-    command = f"HF_HUB_CACHE=<an empty directory> {Path(sys.executable).name} -m pytest tests -q"
-    assert os.environ.get("HF_HUB_CACHE") is None or Path(os.environ["HF_HUB_CACHE"]).exists(), (
-        command
+    import subprocess
+
+    empty = Path(tempfile.mkdtemp(prefix="hermetic-collect-"))
+    done = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--collect-only", "-p", "no:cacheprovider"],
+        cwd=str(ROOT),
+        env={
+            **os.environ,
+            "HF_HOME": str(empty),
+            "HF_HUB_CACHE": str(empty),
+            "HF_DATASETS_CACHE": str(empty),
+        },
+        capture_output=True,
+        text=True,
+        errors="replace",
+        timeout=600,
+    )
+    assert done.returncode == 0, (
+        "collecting this suite with the HuggingFace cache pointed at an empty directory "
+        "failed, so something reads it at import time: " + (done.stdout + done.stderr)[-1200:]
+    )
+    found = re.search(r"(\d+) tests? collected", done.stdout)
+    assert found, done.stdout[-500:]
+    # The same number either way: a module that skipped itself at import would collect
+    # fewer, and that is a silent loss rather than a failure.
+    here = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--collect-only", "-p", "no:cacheprovider"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        errors="replace",
+        timeout=600,
+    )
+    mine = re.search(r"(\d+) tests? collected", here.stdout)
+    assert mine, here.stdout[-500:]
+    assert found.group(1) == mine.group(1), (
+        f"collection differs: {found.group(1)} with an empty cache, {mine.group(1)} with "
+        "the real one. A module is deciding at import time whether its tests exist."
     )

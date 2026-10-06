@@ -35,7 +35,7 @@ SKIP_DIRS = frozenset(
 
 def _python_files(target: Path) -> list[Path]:
     if target.is_file():
-        return [target]
+        return [target] if target.suffix == ".py" else []
     return sorted(
         p
         for p in target.rglob("*.py")
@@ -57,8 +57,26 @@ def _diff_command(args: argparse.Namespace) -> int:
 
 
 def _scan_command(args: argparse.Namespace) -> int:
-    """Review whole files rather than a diff. Used to measure precision."""
+    """Review whole files rather than a diff. Used to measure precision.
+
+    The two refusals below are the same failure in two shapes: a review of nothing
+    printed as a review that found nothing. `scan C:/nope` resolved a path that does
+    not exist, `rglob` over it yielded nothing, and the command printed
+    `files=0 proposed=0 confirmed=0 retracted=0 (0%)` and exited 0 - a clean bill of
+    health for a typo, with a retraction rate of 0% that reads as the tool's best
+    possible result. A folder with no Python in it did the same thing.
+
+    Nothing distinguishes those from a genuine clean review except the file count, and
+    a reader who gets exit code 0 has already been told the answer.
+    """
     target = Path(args.path).resolve()
+    if not target.exists():
+        print(f"no such file or directory: {args.path}", file=sys.stderr)
+        return 2
+    if not _python_files(target):
+        what = "file is not Python" if target.is_file() else "directory holds no Python files"
+        print(f"nothing to review: {what}: {args.path}", file=sys.stderr)
+        return 2
     review = Review()
     skipped_tests = 0
     reviewed = 0

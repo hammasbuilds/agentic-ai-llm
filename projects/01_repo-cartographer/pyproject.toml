@@ -16,9 +16,11 @@ license = "MIT"
 # scope information. See README, "What I wrote vs what I installed".
 dependencies = []
 
-[project.optional-dependencies]
-# Only the explanation layer needs a model, and only over HTTP to local ollama.
-explain = ["httpx>=0.27"]
+# No extras. `explain = ["httpx>=0.27"]` was here for "the explanation layer", which
+# does not exist: `grep -rn httpx` over this package finds nothing. The banner above
+# says "zero runtime dependencies, zero LLM calls, zero network", and an extra naming
+# an HTTP client is the opposite claim - in the tree that ships a compliance control
+# called `deps-used`.
 
 [project.scripts]
 cartographer = "cartographer.cli:main"

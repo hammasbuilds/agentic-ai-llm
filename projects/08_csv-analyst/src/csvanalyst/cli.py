@@ -19,6 +19,7 @@ from .execute import (
 )
 from .narrate import narrate
 from .profile import (
+    NotDelimitedTextError,
     honest_mean,
     naive_mean,
     parse_number,
@@ -364,7 +365,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (NoColumnsError, DuplicateColumnError) as exc:
+    except (NoColumnsError, DuplicateColumnError, NotDelimitedTextError) as exc:
         # A wrong argument, answered as one. A 0-byte CSV used to come back as
         # `sqlite3.OperationalError: near ")": syntax error` with a traceback, which
         # tells a reader nothing about the file they passed.

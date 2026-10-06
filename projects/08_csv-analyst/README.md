@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-56-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-47%20%2B%209%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/rows%20measured-1.07M-orange" alt="rows">
 </p>
 
@@ -194,11 +194,18 @@ by hand. `marimo` is an optional extra used only by the notebook view.
 ## Run it
 
 ```bash
-uv run pytest -q                                  # 56 tests, 12 of them over the real corpus
+uv run pytest -q                                  # 52 passed, 9 skipped
 uv run csv-analyst report <csv> --limit 100000
 uv run csv-analyst coercion <csv>
 uv run --extra ui marimo edit ui/notebook.py
 ```
+
+The nine skips are the tests that measure over the real corpus, and they are the ones
+behind every figure in Results. `CSV_CORPUS` names the folder holding
+`online-retail-ii.csv`; point it there and all 56 run. It defaults to a path beside this
+checkout, which is how those nine came to run during a sweep whose recorded counts are
+published as a fresh clone's - the variable was missing from the list that sweep
+withholds, so 56 passed / 0 skipped was recorded where a reader gets 47 / 9.
 
 ## Layout
 

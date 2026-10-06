@@ -163,11 +163,18 @@ class Summary:
 
         Splitting this out was forced by a number that moved: as the portfolio
         grew from 36 repositories to 74, the authored rate more than doubled,
-        from 0.000101 to 0.000234. The cause was not that anyone started
-        undoing their own work twice as often. Of 138 authored reverts, 88 were
-        in Markdown - and a README line returning verbatim while whole tables
-        are rewritten in bulk is a line being re-emitted, not one writer
-        overruling another.
+        from 0.0101% to 0.0234%. The cause was not that anyone started undoing
+        their own work twice as often. Of the 138 authored reverts, 92 are in
+        prose - and a README line returning verbatim while whole tables are
+        rewritten in bulk is a line being re-emitted, not one writer overruling
+        another.
+
+        Both figures here were stale until a test compared them against the
+        frozen survey: this said 88 where the README and the fixture say 92,
+        and wrote the rates as bare fractions where every other figure in the
+        product is a percentage. ``test_in_code_figures`` now reads them back
+        out of this docstring, so a comment beside a table cannot drift from
+        it again.
 
         That is the same confusion this product was built to name, one level
         in: a generated `results.json` is obviously not judgement, and a
@@ -288,8 +295,14 @@ def survey(root: str | None = None, repos: int = 0, limit: int = 10_000) -> tupl
 
     ``repos`` defaults to no cap. It used to default to 12, which stopped
     alphabetically after a third of the checkouts and — because a revert is a
-    *pair* of edits drawn from the history pool — could only undercount. It did:
-    12 repositories reported 0.063%, all 35 report 0.285%.
+    *pair* of edits drawn from the history pool — could only undercount.
+
+    The pair of numbers that used to close this docstring, "12 repositories
+    reported 0.063%, all 35 report 0.285%", came from a survey of 35 checkouts
+    and matched nothing the product ships: the frozen survey covers 74
+    repositories and the naive rate over it is 0.1155%. The table at the top of
+    the README is the measurement; a second pair of numbers in a docstring was
+    a second thing to keep right, and it was not kept right.
     """
     base = Path(root) if root else REPOS
     out: list[Summary] = []

@@ -220,15 +220,39 @@ def test_the_corroboration_gate_has_never_been_able_to_fire():
     Reachable - revenue-desk passes `state.get("min_sources", 1)` - and nothing in any
     product or test sets that key above 1, so the check has never run.
     """
-    import re
+    import ast
 
-    sources = _product_sources()
-    raised = [
-        line
-        for line in sources.splitlines()
-        if "min_sources" in line and not re.search(r'min_sources", 1\)|min_sources=state', line)
-    ]
-    assert raised == [], f"min_sources is set somewhere now: {raised}"
+    # Read as code, not as text. The first version scanned source LINES, so it flagged
+    # the sentence in `revenue/agents.py` explaining why `min_sources` is read from the
+    # state - the fifth time a check in this repository has failed on its own prose.
+    raised: list[str] = []
+    for src in sorted((ROOT / "products").glob("[0-9]*/src")):
+        for path in sorted(src.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                # `min_sources=<something>` passed to a call, or a literal assignment.
+                if isinstance(node, ast.keyword) and node.arg == "min_sources":
+                    # `state.get("min_sources", 1)` is the reachable-but-unused form.
+                    if isinstance(node.value, ast.Call):
+                        continue
+                    raised.append(f"{path.relative_to(ROOT).as_posix()}:{node.value.lineno}")
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "get"
+                    and len(node.args) == 2
+                    and isinstance(node.args[0], ast.Constant)
+                    and node.args[0].value == "min_sources"
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value != 1
+                ):
+                    raised.append(f"{path.relative_to(ROOT).as_posix()}:{node.lineno}")
+    assert raised == [], f"min_sources is set above 1 somewhere now: {raised}"
 
     index = (ROOT / "products" / "README.md").read_text(encoding="utf-8")
     assert "has never fired" in index
@@ -243,3 +267,67 @@ def test_the_declared_and_unused_table_lists_every_row_it_should():
     assert len(rows) == 6, f"{len(rows)} rows in the unwired table"
     for needle in ("keys.py", "agent_rows", "llm.Cached", "UNDER_CORROBORATED", "to_langgraph"):
         assert needle in table, needle
+
+
+# -- what every product's README says the gate does ---------------------------
+
+
+def test_no_readme_claims_the_gate_checks_what_the_model_wrote():
+    """The sentence was in all twenty, and it was false.
+
+    "The gate drops anything the model wrote that no tool receipt supports" - while no
+    node in any of the twenty writes `claims` or `issued_receipts`, both arrive in the
+    request body, and the same READMEs list them as input keys fifteen lines later. The
+    two model nodes write `summary` and `draft`, which the gate never reads.
+    """
+    readmes = [
+        *sorted((ROOT / "products").glob("[0-9]*/README.md")),
+        ROOT / "products" / "README.md",
+    ]
+    assert len(readmes) == 21, [p.parent.name for p in readmes]
+
+    for path in readmes:
+        text = path.read_text(encoding="utf-8")
+        assert "anything the model wrote that no tool receipt supports" not in text, (
+            f"{path.parent.name}: the false claim is back"
+        )
+
+
+def test_every_product_readme_says_where_the_claims_come_from():
+    """The replacement has to be present, not just the old sentence absent."""
+    for path in sorted((ROOT / "products").glob("[0-9]*/README.md")):
+        text = path.read_text(encoding="utf-8")
+        assert "The gate drops any claim whose receipts were not issued" in text, path.parent.name
+        assert "arrive in the request body" in text, path.parent.name
+
+
+def test_no_node_in_any_product_writes_claims_or_receipts():
+    """The premise of the correction, asserted rather than assumed.
+
+    If a product ever grows a node that produces claims, this fails - and the README
+    sentence it fails on is the one that should then change back.
+    """
+    import ast
+
+    writers: list[str] = []
+    for src in sorted((ROOT / "products").glob("[0-9]*/src")):
+        for path in sorted(src.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            try:
+                tree = ast.parse(text)
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                # A dict literal with "claims" or "issued_receipts" as a key, returned
+                # by a node. `gate.from_state` READS them, which is not writing them.
+                if not isinstance(node, ast.Dict):
+                    continue
+                keys = {k.value for k in node.keys if isinstance(k, ast.Constant)}
+                if keys & {"claims", "issued_receipts"}:
+                    writers.append(f"{path.relative_to(ROOT).as_posix()}:{node.lineno}")
+    assert not writers, (
+        "a node now produces claims or receipts, so the gate can be a check on the "
+        f"model and the READMEs should say so: {writers}"
+    )

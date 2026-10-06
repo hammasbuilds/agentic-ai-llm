@@ -21,15 +21,21 @@ for name, up, down, belief in CASES:
     plan = build(name, SCHEMA, SEED, up, down)
     rows.append((name, plan, belief))
 
-print(f"{'migration':36s} {'schema':>7s} {'data':>6s} {'verdict':>28s}")
-print("-" * 82)
+# Four columns. `schema` is set equality and `order` is column position, because a
+# re-added column comes back at the end and the two answers differ - which is the
+# distinction the README's prose argues for, and this table had stopped printing it.
+# `schema` shows `schema_equivalent`, so the column and the summary count below use the
+# same definition; that disagreement is what the `order` column was added to settle.
+print(f"{'migration':36s} {'schema':>7s} {'order':>6s} {'data':>6s} {'verdict':>28s}")
+print("-" * 86)
 for name, plan, _ in rows:
     if plan.error:
-        print(f"{name:36s} {'-':>7s} {'-':>6s} {'did not run':>28s}")
+        print(f"{name:36s} {'-':>7s} {'-':>6s} {'-':>6s} {'did not run':>28s}")
         continue
     trip = plan.trip
     print(
-        f"{name:36s} {'ok' if trip.schema_restored else 'NO':>7s} "
+        f"{name:36s} {'ok' if trip.schema_equivalent else 'NO':>7s} "
+        f"{'MOVED' if trip.columns_reordered else 'ok':>6s} "
         f"{'ok' if trip.data_restored else 'LOST':>6s} {plan.verdict:>28s}"
     )
 

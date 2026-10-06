@@ -40,17 +40,40 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/survey":
             params = parse_qs(parsed.query)
-            root = Path((params.get("path") or ["."])[0])
+            raw = (params.get("path") or [""])[0]
             project = (params.get("project") or ["MIT"])[0]
-            if not root.exists():
+            # Required, not defaulted to ".". `/api/survey` with no path surveyed
+            # whatever directory the server was started in and answered "1 licence
+            # file(s)" about it - a real-looking figure a reader cannot tell apart from
+            # one about the folder they meant. The same default was in all three of
+            # these servers.
+            if not raw:
                 self._send(
-                    json.dumps({"error": f"no such path: {root}"}).encode(),
+                    json.dumps(
+                        {"error": "path is required: /api/survey?path=<folder of checkouts>"}
+                    ).encode(),
+                    "application/json",
+                    400,
+                )
+                return
+            root = Path(raw)
+            if not root.is_dir():
+                self._send(
+                    json.dumps({"error": f"not a directory: {root}"}).encode(),
                     "application/json",
                     400,
                 )
                 return
 
-            readings = _read_all(root.resolve())
+            try:
+                readings = _read_all(root.resolve())
+            except OSError as unreadable:
+                self._send(
+                    json.dumps({"error": f"{root} could not be read: {unreadable}"}).encode(),
+                    "application/json",
+                    400,
+                )
+                return
             families: dict[str, int] = {}
             for reading in readings:
                 families[reading.family] = families.get(reading.family, 0) + 1

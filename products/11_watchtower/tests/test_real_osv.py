@@ -226,6 +226,47 @@ def test_this_machine_is_scannable(db):
     assert covered, "expected at least one installed package to carry an advisory"
 
 
+def test_the_readme_quotes_the_scan_it_ran(db):
+    """`assert len(here) > 10` held for 32 packages and for 71 alike.
+
+    So the README went on saying "32 installed packages found 14 carrying advisories"
+    while the virtualenv had grown to 71 and 31 - and the floor underneath it could not
+    tell the difference. The population moves with the environment, which is why the
+    README carries a date; what must not drift silently is the three numbers beside it.
+    """
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    stated = re.search(
+        r"(\d+) installed\s+packages found (\d+) carrying advisories"
+        r" and (\d+)\s+genuine findings",
+        readme.replace(chr(10), " "),
+    )
+    assert stated, "the README no longer states the scan"
+    said_installed, said_covered, said_findings = (int(g) for g in stated.groups())
+
+    here = installed()
+    covered = [p for p in here if p in db]
+    findings = [adv for package in covered for adv in db[package] if adv.affects(here[package])]
+    assert (said_installed, said_covered, said_findings) == (
+        len(here),
+        len(covered),
+        len(findings),
+    ), (
+        f"the README says {said_installed}/{said_covered}/{said_findings}; the scan "
+        f"finds {len(here)}/{len(covered)}/{len(findings)}"
+    )
+
+    # And the agreement, which is the finding rather than the population.
+    agreed = [adv for adv in findings if adv.affects_naively(here[adv.package])]
+    assert len(agreed) == len(findings), (
+        f"{len(findings) - len(agreed)} finding(s) the shortcut missed; the README says "
+        "the two agreed on all of them"
+    )
+    assert f"agreed on all {len(findings)}" in readme
+
+
 def test_a_missing_database_is_reported_rather_than_faked():
     from watchtower.osv import DatabaseMissingError
 

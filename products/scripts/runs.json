@@ -36,7 +36,7 @@
       "dropped": [
         "They are evaluating vendors this quarter."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -56,6 +56,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft.body",
         "drop_rate",
         "dropped_claims",
@@ -65,6 +67,7 @@
         "lead.score",
         "lead.stage",
         "model",
+        "receipts_source",
         "reply",
         "reply.intent",
         "sent",
@@ -120,7 +123,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -140,6 +143,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -149,6 +154,7 @@
         "kept_claims",
         "model",
         "must_not_mention",
+        "receipts_source",
         "signed",
         "summary",
         "summary.draft",
@@ -204,7 +210,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -224,6 +230,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -234,6 +242,7 @@
         "model",
         "overlaps",
         "published",
+        "receipts_source",
         "scheduled",
         "summary",
         "summary_subject",
@@ -288,7 +297,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -309,6 +318,8 @@
         "branches_failed",
         "chase.draft",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -318,6 +329,7 @@
         "matched",
         "model",
         "payments",
+        "receipts_source",
         "sent",
         "summary",
         "summary_subject",
@@ -371,7 +383,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -390,6 +402,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "clusters",
         "commitments",
         "draft",
@@ -399,6 +413,7 @@
         "issued_receipts",
         "kept_claims",
         "model",
+        "receipts_source",
         "sent",
         "summary",
         "summary_subject"
@@ -451,7 +466,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -472,6 +487,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -480,6 +497,7 @@
         "issued_receipts",
         "kept_claims",
         "model",
+        "receipts_source",
         "reduction",
         "summary",
         "summary_subject"
@@ -533,7 +551,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -552,6 +570,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "cv",
         "decision",
         "draft",
@@ -562,6 +582,7 @@
         "kept_claims",
         "leaks",
         "model",
+        "receipts_source",
         "redacted_view",
         "removed",
         "secrets",
@@ -618,7 +639,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -637,6 +658,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -645,6 +668,7 @@
         "kept_claims",
         "missing_mandatory",
         "model",
+        "receipts_source",
         "requirements",
         "section.draft",
         "submittable",
@@ -703,7 +727,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -723,6 +747,8 @@
         "branches_failed",
         "carried",
         "claims",
+        "claims_checked",
+        "claims_source",
         "constraints",
         "draft",
         "drop_rate",
@@ -733,6 +759,7 @@
         "memory_written",
         "message",
         "model",
+        "receipts_source",
         "reply",
         "soft_lost",
         "specialist",
@@ -788,7 +815,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -807,6 +834,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -818,6 +847,7 @@
         "listed",
         "model",
         "name",
+        "receipts_source",
         "sar.draft",
         "summary",
         "summary_subject"
@@ -873,7 +903,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -894,6 +924,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -903,6 +935,7 @@
         "model",
         "out_of_scope",
         "packages",
+        "receipts_source",
         "remediation.draft",
         "scope",
         "summary",
@@ -960,7 +993,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -982,6 +1015,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -992,6 +1027,7 @@
         "minutes_remaining",
         "model",
         "on_mains",
+        "receipts_source",
         "summary",
         "summary_subject",
         "unowned_at_risk"
@@ -1046,7 +1082,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1066,6 +1102,8 @@
         "branches_failed",
         "calls",
         "claims",
+        "claims_checked",
+        "claims_source",
         "conflicts",
         "draft",
         "drop_rate",
@@ -1075,6 +1113,7 @@
         "kept_claims",
         "model",
         "published",
+        "receipts_source",
         "repeats",
         "report.draft",
         "reportable",
@@ -1132,7 +1171,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1153,6 +1192,8 @@
         "branches_failed",
         "cites",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -1164,6 +1205,7 @@
         "path",
         "path_sources",
         "reachable",
+        "receipts_source",
         "start",
         "summary",
         "summary_subject"
@@ -1218,7 +1260,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1237,6 +1279,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "coverage_reason",
         "covered",
         "draft",
@@ -1249,6 +1293,7 @@
         "no_version",
         "paid",
         "peril",
+        "receipts_source",
         "settlement.draft",
         "summary",
         "summary_subject",
@@ -1307,7 +1352,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1329,6 +1374,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "cost",
         "draft",
         "drop_rate",
@@ -1343,6 +1390,7 @@
         "note",
         "price",
         "proposals",
+        "receipts_source",
         "summary",
         "summary_subject"
       ]
@@ -1398,7 +1446,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1419,6 +1467,8 @@
         "challenger_cost",
         "challenger_route",
         "claims",
+        "claims_checked",
+        "claims_source",
         "depot",
         "dispatched",
         "draft",
@@ -1432,6 +1482,7 @@
         "message.draft",
         "model",
         "pct_worse",
+        "receipts_source",
         "solver_cost",
         "solver_route",
         "stops",
@@ -1486,7 +1537,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1505,6 +1556,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "clashes",
         "draft",
         "drop_rate",
@@ -1515,6 +1568,7 @@
         "model",
         "publishable",
         "published",
+        "receipts_source",
         "sessions",
         "summary",
         "summary_subject"
@@ -1568,7 +1622,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1588,6 +1642,8 @@
         "branches",
         "branches_failed",
         "claims",
+        "claims_checked",
+        "claims_source",
         "clusters",
         "draft",
         "drop_rate",
@@ -1599,6 +1655,7 @@
         "kept_claims",
         "model",
         "naive_count",
+        "receipts_source",
         "since_day",
         "summary",
         "summary_subject"
@@ -1652,7 +1709,7 @@
       "dropped": [
         "Asserted with nothing behind it."
       ],
-      "drop_rate": 0.5
+      "drop_rate": null
     },
     "done": {
       "status": "done",
@@ -1672,6 +1729,8 @@
         "branches_failed",
         "broken",
         "claims",
+        "claims_checked",
+        "claims_source",
         "draft",
         "drop_rate",
         "dropped_claims",
@@ -1682,6 +1741,7 @@
         "model",
         "patch.draft",
         "readme_claims",
+        "receipts_source",
         "summary",
         "summary_subject",
         "verifiable_share"

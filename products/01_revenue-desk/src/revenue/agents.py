@@ -77,14 +77,16 @@ def forecast(state: dict) -> dict:
 
 
 def run_gate(state: dict) -> dict:
-    """Drop any claim the tools did not actually support."""
-    claims = [
-        gate.Claim(c["text"], tuple(c.get("receipts", ()))) for c in state.get("claims", [])
-    ]
-    issued = set(state.get("issued_receipts", ()))
-    result = gate.run(claims, issued, min_sources=state.get("min_sources", 1))
-    return {
-        "kept_claims": [c.text for c in result.kept],
-        "dropped_claims": [(d.claim.text, d.reason) for d in result.dropped],
-        "drop_rate": round(result.drop_rate, 4),
-    }
+    """Drop any claim whose receipts were not issued.
+
+    `gate.from_state`, not a copy of it. This was nineteen lines reimplementing the
+    shared node, and the copy diverged: when the gate started reporting
+    `claims_source` and `receipts_source` - which say whether the claims came from a
+    node or from the request body, and therefore whether `drop_rate` means anything -
+    this product alone kept publishing a rate with no provenance beside it, and its
+    README's Result keys row went stale with nothing to notice.
+
+    `min_sources` is the one thing that was per-product here, and it still is: it is
+    read from the state exactly as before.
+    """
+    return gate.from_state(state, min_sources=state.get("min_sources", 1))

@@ -76,7 +76,7 @@ effort, and it says the answer is coordination rather than parallelism.
 Reproduce it:
 
 ```bash
-cd 13_swarm-lab && python -m pytest tests/test_real_sweep.py -q     # 10 passed
+cd 13_swarm-lab && python -m pytest tests/test_real_sweep.py -q     # 12 passed
 ```
 
 ## Agents and write authority
@@ -155,8 +155,17 @@ triage ──(early exit)──► exit ──► END
         [alpha, beta]          [model]      [model]            [pauses]
 ```
 
-`triage`, the early exit and `commit` are rules. Two nodes call the model. The gate drops
-anything the model wrote that no tool receipt supports, before a person ever sees it.
+`triage`, the early exit and `commit` are rules. Two nodes call the model.
+
+The gate drops any claim whose receipts were not issued, before a person ever sees it -
+and it reports where the claims came from, because that decides what the number means.
+This paragraph used to read "drops anything the model wrote that no tool receipt
+supports", which is not what happens: no node here writes `claims` or
+`issued_receipts`, both arrive in the request body (they are in the input keys below),
+and the two model nodes write `summary` and `draft`, which the gate never reads. So the
+filtering is a real audit of a draft the caller supplied, and `drop_rate` is `null`
+rather than a figure, because a rate over the caller's own input is not a measurement of
+the model.
 
 ## Scope
 
@@ -194,7 +203,7 @@ After `POST /approvals/{run}/approve`:
 | Status | `done` |
 | Nodes visited | `triage` → `gather` → `synthesise` → `compose` → `gate` → `approve` → `commit` |
 | Model calls | **2** — resuming added none |
-| Result keys | `branch_status`, `branches`, `branches_failed`, `calls`, `claims`, `conflicts`, `draft`, `drop_rate`, `dropped_claims`, `duplicate_calls`, `issued_receipts`, `kept_claims`, `model`, `published`, `repeats`, `report.draft`, `reportable`, `summary`, `summary_subject`, `writes` |
+| Result keys | `branch_status`, `branches`, `branches_failed`, `calls`, `claims`, `claims_checked`, `claims_source`, `conflicts`, `draft`, `drop_rate`, `dropped_claims`, `duplicate_calls`, `issued_receipts`, `kept_claims`, `model`, `published`, `receipts_source`, `repeats`, `report.draft`, `reportable`, `summary`, `summary_subject`, `writes` |
 
 **The early exit**, on a payload that trips `not_reportable`:
 

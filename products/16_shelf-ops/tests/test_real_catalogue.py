@@ -85,3 +85,50 @@ def test_a_missing_catalogue_is_reported_rather_than_faked():
 
     with pytest.raises(CatalogueMissingError):
         load(str(CATALOGUE.parent / "nope.csv"))
+
+
+# -- the branch that reads the catalogue, not the catalogue itself -------------
+
+
+def test_the_history_is_this_products_own_prices():
+    """`_history` finds a product by code and was never called with a real one.
+
+    `p.code == code` is the lookup, and mutating it to `!=` returns the FIRST product
+    that is not the one asked for - so the pricing agent prices a shoe from a lamp's
+    observed range. The whole suite stayed green, including this file, which tested the
+    catalogue reader underneath it.
+    """
+    from shelfops.agents import _catalogue, _history
+
+    catalogue = _catalogue()
+    assert len(catalogue) > 100, len(catalogue)
+
+    for product in (catalogue[0], catalogue[len(catalogue) // 2], catalogue[-1]):
+        history = _history({"sku": product.code})
+        assert history == [
+            f"modal={product.modal}",
+            f"min={product.low}",
+            f"max={product.high}",
+            f"sales={product.sales}",
+        ], (product.code, history)
+
+
+def test_a_sku_that_is_not_in_the_catalogue_returns_nothing():
+    """Not another product's prices, and not a crash."""
+    from shelfops.agents import _history
+
+    assert _history({"sku": "no-such-sku"}) == []
+    assert _history({}) == []
+    assert _history({"sku": None}) == []
+
+
+def test_two_different_skus_do_not_share_a_history():
+    """The assertion the `==` mutation fails on: a wrong lookup returns the same rows
+    for every code."""
+    from shelfops.agents import _catalogue, _history
+
+    catalogue = _catalogue()
+    first = catalogue[0]
+    shape = (first.modal, first.low, first.high, first.sales)
+    second = next(p for p in catalogue if (p.modal, p.low, p.high, p.sales) != shape)
+    assert _history({"sku": first.code}) != _history({"sku": second.code})

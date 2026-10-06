@@ -407,3 +407,116 @@ def test_a_control_key_already_on_the_bus_is_stripped_rather_than_obeyed():
 
 def test_without_control_keys_keeps_everything_else():
     assert api.without_control_keys({"_a": 1, "b": 2, "c_": 3}) == {"b": 2, "c_": 3}
+
+
+# -- resubmitting a run_id does not erase what the run did ---------------------
+
+
+def test_resubmitting_a_finished_run_is_refused():
+    """`Runtime.submit` wrote the row unconditionally.
+
+    So a second `POST /intake` with a run_id that had already completed reset `status`
+    to pending and dropped `visited`, `llm_calls` and `result` - the audit trail for a
+    run that really happened - with no 409 and a stale checkpoint left behind. A retry
+    from an at-least-once source is the normal case for a bus, not an edge one.
+    """
+    calls: list[str] = []
+    rt = runtime(calls)
+    client = TestClient(api.create_app(rt))
+
+    client.post("/intake", json={"run_id": "r1", "entity": "e1"})
+    client.post("/drain")
+    client.post("/approvals/r1/approve")
+    finished = client.get("/runs/r1").json()
+    assert finished["status"] == api.DONE, finished
+
+    again = client.post("/intake", json={"run_id": "r1", "entity": "e1"})
+    assert again.status_code == 409, again.text
+    assert "already exists" in again.json()["detail"]
+    # And the row is untouched, which is the thing worth keeping.
+    assert client.get("/runs/r1").json() == finished
+
+
+def test_resubmitting_a_pending_run_is_refused_too():
+    """Not only a finished one: a duplicate publish of the same job is the common case,
+    and running it twice costs the GPU twice."""
+    client = TestClient(api.create_app(runtime()))
+    assert client.post("/intake", json={"run_id": "r1", "entity": "e1"}).status_code == 202
+    clash = client.post("/intake", json={"run_id": "r1", "entity": "e1"})
+    assert clash.status_code == 409
+    assert "pending" in clash.json()["detail"]
+
+
+def test_a_deliberate_replacement_is_allowed_and_says_so():
+    client = TestClient(api.create_app(runtime()))
+    client.post("/intake", json={"run_id": "r1", "entity": "e1"})
+    replaced = client.post("/intake", json={"run_id": "r1", "entity": "e2", "replace": True})
+    assert replaced.status_code == 202, replaced.text
+    assert client.get("/runs/r1").json()["entity"] == "e2"
+
+
+def test_replacing_a_paused_run_clears_its_checkpoint():
+    """Otherwise `approve` on the new run resumes the old one's paused state - another
+    entity's draft, approved by someone looking at this one."""
+    rt = runtime()
+    client = TestClient(api.create_app(rt))
+    client.post("/intake", json={"run_id": "r1", "entity": "e1"})
+    client.post("/drain")
+    assert client.get("/runs/r1").json()["status"] == api.AWAITING_APPROVAL
+
+    client.post("/intake", json={"run_id": "r1", "entity": "e2", "replace": True})
+    assert rt.store.get(api.Runtime.CHECKPOINTS, "r1") is None
+    # Approving now is a sequencing error, not a resumption of the wrong state.
+    assert client.post("/approvals/r1/approve").status_code in (400, 404, 409)
+
+
+def test_a_store_without_delete_is_not_a_store():
+    """`Store` grew a `delete` for this, so both implementations must have one."""
+    from agentplatform.adapters.postgres_store import PostgresStore
+
+    for cls in (InMemoryStore, PostgresStore):
+        assert callable(getattr(cls, "delete", None)), cls.__name__
+
+
+def test_delete_is_idempotent_on_the_in_memory_store():
+    store = InMemoryStore()
+    store.delete("runs", "never-there")  # no raise
+    store.put("runs", "r", {"a": 1})
+    store.delete("runs", "r")
+    assert store.get("runs", "r") is None
+
+
+# -- a limit the route never bounded ------------------------------------------
+
+
+@pytest.mark.parametrize("limit", ["0", "-5", "-1", "abc", "1.5", "99999", ""])
+def test_a_limit_outside_the_range_is_the_callers_mistake(limit):
+    """`GET /events?limit=0` returned 500.
+
+    `ports.tail` validates `limit` - `out[-0:]` is the whole list, so `limit=0` used to
+    return every event ever - but the route declared a bare `int`, so the ValueError
+    came back as an internal error. The leak was turned into a crash and the route left
+    to discover it. `POST /drain?limit=-1` answered 200 from the same cause: two routes
+    taking the same parameter, validated in different places or not at all.
+    """
+    client = TestClient(api.create_app(runtime()))
+    assert client.get(f"/events?limit={limit}").status_code == 422, limit
+    assert client.post(f"/drain?limit={limit}").status_code == 422, limit
+
+
+def test_the_default_limits_still_work():
+    """A bound that rejects everything is not a bound."""
+    client = TestClient(api.create_app(runtime()))
+    assert client.get("/events").status_code == 200
+    assert client.post("/drain").status_code == 200
+    assert client.get("/events?limit=5").status_code == 200
+
+
+def test_the_port_still_refuses_an_out_of_range_limit_on_its_own():
+    """The route's bound is the second line, not a replacement for the first: anything
+    calling `tail` directly - the projector, a script - gets the same refusal."""
+    rt = runtime()
+    with pytest.raises(ValueError):
+        rt.bus.tail(rt.topics.events, limit=0)
+    with pytest.raises(ValueError):
+        rt.bus.tail(rt.topics.events, limit=-3)

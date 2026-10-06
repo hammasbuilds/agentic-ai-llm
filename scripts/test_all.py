@@ -37,8 +37,23 @@ TREES = ("projects", "products")
 TIMEOUT = 600
 
 
+#: What the repository's own suite is called in the recorded counts. It was not swept
+#: at all: `tests/test_documented_counts.py` iterates `projects/` and `products/`, so
+#: the count-drift module had a blind spot at the repository's front door - the root
+#: README said "317 passed, 38 skipped" where the suite gives 606 / 38, wrong by 289,
+#: and nothing could notice.
+ROOT_LABEL = "(root)"
+
+
 def suites(trees: tuple[str, ...]) -> list[Path]:
+    """Every package with a `tests/`, plus the repository's own suite.
+
+    The root is included when the whole tree is swept, because a figure published
+    about it drifts exactly like any other.
+    """
     found = []
+    if set(trees) == set(TREES) and (ROOT / "tests").is_dir():
+        found.append(ROOT)
     for tree in trees:
         base = ROOT / tree
         if not base.is_dir():
@@ -70,23 +85,59 @@ def counts(blob: str) -> dict[str, int]:
     return found
 
 
-#: Every environment variable that decides whether a suite runs or skips. `REPOS_ROOT`
+#: Inputs that decide whether a suite runs or skips, and are PATHS. `REPOS_ROOT`
 #: defaults to the folder this checkout sits in, so on a developer machine with a tree
 #: of checkouts beside it, `20_driftwatch` runs 21 tests that a fresh clone skips - and
-#: its README said "72 passed", a number true on exactly one machine. The HF cache is
-#: the same shape for the swebench and devign slices.
-FRESH_ENV = ("REPOS_ROOT", "HF_HOME", "HF_HUB_CACHE")
+#: its README said "72 passed", a number true on exactly one machine.
+#:
+#: `HF_DATASETS_CACHE` is here for `14_graph-clinic`, which read
+#: `Path.home() / ".cache/huggingface/datasets"` as a module constant and so ignored the
+#: environment altogether: all 28 of its tests ran in a sweep labelled "fresh clone",
+#: where 17 run and 11 skip. A hardcoded path is invisible to a check that looks for
+#: variables being read, which is why `test_documented_counts.py` also looks for one.
+#:
+#: `CSV_CORPUS` was missing from this tuple, which is the same bug one layer up:
+#: `08_csv-analyst` fell back to a sibling checkout and ran its nine real-corpus tests
+#: during a sweep whose recorded counts are labelled "what every suite really did on a
+#: fresh clone". 56 passed / 0 skipped was published where a clone gives 47 / 9, and the
+#: 158x runtime difference was printed by this runner's own slowest-suite line.
+FRESH_PATHS = ("REPOS_ROOT", "CSV_CORPUS", "HF_HOME", "HF_HUB_CACHE", "HF_DATASETS_CACHE")
+
+#: The same decision, made by reachability rather than by a path. These default to
+#: localhost, so emptying a variable does not help: a developer machine with Ollama or
+#: Redis running executes tests that CI skips. Pointed at a closed port instead.
+FRESH_ENDPOINTS = {
+    "OLLAMA_HOST": "127.0.0.1:1",
+    "OLLAMA_URL": "http://127.0.0.1:1",
+    "REDIS_URL": "redis://127.0.0.1:1/0",
+    "KAFKA_BOOTSTRAP": "127.0.0.1:1",
+    "POSTGRES_DSN": "postgresql://127.0.0.1:1/none",
+}
+
+#: Everything the fixture records as withheld.
+FRESH_ENV = tuple(FRESH_PATHS) + tuple(FRESH_ENDPOINTS)
+
+#: Set while THIS script runs the repository's own suite. That suite contains the tests
+#: that compare the READMEs against `tests/fixtures/suite_counts.json` - the file this
+#: run is about to write - so during the run they would be checking the previous
+#: fixture, which is the stale one by definition. Without the marker the cycle is
+#: unbreakable: the sweep refuses to write from a red run, and the run is red because
+#: the fixture has not been written yet.
+#:
+#: It is a marker, not a gate on data: it suppresses three tests and nothing else, and
+#: `test_documented_counts.py` names it where it skips.
+SWEEP_MARKER = "AAL_COUNTING_SWEEP"
 
 
 def fresh_environment(empty: Path) -> dict[str, str]:
-    """The environment a reader has on a fresh clone: these inputs absent.
+    """The environment a reader has on a fresh clone: none of these inputs present.
 
-    Pointed at an empty directory rather than unset, because unsetting `REPOS_ROOT`
-    falls back to the folder this checkout sits in, which on this machine is the tree
-    of checkouts the gate is trying to exclude.
+    Paths point at an empty directory rather than being unset, because unsetting
+    `REPOS_ROOT` falls back to the folder this checkout sits in - the very tree the
+    gate is trying to exclude. Endpoints point at port 1, which nothing listens on.
     """
     empty.mkdir(parents=True, exist_ok=True)
-    return {name: str(empty) for name in FRESH_ENV}
+    return {**{name: str(empty) for name in FRESH_PATHS}, **FRESH_ENDPOINTS}
 
 
 def run(package: Path, env: dict[str, str] | None = None) -> tuple[str, dict[str, int], str, float]:
@@ -205,11 +256,14 @@ def main() -> int:
     slowest: tuple[float, str] = (0.0, "-")
     measured: dict[str, dict[str, int]] = {}
     for package in packages:
-        outcome, tally, detail, elapsed = run(package, env)
+        here = env
+        if package == ROOT and env is not None:
+            here = {**env, SWEEP_MARKER: "1"}
+        outcome, tally, detail, elapsed = run(package, here)
         count = tally.get("passed", 0)
         total += count
         skipped += tally.get("skipped", 0)
-        label = f"{package.parent.name}/{package.name}"
+        label = ROOT_LABEL if package == ROOT else f"{package.parent.name}/{package.name}"
         ran = f"{count:>5} ran" + (f" +{tally['skipped']} skip" if tally.get("skipped") else "")
         print(
             f"  {label:<34}{ran:>16}   {outcome}" + (f"   {detail}" if detail else ""), flush=True

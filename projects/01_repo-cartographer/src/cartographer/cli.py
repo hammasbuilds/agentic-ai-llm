@@ -15,6 +15,27 @@ from .parse import parse_repo
 from .report import build_report, impact_of, render_text, report_from_graph
 
 
+class FolderError(ValueError):
+    """The folder argument is not a folder, or is not there."""
+
+
+def _folder(raw: str) -> Path:
+    """A path that must be a directory of checkouts.
+
+    `Path(raw).resolve()` then `iterdir()` raised `NotADirectoryError` straight out of
+    `main()` for the commonest mistake there is - giving a file where a folder was
+    wanted - and a path that does not exist at all gave `FileNotFoundError`. Both are
+    the caller's argument, and neither deserves a stack trace naming this module's
+    `iterdir`.
+    """
+    path = Path(raw).resolve()
+    if not path.exists():
+        raise FolderError(f"no such path: {path}")
+    if not path.is_dir():
+        raise FolderError(f"{path} is a file; this command takes a folder of checkouts")
+    return path
+
+
 def _map_command(args: argparse.Namespace) -> int:
     root = Path(args.repo).resolve()
     if not root.is_dir():
@@ -74,7 +95,7 @@ def _compare_command(args: argparse.Namespace) -> int:
     Built for the portfolio case: point it at a folder of checkouts and see
     which of them actually resolve, and how big each really is.
     """
-    parent = Path(args.parent).resolve()
+    parent = _folder(args.parent)
     repos = sorted(d for d in parent.iterdir() if d.is_dir() and not d.name.startswith("."))
     rows = []
     for d in repos:
@@ -191,7 +212,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except FolderError as bad:
+        print(f"{bad}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

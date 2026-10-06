@@ -30,7 +30,7 @@ for src in sorted((ROOT / "products").glob("*/src")):
 
 pytest.importorskip("fastapi")
 
-from agentplatform import api, graphs  # noqa: E402
+from agentplatform import graphs  # noqa: E402
 from agentplatform.llm import Recorded  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -58,7 +58,13 @@ def client_for(package: str) -> TestClient:
     one member is the thing this file exists to catch elsewhere.
     """
     module = importlib.import_module(f"{package}.app")
-    return TestClient(api.create_app(module.runtime(Recorded({}))))
+    runtime = module.runtime(Recorded({}))
+    # `module.api`, not the `api` this file imported. Anything that reloads
+    # `agentplatform` - `products/scripts/capture.py` purges it from `sys.modules`
+    # before each product, on purpose - leaves two module objects alive, and a Runtime
+    # from one wired into a `create_app` from the other cannot catch the other's
+    # exception class. That produced 140 failures here while this file passed alone.
+    return TestClient(module.api.create_app(runtime))
 
 
 def test_there_are_twenty_products_to_check():

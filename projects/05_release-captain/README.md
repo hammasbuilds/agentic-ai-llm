@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-45-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-50-success" alt="tests">
   <img src="https://img.shields.io/badge/repos%20measured-75-orange" alt="repos">
 </p>
 
@@ -13,10 +13,29 @@
 ## Results
 
 **Across 75 repositories with history, the commit that changed the most lines changed
-196,743 of them in 11 files. The commit that reached the most files changed 510 lines
-across 1,809. Ranked by lines the first is 386 times worse; ranked by breadth the second
-is 164 times worse. They are opposite kinds of risk and every single-number metric ranks
-one of them wrongly.**
+215,924 of them across 240 files. The commit that reached the most files changed 510
+lines across 1,809. Ranked by lines the first is 423 times the second; ranked by breadth
+the second is 8 times the first. They are opposite kinds of risk and every single-number
+metric ranks one of them wrongly.**
+
+```
+$ captain extremes <folder of checkouts>
+
+75 repositories with history under D:\github
+
+  most lines   215,924 lines     240 files  agentic-ai-lab/3f0bcd6a  products: twenty multi-agent products, each
+  most files       510 lines   1,809 files  visual-analytics/58e644f0  embedding-atlas: how far apart the translati
+
+  by lines, the first is 423 times the second; by files, the second is 8 times the first
+```
+
+This headline had no producer. `gate`, `explain`, `rank`, `sweep` and `compare` are all
+per-repository, so nothing computed a maximum across the folder, and the figure was
+wrong in both halves: 196,743 lines in 11 files, where the real maximum is 215,924 in
+240. The 11 was what made the breadth ratio read 164x; against the real commit it is 8x,
+which is a weaker number and the true one. `extremes` is the command, and it includes
+the repository this tool ships in - a survey that leaves out its own checkout is
+choosing its population, and the real maximum turned out to be there.
 
 The first is `agent-memory 94a60ac4`, "Rerun study after review fixes" — a regenerated
 results file, almost no review risk. The second is `visual-analytics 58e644f0`, a change
@@ -35,22 +54,27 @@ widest commit in it is three times wider than the one it called the extreme.
 ## But the honest version is narrower than that
 
 The obvious follow-up claim is that single metrics disagree in general, so a composite is
-always necessary. **Measured across 63 repositories with enough history to rank, that is
+always necessary. **Measured across 59 repositories with enough history to rank, that is
 false.** Ranked top-5 overlap between metrics, as `captain compare <folder>` prints it:
 
 | Pair | Mean excess over chance |
 |---|---|
-| churn vs files | **+41%** |
+| churn vs files | **+42%** |
 | churn vs spread | **+33%** |
-| files vs spread | **+42%** |
+| files vs spread | **+41%** |
 
 The metrics *agree*, well above chance. On ordinary commits, any one of them would do.
 The composite earns its place only on the tail — generated-data commits and broad
 refactors — and the tail is exactly what a release gate exists for.
 
-Four repositories do fall at or below chance on churn-versus-spread: `urdu-nlp-toolkit`
-and `nlp-lab` at 0% against 10% and 12% expected, `insurance-mlops` at 20% against 25%,
-and `contract-reader` at 60% against 62%. This section used to name `mcp-lab` as "the one
+Five repositories fall at or below chance on churn-versus-spread: `agentic-ai-lab` and
+`urdu-nlp-toolkit` and `nlp-lab` at 0% against 8%, 9% and 12% expected,
+`insurance-mlops` at 20% against 25%, and `contract-reader` at 60% against 62%.
+
+The first of those five is this repository, and the sentence used to say four and leave
+it out - a survey excluding its own checkout, which is choosing the population. It is
+also the second-largest history in the folder at 61 commits, so it is not a marginal
+omission. This section used to name `mcp-lab` as "the one
 repository" where they overlap below chance, "20% observed against 28% expected", and
 called it "the repo with the most history". Three of those four claims are wrong:
 `mcp-lab`'s chance is 19% and its overlap 20%, which is *above* it; the repository with
@@ -113,6 +137,7 @@ $ captain explain <repo> <sha>     # the factor breakdown behind one score
 $ captain rank <repo> --by churn   # or files, spread, risk - see them disagree
 $ captain sweep ~/code             # gate every checkout - the table below
 $ captain compare ~/code           # do single metrics agree, above chance?
+$ captain extremes ~/code          # the longest and widest commit in the folder
 $ captain gate <repo> --strict     # exit 1 when blocked, for CI
 ```
 
@@ -136,8 +161,10 @@ same day moved GO from 17 to 19 — which is why the table says when, and why th
 below is a share rather than a count.
 
 **13 of the 14 blocked are blocked by the same check: every recent source-changing commit
-changed no test file.** The other three blocks are a single commit scoring past 65. Not a
-subtle signal, and not one a line-count threshold would have produced.
+changed no test file.** Three are blocked by a single commit scoring past 65 - which is
+16 blocks across 14 repositories, because two are blocked by both. The counts are per
+check and not per repository, and saying "the other three" implied otherwise. Not a
+subtle signal either way, and not one a line-count threshold would have produced.
 
 ### A check that measured nothing is not a check that passed
 
@@ -206,7 +233,7 @@ and a parser, against a dependency that wraps the same command. The web view is 
 ## Run it
 
 ```bash
-uv run pytest -q                        # 45 tests
+uv run pytest -q                        # 50 tests
 uv run captain gate <repo> --since 8
 uv run captain compare ~/code
 uv run python ui/serve.py               # web view on :8090

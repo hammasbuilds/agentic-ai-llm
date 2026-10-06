@@ -118,7 +118,15 @@ def test_an_unreceipted_claim_never_reaches_the_approver():
     state = rt.checkpoint("r1").state
     assert state["kept_claims"] == ["They are hiring three AI engineers."]
     assert state["dropped_claims"][0][0] == "They are evaluating vendors this quarter."
-    assert state["drop_rate"] == 0.5
+    # One of two dropped, and `claims_checked` is the denominator that says so.
+    assert state["claims_checked"] == 2
+    # `drop_rate` is None, and that is the point. This asserted 0.5, which is a rate
+    # over `claims` - a key this run supplied in its own payload. Half of what the
+    # CALLER sent was unreceipted; nothing here is a measurement of what the model
+    # wrote, and the gate now says so rather than publishing a figure that reads as one.
+    assert state["drop_rate"] is None
+    assert state["claims_source"] == "payload"
+    assert state["receipts_source"] == "payload"
 
 
 def test_the_qualifier_scores_from_published_weights():

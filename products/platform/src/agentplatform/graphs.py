@@ -30,6 +30,10 @@ KINDS = (RULES, TOOL, LLM, GATE, FANOUT, INTERRUPT)
 
 APPROVED = "_approved"
 
+#: The caller's own keys, recorded at entry. Underscore-prefixed, so `Runtime.submit`
+#: refuses it from a request body and `_public` strips it from every reply.
+SUPPLIED = "_supplied"
+
 
 @dataclass(frozen=True)
 class Outcome:
@@ -213,6 +217,12 @@ def run(
     else:
         current = graph.entry
         working = dict(state or {})
+        # The keys the CALLER supplied, recorded before any node runs. The grounding
+        # gate reads `claims` and `issued_receipts` off the working state, and no node
+        # in any of the twenty products writes either - so the gate was filtering the
+        # request body against the request body and reporting a drop rate over it. It
+        # cannot tell the difference on its own; this is how it can.
+        working[SUPPLIED] = tuple(sorted(k for k in working if not k.startswith("_")))
 
     result = Result(state=working)
     steps = 0
@@ -245,6 +255,10 @@ def run(
         working.update(update)
         current = _resolve(graph.edges[node.name], working)
 
+    # The entry marker is plumbing, not a result. It stays in the state while the graph
+    # runs - the gate reads it - and in a checkpoint, because a resume needs it; it does
+    # not belong in what a caller reads back.
+    working.pop(SUPPLIED, None)
     result.state = working
     return result
 

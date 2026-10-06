@@ -347,3 +347,71 @@ def test_the_sweep_default_is_the_folder_this_repository_sits_in():
     )
     assert 'Path.home() / "code"' not in source
     assert "parents[3].parent" in source
+
+
+# -- the README's two tables against each other -------------------------------
+
+
+def test_the_readme_tables_agree_with_their_own_arithmetic():
+    """Three numbers in this README disagreed with the rows under them.
+
+    The headline said "320 mutants" where the per-repository rows sum to 313 scored -
+    the `Mutants` column is the sample size, 40 by construction, and seven mutants broke
+    the import and were excluded. The mutation-kind table also sums to 313, so the two
+    tables agreed with each other and the sentence above them did not.
+
+    Re-running the measurement is eight repositories of other people's code and minutes
+    of CPU, and those checkouts change - so what is asserted here is the arithmetic,
+    which does not depend on the machine.
+    """
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+
+    repos = re.findall(
+        r"^\| ([a-z][\w.-]+) \| (\d+) \| (\d+) \| (\d+) \| (\d+)% \| (\d+)% \| (\d+) \|$",
+        readme,
+        re.M,
+    )
+    assert len(repos) == 8, [r[0] for r in repos]
+
+    sampled = sum(int(r[1]) for r in repos)
+    scored = sum(int(r[2]) + int(r[3]) for r in repos)
+    survived_executed = sum(int(r[6]) for r in repos)
+
+    # Both denominators, named in the prose, and the one the headline quotes.
+    assert f"{sampled} mutants sampled and {scored} scored" in readme, (sampled, scored)
+    assert f"{survived_executed} deliberate bugs survived" in readme, survived_executed
+
+    # Each row's own score column, against its own kills.
+    for name, mutants, killed, survived, score, _executed, _ in repos:
+        denominator = int(killed) + int(survived)
+        assert denominator <= int(mutants), name
+        assert round(int(killed) / denominator * 100) == int(score), (
+            f"{name}: {killed}/{denominator} is {int(killed) / denominator:.1%}, "
+            f"the table says {score}%"
+        )
+
+    # And the mutation-kind table, whose rows must cover the same scored population.
+    kinds = re.findall(
+        r"^\| [^|]+ \| (\d+) / (\d+) \| \*\*(\d+)%\*\* \| [^|]+ \|$", readme, re.M
+    )
+    assert len(kinds) == 6, kinds
+    assert sum(int(t) for _, t, _ in kinds) == scored, (
+        f"the mutation table scores {sum(int(t) for _, t, _ in kinds)} and the "
+        f"repository table {scored}"
+    )
+    for caught, total, rate in kinds:
+        assert round(int(caught) / int(total) * 100) == int(rate), (caught, total, rate)
+
+
+def test_the_readme_says_when_it_was_measured():
+    """It was the only README of the eleven with no date and no corpus statement, over
+    figures that move when any of the eight checkouts changes."""
+    import re
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert re.search(r"Measured 20\d\d-\d\d-\d\d", readme), "no measurement date"
+    assert "live repositories" in readme or "dated snapshot" in readme

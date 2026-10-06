@@ -14,6 +14,20 @@ of integers, not the run artifacts - and the prose is checked against them. An a
 with no committed summary is skipped by name, and the number covered is asserted
 rather than assumed, because a parametrised test that silently covers one app of ten
 is the failure mode this file exists to catch.
+
+That leaves eight apps whose figures are checked for existence and not for value, and
+this file used to cover them with a table of COUNTS - the number of distinct figures
+per app - describing itself as "every number in every app's prose is pinned by count,
+so changing one is a deliberate edit to this table". The inference is wrong: a value
+changes without the count moving. An independent review rewrote `93.3% survived` to
+`99.9% survived` in app 05 and the whole suite stayed green, and 56 of the 104 figures
+had no value-level protection at all.
+
+The figure SET is frozen instead, in `tests/fixtures/app_figures.json`. A changed value
+is one figure appearing and one vanishing, and the failure names both. It is still
+weaker than the arithmetic checks on apps 02 and 03 - it says a number was edited on
+purpose, not that it is right - and that difference is what the coverage test below
+prints rather than leaves to be assumed.
 """
 
 from __future__ import annotations
@@ -92,25 +106,25 @@ def mutation_summary(app: Path) -> dict | None:
 #: Generic regex arithmetic over free prose is the wrong instrument: the apps state
 #: figures as "of the 198 tasks either size can solve, the 3B already handles 75.8%",
 #: and no reasonable pattern pairs those up. So the guarantee here is weaker and
-#: actually holds: every number in every app's prose is pinned by count, so changing
-#: one is a deliberate edit to this table. The two apps with a committed run get
-#: their figures checked against it; the eight whose numbers came from a GPU run get
-#: this and nothing stronger, and the gap is stated rather than hidden.
-STATED_FIGURES: dict[str, int] = {
-    # 13 -> 15: the headline moved from "74.5% to 8.5%" to the fractions it came
-    # from, "38 of 51" and "13 of 153", because 51 instances do not support a
-    # decimal place and the same figure appeared elsewhere as 8.4%.
-    "01_localizer": 15,
-    "02_false_accepts": 21,
-    "03_vuln_baseline": 12,
-    "04_size_curve": 12,
-    "05_debug_ceiling": 11,
-    "06_kill_rate": 7,
-    "07_repair_rewrite": 7,
-    "08_prompt_shapes": 3,
-    "09_temperature": 3,
-    "10_roundtrip": 13,
-}
+#: Where every distinct figure in every app's prose is frozen. This was a table of
+#: COUNTS in this file - `{"05_debug_ceiling": 11}` - and the docstring above claimed
+#: "every number in every app's prose is pinned by count, so changing one is a
+#: deliberate edit to this table". That does not follow: a value can change without
+#: the count moving. An independent review rewrote `93.3% survived` to `99.9%` and all
+#: 470 tests passed. Only apps 02 and 03 have a committed run to check values against,
+#: so 56 of the 104 figures had no value-level protection at all.
+#:
+#: The set is pinned now, so a changed value is one figure appearing and one vanishing,
+#: and the failure message names both. `python scripts/freeze_app_figures.py` re-freezes
+#: it once the new number has been checked.
+FIGURES = ROOT / "tests" / "fixtures" / "app_figures.json"
+
+
+def frozen() -> dict[str, set[str]]:
+    assert FIGURES.is_file(), f"{FIGURES.name} is missing; run scripts/freeze_app_figures.py"
+    held = json.loads(FIGURES.read_text(encoding="utf-8"))["apps"]
+    return {app: set(values) for app, values in held.items()}
+
 
 NUMBER = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)%?(?![\w])")
 
@@ -120,17 +134,27 @@ def figures(app: Path) -> set[str]:
     return {n.replace(",", "") for n in NUMBER.findall(prose(app))}
 
 
-def test_the_figure_table_covers_every_app():
-    """A table that lists nine of ten apps would let the tenth drift untouched."""
-    assert set(STATED_FIGURES) == {app.name for app in APPS}
+def test_the_figure_fixture_covers_every_app():
+    """A fixture listing nine of ten apps would let the tenth drift untouched."""
+    assert set(frozen()) == {app.name for app in APPS}
+
+
+def test_the_fixture_holds_every_figure_it_claims_to():
+    """A sweep over empty sets passes, and so does a comparison of two of them."""
+    held = frozen()
+    assert sum(len(v) for v in held.values()) == 104, {k: len(v) for k, v in held.items()}
+    assert all(held.values()), [k for k, v in held.items() if not v]
 
 
 @pytest.mark.parametrize("app", APPS, ids=[p.name for p in APPS])
-def test_no_figure_in_an_apps_prose_changes_without_this_table_changing(app: Path):
-    found = figures(app)
-    assert len(found) == STATED_FIGURES[app.name], (
-        f"{app.name} states {len(found)} distinct figures, table says "
-        f"{STATED_FIGURES[app.name]}; if this was deliberate, update the table"
+def test_no_figure_in_an_apps_prose_changes_without_the_fixture_changing(app: Path):
+    found, held = figures(app), frozen()[app.name]
+    gained, lost = sorted(found - held), sorted(held - found)
+    assert not (gained or lost), (
+        f"{app.name}'s prose figures moved."
+        + (f" Gone: {', '.join(lost)}." if lost else "")
+        + (f" New: {', '.join(gained)}." if gained else "")
+        + " If deliberate, run `python scripts/freeze_app_figures.py`."
     )
 
 

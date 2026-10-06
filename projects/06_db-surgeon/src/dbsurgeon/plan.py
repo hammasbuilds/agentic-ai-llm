@@ -52,8 +52,46 @@ class Plan:
         return [op for op in self.up_operations if op.is_lossy]
 
 
+class NothingToCheckError(ValueError):
+    """The `up` script contains no statements, so there is no migration to check.
+
+    This is the one verdict this tool must never give by accident. An empty `up`
+    produced "FULLY REVERSIBLE / schema restored: yes / data restored: yes" and exit 0
+    under `--strict`: running nothing and reversing nothing restores everything, which
+    is true and is not an answer about a migration. A typo in a path, a file that failed
+    to write, a `--up` pointing at the wrong extension - each read as a clean bill of
+    health on the tool whose premise is refusing unsafe ones.
+
+    Garbage SQL was already handled correctly, so the gap was exactly between "could not
+    run" and "nothing to run".
+    """
+
+
+def _statements(sql: str) -> list[str]:
+    """Statement text with comments and blank lines removed.
+
+    `sql.strip()` is not enough: a file of `-- TODO` is as empty as an empty one, and a
+    migration that is all comments is the likeliest way to arrive here by accident.
+    """
+    stripped = []
+    for line in sql.splitlines():
+        text = line.split("--", 1)[0].strip()
+        if text:
+            stripped.append(text)
+    return [s for s in " ".join(stripped).split(";") if s.strip()]
+
+
 def build(name: str, schema: str, seed: str, up: str, down: str) -> Plan:
-    """Analyse one migration pair statically, then prove it on a shadow database."""
+    """Analyse one migration pair statically, then prove it on a shadow database.
+
+    Raises `NothingToCheckError` when `up` holds no statements.
+    """
+    if not _statements(up):
+        raise NothingToCheckError(
+            "the up migration contains no statements, so there is nothing to check. "
+            "Running nothing and reversing nothing restores everything, which is not "
+            "a verdict about a migration."
+        )
     up_ops = classify_script(up)
     down_ops = classify_script(down)
 
@@ -101,6 +139,19 @@ def render(plan: Plan) -> str:
     out.append("  ROUND TRIP  (up, then down, on a throwaway copy)")
     out.append(f"    schema restored : {'yes' if trip.schema_restored else 'NO'}")
     out.append(f"    data restored   : {'yes' if trip.data_restored else 'NO'}")
+    # What `down` left behind, named. Everything this report showed was something the
+    # round trip LOST, so a `down` that failed to drop what its `up` added printed
+    # "schema restored: yes" - and the next `up` would fail with "already exists".
+    if trip.columns_added:
+        out.append(f"    columns left    : {', '.join(trip.columns_added)}")
+    if trip.extra_tables:
+        out.append(f"    tables left     : {', '.join(trip.extra_tables)}")
+    if trip.columns_added or trip.extra_tables:
+        out.append("")
+        out.append("    `down` did not undo everything `up` did. The schema is not what")
+        out.append("    it was, and re-applying `up` will fail on what is still there.")
+    if trip.columns_lost:
+        out.append(f"    columns lost    : {', '.join(trip.columns_lost)}")
     if not trip.data_restored:
         changed = trip.changed_tables()
         out.append(f"    tables altered  : {', '.join(changed) if changed else '-'}")

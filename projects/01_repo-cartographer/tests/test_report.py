@@ -48,3 +48,37 @@ def test_compare_pools_rather_than_dividing_by_zero(tmp_path, capsys):
     assert main(["compare", str(tmp_path)]) == 0
     out = capsys.readouterr().out
     assert "no repo-internal call sites to pool" in out, out
+
+
+# -- a folder argument that is not a folder -----------------------------------
+
+
+def test_compare_given_a_file_says_so(tmp_path, capsys):
+    """`NotADirectoryError` out of `main()`.
+
+    `compare` takes a folder of checkouts and did `Path(raw).resolve()` then
+    `iterdir()`, so a file - the commonest mistake with a path argument - produced a
+    stack trace naming this module's `iterdir` rather than a sentence about the
+    argument.
+    """
+    a_file = tmp_path / "notes.txt"
+    a_file.write_text("x", encoding="utf-8")
+
+    assert main(["compare", str(a_file)]) == 2
+    err = capsys.readouterr().err
+    assert "is a file" in err, err
+    assert "Traceback" not in err
+
+
+def test_compare_given_a_missing_path_says_so(tmp_path, capsys):
+    assert main(["compare", str(tmp_path / "nope")]) == 2
+    assert "no such path" in capsys.readouterr().err
+
+
+def test_compare_still_reads_a_real_folder(tmp_path, capsys):
+    """A guard that refuses everything is not a guard."""
+    repo = tmp_path / "tiny"
+    repo.mkdir()
+    (repo / "m.py").write_text("def a():\n    return 1\n", encoding="utf-8")
+    assert main(["compare", str(tmp_path)]) == 0
+    assert "tiny" in capsys.readouterr().out

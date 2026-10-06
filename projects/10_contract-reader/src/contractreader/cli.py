@@ -72,12 +72,60 @@ def _read_all(root: Path) -> list[Reading]:
     return readings
 
 
+#: How much of a file to look at before deciding it is not text. A NUL in the first
+#: block is what every common binary format has and no licence has.
+BINARY_SNIFF = 65_536
+
+
+def _not_a_licence(path: Path) -> str | None:
+    """Why this file cannot be read as a licence, or None if it can be tried.
+
+    An independent review pointed `read` at a `.csv` and got "family: unknown,
+    1 clause(s)" with an empty obligations table and exit 0; a PNG gave the same, and
+    an empty file gave "0 clause(s)". Every one of those is a report, and a tool whose
+    whole promise is "cite the span behind every claim" answered about a file in which
+    it had found nothing to cite.
+
+    The empty obligations table is the part that misleads. A reader who passes the
+    wrong path gets the same output as a reader whose licence genuinely imposes no
+    obligations, and exit 0 says the run succeeded.
+    """
+    if not path.is_file():
+        return f"not a file: {path}"
+    try:
+        with path.open("rb") as handle:
+            head = handle.read(BINARY_SNIFF)
+    except OSError as exc:
+        return f"cannot read {path.name}: {exc.strerror or exc}"
+    if not head:
+        return f"{path.name} is empty: there is no licence text in it"
+    if b"\x00" in head:
+        return (
+            f"{path.name} holds a NUL byte, so it is not text. No licence contains "
+            "one; most binary formats do."
+        )
+    return None
+
+
 def _read_command(args: argparse.Namespace) -> int:
     path = Path(args.path)
-    if not path.is_file():
-        print(f"not a file: {path}", file=sys.stderr)
+    refusal = _not_a_licence(path)
+    if refusal:
+        print(refusal, file=sys.stderr)
         return 2
     reading = read(str(path), path.read_text(encoding="utf-8", errors="replace"))
+
+    # A file this reader recognised nothing in is not a licence it read. Printing an
+    # empty obligations table under "family: unknown" and exiting 0 made a `.csv`
+    # indistinguishable from a permissive licence with nothing to flag.
+    if reading.family == "unknown" and not reading.findings and not reading.rejected:
+        print(
+            f"{path.name}: no licence family and no obligation phrase found, so there "
+            "is nothing here to cite. Pass --anyway to print the empty reading.",
+            file=sys.stderr,
+        )
+        if not args.anyway:
+            return 1
 
     print(f"{reading.path}")
     print(f"  family: {reading.family}")
@@ -184,6 +232,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     r = sub.add_parser("read", help="read one licence file")
+    r.add_argument(
+        "--anyway",
+        action="store_true",
+        help="print the reading even when nothing was recognised in the file",
+    )
     r.add_argument("path")
     r.add_argument("--verbose", "-v", action="store_true")
     r.set_defaults(func=_read_command)

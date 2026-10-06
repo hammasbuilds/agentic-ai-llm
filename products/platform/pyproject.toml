@@ -24,7 +24,10 @@ api = ["fastapi>=0.115", "uvicorn>=0.30"]
 ollama = ["httpx>=0.27"]
 # graphs.to_langgraph() compiles the same declaration onto LangGraph.
 # Everything runs on graphs.run() without it, which is why it is not required.
-langgraph = ["langgraph>=0.2", "langchain-core>=0.3", "langchain-ollama>=0.2"]
+# Just langgraph. `langchain-core` and `langchain-ollama` were listed beside it and
+# imported nowhere in the repository; langgraph pulls langchain-core itself, so the
+# two lines added installs nothing here asks for.
+langgraph = ["langgraph>=0.2"]
 # What a deployment actually binds the ports to.
 # kafka-python, not confluent-kafka: the adapter imports `kafka` and uses
 # KafkaProducer/KafkaConsumer. Declaring the other one installed a library

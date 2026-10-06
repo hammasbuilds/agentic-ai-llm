@@ -142,6 +142,159 @@ def test_most_called_is_ordered_by_fan_in(graph):
     assert counts == sorted(counts, reverse=True)
 
 
+# -- the denominator, on a repository that ships with the tests ------------
+#
+# This is the fix the README's whole table rests on, and until now the only tests that
+# exercised it were the five rows of `test_readme_numbers.py` and
+# `test_real_repo_resolves_most_of_its_internal_calls` - every one of which skips when
+# the sibling checkouts are not on the machine. On a fresh clone the central claim of
+# the project was defended by nothing at all, which a sweep with `REPOS_ROOT` pointed
+# at an empty directory makes visible: 13 of the package's tests skip, and these were
+# among them.
+#
+# A repository small enough to write here reproduces the review's scenario exactly, so
+# the behaviour is pinned wherever the suite runs.
+
+
+def _six_call_sites(root: Path) -> None:
+    """The shape an independent review used to get 100% out of a 67% repository.
+
+    Six call sites, every one of them targeting a definition in this repository, and
+    all but one of them written as a method on a local variable whose type an AST
+    cannot infer. Dropping those from the denominator left one in-scope call, which
+    resolved, which printed as 100% - while the report listed the five methods it had
+    failed to bind as "called by nothing".
+    """
+    write(root, "pyproject.toml", "[project]\nname='six'\n")
+    write(
+        root,
+        "src/six/engine.py",
+        """
+        class Engine:
+            def start(self):
+                return 1
+
+            def stop(self):
+                return 2
+
+            def flush(self):
+                return 3
+
+            def reload(self):
+                return 4
+
+            def status(self):
+                return 5
+
+
+        def make():
+            return Engine()
+    """,
+    )
+    write(
+        root,
+        "src/six/app.py",
+        """
+        from six.engine import make
+
+        def run():
+            engine = make()
+            engine.start()
+            engine.stop()
+            engine.flush()
+            engine.reload()
+            engine.status()
+            return engine
+    """,
+    )
+
+
+def test_a_method_on_an_uninferable_receiver_stays_in_the_denominator(tmp_path: Path):
+    """The fix, on a repository that needs no checkout.
+
+    `engine.start()` cannot be bound by an AST: nothing here says what `engine` is.
+    What it must not do is leave the denominator. This repository defines a method
+    called `start`, so the call *could* target repository code, and a call that could
+    bind and did not is the definition of unresolved.
+    """
+    _six_call_sites(tmp_path)
+    resolution = build_graph(parse_repo(tmp_path)).resolution
+
+    in_scope = resolution.resolved_count + sum(resolution.missed.values())
+    # Seven, not the six written in `_six_call_sites`: `make()` and the `Engine()`
+    # construction inside it both resolve, and the five methods do not. Counted here
+    # rather than rounded to the number that reads better - the whole finding this
+    # defends is a denominator that quietly dropped what it could not bind.
+    assert in_scope == 7, resolution.missed
+    assert resolution.resolved_count == 2
+    assert sum(resolution.missed.values()) == 5
+    assert set(resolution.missed) == {
+        "engine.start",
+        "engine.stop",
+        "engine.flush",
+        "engine.reload",
+        "engine.status",
+    }
+
+    # Two of seven, not two of two. The old denominator sent all five uninferable
+    # receivers out of scope, leaving a repository that binds 29% of its in-scope
+    # calls reporting 100%.
+    assert resolution.repo_resolution_rate == pytest.approx(2 / 7)
+
+
+def test_a_method_this_repository_never_defines_is_out_of_scope(tmp_path: Path):
+    """The other half of the same decision, which is what keeps it from being a rule
+    that counts everything.
+
+    `response.json()` and `path.exists()` are calls into a third-party object and the
+    standard library. Counting them unresolved would make every repository look
+    unmappable, which is the mistake in the opposite direction - so "in scope" is
+    decided by whether this repository defines a method of that name anywhere.
+    """
+    write(tmp_path, "pyproject.toml", "[project]\nname='out'\n")
+    write(
+        tmp_path,
+        "src/out/app.py",
+        """
+        import json
+        from pathlib import Path
+
+        def load(response, path):
+            data = response.json()
+            if Path(path).exists():
+                return json.dumps(data)
+            return None
+    """,
+    )
+    resolution = build_graph(parse_repo(tmp_path)).resolution
+
+    assert not resolution.missed, resolution.missed
+    assert "response.json" in resolution.out_of_scope
+    assert resolution.resolved_count + sum(resolution.missed.values()) == 0
+
+
+def test_the_two_rates_differ_on_the_fixture_as_they_do_in_the_table(tmp_path: Path):
+    """The README's argument is the gap between the columns, and it is reproduced here.
+
+    `resolution_rate` counts every call site including builtins, so it reads low;
+    `repo_resolution_rate` counts only calls that could reach repository code. If the
+    two ever coincide, one of the denominators has stopped doing its job - and until
+    this test existed that check only ran where the five checkouts happen to be.
+    """
+    _six_call_sites(tmp_path)
+    write(
+        tmp_path,
+        "src/six/extra.py",
+        """
+        def noisy(items):
+            return len(sorted(set(items)))
+    """,
+    )
+    resolution = build_graph(parse_repo(tmp_path)).resolution
+    assert resolution.resolution_rate < resolution.repo_resolution_rate
+    assert resolution.total_calls > resolution.resolved_count + sum(resolution.missed.values())
+
+
 # -- integration against a real repository --------------------------------
 
 

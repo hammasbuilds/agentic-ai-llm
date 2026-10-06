@@ -115,6 +115,7 @@ def fabrication_rate(results: list[dict], listings: dict[str, list[str]]) -> dic
     """
     named = 0
     real = 0
+    unparsed = 0
     per_instance = []
     # An instance whose repo could not be listed is skipped, and saying nothing about
     # that reports a rate over a denominator nobody can see - while the skipped set is
@@ -128,6 +129,7 @@ def fabrication_rate(results: list[dict], listings: dict[str, list[str]]) -> dic
         exists = [p for p in r["ranked"] if p in listing]
         named += len(r["ranked"])
         real += len(exists)
+        unparsed += r.get("unparsed", 0)
         per_instance.append(len(exists) / len(r["ranked"]) if r["ranked"] else 0.0)
     return {
         "paths_named": named,
@@ -136,6 +138,13 @@ def fabrication_rate(results: list[dict], listings: dict[str, list[str]]) -> dic
         "mean_per_instance": sum(per_instance) / len(per_instance) if per_instance else 0.0,
         "instances_scored": len(per_instance),
         "instances_unlistable": unlistable,
+        # Lines of the replies that named nothing this harness could read. Reported
+        # beside the rate and never folded into it: a path the parser mangled used to
+        # arrive here as a path that does not exist, which charges the model with
+        # inventing a file when the harness could not read its answer. Kept visible so
+        # a high `rate_exists` cannot be a parser that silently discards whatever it
+        # does not recognise.
+        "lines_unparsed": unparsed,
     }
 
 

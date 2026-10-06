@@ -16,6 +16,28 @@ from . import graphs, topics
 from .web import html as console_html
 
 
+class RunExistsError(ValueError):
+    """`run_id` is already a run here, and resubmitting would erase what it did.
+
+    `Runtime.submit` wrote the row unconditionally, so a second `POST /intake` with a
+    run_id that had already completed reset `status` to pending and dropped `visited`,
+    `llm_calls` and `result` - the audit trail for a run that really happened - with no
+    409 and a stale checkpoint left behind. On a retry from any at-least-once source,
+    which is what the bus is, that is the normal case rather than an edge one.
+
+    `products/README.md` advertises `idem:{source}:{message_id}` for exactly this, and
+    records that `keys.idem` has no caller. This is the check that key was for; the
+    caller can still replace a run deliberately with `replace=True`.
+    """
+
+    def __init__(self, run_id: str, status: str):
+        self.run_id, self.status = run_id, status
+        super().__init__(
+            f"run {run_id} already exists and is {status}; resubmitting would erase "
+            "what it did. Use a new run_id, or pass replace=true to discard this one."
+        )
+
+
 class ControlKeyError(ValueError):
     """A submitted payload carried a key the graph reserves for itself.
 
@@ -113,7 +135,7 @@ class Runtime:
 
     # ---------------------------------------------------------------- write
 
-    def submit(self, run_id: str, entity: str, payload: dict) -> str:
+    def submit(self, run_id: str, entity: str, payload: dict, *, replace: bool = False) -> str:
         """Accept work. Publishes and returns; it does not run the graph.
 
         This is the whole argument for the bus: the request returns in
@@ -124,6 +146,17 @@ class Runtime:
         control = sorted(k for k in payload if isinstance(k, str) and k.startswith("_"))
         if control:
             raise ControlKeyError(control)
+
+        existing = self.store.get("runs", run_id)
+        if existing is not None and not replace:
+            raise RunExistsError(run_id, existing.get("status", "unknown"))
+        if existing is not None:
+            # Deliberate replacement still clears the checkpoint. Leaving it behind
+            # meant `approve(run_id)` on the new run resumed the OLD one's paused
+            # state - a different entity's draft, approved by someone looking at this
+            # one.
+            self.store.delete(self.CHECKPOINTS, run_id)
+
         key = topics.partition_key(self.domain, entity)
         self.store.put(
             "runs",
@@ -305,6 +338,7 @@ def create_app(runtime: Runtime):
             "Install with: uv add fastapi uvicorn"
         ) from exc
 
+    from fastapi import Query  # noqa: PLC0415 — optional extra
     from fastapi.responses import HTMLResponse  # noqa: PLC0415 — optional extra
 
     app = FastAPI(title=runtime.domain)
@@ -330,10 +364,16 @@ def create_app(runtime: Runtime):
         if not entity:
             raise HTTPException(status_code=422, detail="entity is required")
         try:
-            runtime.submit(run_id, entity, body.get("payload", {}))
+            runtime.submit(
+                run_id, entity, body.get("payload", {}), replace=bool(body.get("replace"))
+            )
         except ControlKeyError as rejected:
             # 422, not 500: the body is the problem and the sender can fix it.
             raise HTTPException(status_code=422, detail=str(rejected)) from None
+        except RunExistsError as clash:
+            # 409. A retry from an at-least-once source lands here, which is the normal
+            # case for a bus - and it used to silently erase the first attempt's result.
+            raise HTTPException(status_code=409, detail=str(clash)) from None
         return {"run_id": run_id, "status": PENDING}
 
     @app.get("/runs/{run_id}")
@@ -347,12 +387,18 @@ def create_app(runtime: Runtime):
     def list_runs() -> list[dict]:
         return runtime.runs()
 
+    #: Bounded at the route, not only in the port. `ports.tail` validates `limit`
+    #: because `out[-0:]` is the whole list - `GET /events?limit=0` used to return every
+    #: event ever - but the route declared a bare `int`, so the ValueError the port
+    #: raises came back as a 500. A data leak was turned into a crash and the route was
+    #: left to find out. `POST /drain?limit=-1` answered 200 for the same reason: the
+    #: two routes took the same parameter and validated it differently.
     @app.get("/events")
-    def events(limit: int = 20) -> list[dict]:
+    def events(limit: int = Query(20, ge=1, le=1000)) -> list[dict]:
         return runtime.recent_events(limit)
 
     @app.post("/drain")
-    def drain(limit: int = 10) -> dict:
+    def drain(limit: int = Query(10, ge=1, le=1000)) -> dict:
         """Run one worker pass.
 
         Exposed so the console can demonstrate the queue without a supervisor

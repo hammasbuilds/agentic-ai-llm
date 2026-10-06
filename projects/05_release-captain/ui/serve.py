@@ -185,7 +185,20 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/gate":
             params = parse_qs(parsed.query)
             name = (params.get("repo") or [""])[0]
-            since = int((params.get("since") or ["8"])[0])
+            # Bounded, and a 400 rather than a dead connection. `int(...)` on
+            # `?since=abc` raised ValueError out of the handler, which closes the socket
+            # without a response - curl reports HTTP 000 and a browser shows nothing at
+            # all. `?since=-5` was worse: accepted, and it silently changes the
+            # population the verdict is computed over.
+            raw = (params.get("since") or ["8"])[0]
+            try:
+                since = int(raw)
+            except ValueError:
+                self._json({"error": f"since must be a whole number, got {raw!r}"}, 400)
+                return
+            if not 1 <= since <= 1000:
+                self._json({"error": f"since must be between 1 and 1000, got {since}"}, 400)
+                return
             target = self.root / name
             if not name or not is_repository(target):
                 self._json({"error": "unknown repository"}, 404)

@@ -139,7 +139,14 @@ def test_an_unreceipted_claim_never_reaches_the_approver():
     state = rt.checkpoint("r1").state
     assert state["kept_claims"] == ["Backed by a real receipt."]
     assert state["dropped_claims"][0][0] == "Asserted with nothing behind it."
-    assert state["drop_rate"] == 0.5
+    # One of two dropped, with `claims_checked` as the denominator that says so.
+    assert state["claims_checked"] == 2
+    # `drop_rate` is None, and that is the finding. This asserted 0.5 - a rate over
+    # `claims`, a key this run supplied in its own payload. Half of what the CALLER
+    # sent was unreceipted; nothing here measures what the model wrote, and the gate
+    # says so instead of publishing a figure that reads as if it did.
+    assert state["drop_rate"] is None
+    assert state["claims_source"] == "payload"
 
 
 def test_the_authority_table_is_default_deny():
