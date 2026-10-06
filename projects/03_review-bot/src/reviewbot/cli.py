@@ -61,6 +61,8 @@ def _scan_command(args: argparse.Namespace) -> int:
     target = Path(args.path).resolve()
     review = Review()
     skipped_tests = 0
+    reviewed = 0
+    unreadable = 0
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", SyntaxWarning)
@@ -68,6 +70,7 @@ def _scan_command(args: argparse.Namespace) -> int:
             try:
                 source = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
+                unreadable += 1
                 continue
             if not args.include_tests and FileContext.build(str(path), source).is_test:
                 skipped_tests += 1
@@ -76,11 +79,25 @@ def _scan_command(args: argparse.Namespace) -> int:
                 shown = str(path.relative_to(target))
             except ValueError:
                 shown = str(path)
+            reviewed += 1
             file_review = review_source(shown, source)
             if file_review.verdicts:
                 review.files.append(file_review)
 
     print(render(review, show_retracted=args.show_retracted))
+    # The denominator, which this command never printed. The README quoted
+    # "SOURCE FILES ONLY: files=1,325 proposed=476 ..." in a format nothing here
+    # produced, so the headline rate had no source in the tool that computes it -
+    # and the file count, which is what makes a retraction rate readable, was not
+    # available at all.
+    scope = "ALL FILES" if args.include_tests else "SOURCE FILES ONLY"
+    print(
+        f"  {scope}: files={reviewed:,}  proposed={review.proposed}  "
+        f"confirmed={review.confirmed}  retracted={review.retracted} "
+        f"({review.retraction_rate:.0%})"
+    )
+    if unreadable:
+        print(f"  {unreadable} file(s) could not be read and are not in that count")
     if skipped_tests:
         print(f"  ({skipped_tests} test files skipped; pass --include-tests to review them)")
 
@@ -92,6 +109,9 @@ def _scan_command(args: argparse.Namespace) -> int:
                     "confirmed": review.confirmed,
                     "retracted": review.retracted,
                     "retraction_rate": round(review.retraction_rate, 4),
+                    "files_reviewed": reviewed,
+                    "test_files_skipped": skipped_tests,
+                    "files_unreadable": unreadable,
                     "by_rule": {
                         k: {"proposed": p, "confirmed": c}
                         for k, (p, c) in review.by_rule().items()

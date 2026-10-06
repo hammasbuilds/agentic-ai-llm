@@ -276,3 +276,75 @@ def test_review_diff_runs_against_a_real_commit(tmp_path: Path):
 
     result = review_diff(repo, "HEAD~1")
     assert result.confirmed == 1
+
+
+# -- the denominator the scan never printed -------------------------------
+
+
+def _repo(tmp_path: Path) -> Path:
+    """Two source files and a test file, so the skip count is not zero."""
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "clean.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "pkg" / "smelly.py").write_text(
+        "def f(path):\n    try:\n        h = open(path)\n    except:\n        pass\n"
+        "    return h\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_x.py").write_text(
+        "def test_f():\n    assert 1 == 1\n", encoding="utf-8"
+    )
+    return tmp_path
+
+
+def test_the_scan_prints_the_file_count_its_rate_is_over(tmp_path, capsys):
+    """It printed per-rule proposals and confirmations and no total at all.
+
+    The README quoted "SOURCE FILES ONLY: files=1,325  proposed=476 ..." in a format
+    this command never produced, so the headline retraction rate had no source in the
+    tool that computes it, and the file count was not available to produce.
+    """
+    from reviewbot.cli import main
+
+    assert main(["scan", str(_repo(tmp_path))]) == 0
+    out = capsys.readouterr().out
+
+    assert "SOURCE FILES ONLY: files=2" in out
+    assert "proposed=" in out and "confirmed=" in out and "retracted=" in out
+    assert "(1 test files skipped; pass --include-tests to review them)" in out
+
+
+def test_including_tests_says_so_and_counts_them(tmp_path, capsys):
+    """Because the 99% figure in the README is the --include-tests run."""
+    from reviewbot.cli import main
+
+    assert main(["scan", str(_repo(tmp_path)), "--include-tests"]) == 0
+    out = capsys.readouterr().out
+    assert "ALL FILES: files=3" in out
+    assert "test files skipped" not in out
+
+
+def test_the_json_carries_the_denominator_too(tmp_path):
+    import json
+
+    from reviewbot.cli import main
+
+    target = _repo(tmp_path)
+    out = tmp_path / "scan.json"
+    assert main(["scan", str(target), "--json", str(out)]) == 0
+    held = json.loads(out.read_text(encoding="utf-8"))
+
+    assert held["files_reviewed"] == 2
+    assert held["test_files_skipped"] == 1
+    assert held["files_unreadable"] == 0
+    assert held["proposed"] == held["confirmed"] + held["retracted"]
+
+
+def test_a_rate_is_never_printed_without_its_denominator(tmp_path, capsys):
+    """An empty folder gives 0 of 0 rather than a rate over nothing."""
+    from reviewbot.cli import main
+
+    assert main(["scan", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "files=0" in out
+    assert "proposed=0" in out

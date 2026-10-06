@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-36-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-40-success" alt="tests">
   <img src="https://img.shields.io/badge/files%20measured-1%2C325-orange" alt="files">
 </p>
 
@@ -12,31 +12,49 @@
 
 ## Results
 
-**Across 1,325 source files, 24% of the findings this reviewer would have posted were
-wrong — and for two rules, 100% of them were.**
+**Across 2,105 source files, 33% of the findings this reviewer would have posted were
+wrong — and for one rule, every single one of them was.**
 
 ```
-SOURCE FILES ONLY: files=1,325  proposed=476  confirmed=362  retracted=114 (24%)
+$ review-bot scan <folder of checkouts>
 
-rule                      prop  conf  retracted
-assert-in-source           340   340        0%
-open-without-with          118    14       88%
-mutable-default              6     4       33%
-bare-except                  5     0      100%
-swallowed-exception          3     0      100%
-eq-none                      3     3        0%
-mutate-while-iterating       1     1        0%
+  BY RULE  (proposed / confirmed)
+    assert-in-source           208 / 207   0% retracted
+    open-without-with          188 / 58    69% retracted
+    swallowed-exception          9 / 8     11% retracted
+    bare-except                  5 / 0     100% retracted
+    mutate-while-iterating       2 / 2     0% retracted
+    mutable-default              2 / 2     0% retracted
+
+==============================================================================
+  SOURCE FILES ONLY: files=2,105  proposed=414  confirmed=277  retracted=137 (33%)
+  (923 test files skipped; pass --include-tests to review them)
 ```
 
-Every `bare-except` in the corpus re-raises after cleanup. Every
-`except Exception: pass` has a comment saying the failure is acceptable. Both are
-textbook lint findings, both are confidently reportable from the AST alone, and in this
-corpus both are wrong every single time.
+That `SOURCE FILES ONLY` line used to be quoted here in a format the command never
+printed, over a population the command never counted: `scan` reported per-rule proposals
+and confirmations and no file total at all. It prints the denominator now, with the test
+files it skipped and any file it could not read, because a retraction rate with no file
+count under it is not a readable number. Re-run over the folder as it stands, 1,325 files
+became 2,105 and 24% retracted became 33%.
 
-`open-without-with` is the volume case: 118 proposals, 14 real, because 100 of them were
-already inside a `with` statement one line up.
+**`bare-except` is retracted every time.** Three of the five re-raise after cleanup, so
+nothing is swallowed; the other two the author marked `noqa`. It is a textbook lint
+finding, confidently reportable from the AST alone, and not once worth posting here.
+
+`swallowed-exception` was the second rule at 100% — on three proposals and zero
+confirmations. Over the larger corpus it is 9 proposed and 8 confirmed, with the single
+retraction a `noqa`. **A rule measured on three instances was never measured**, and that
+is more useful than the 100% was. This README led with "for two rules, 100% of them were
+wrong" on the strength of it.
+
+`open-without-with` is the volume case: 188 proposals, 58 real, 130 retracted. 126 of
+those are calls already inside a `with` statement, one is a handle consumed immediately
+and not retained, and three are marked `noqa`. One proposer accounts for 95% of
+everything this reviewer gets wrong.
 
 **Precision is the entire product.** A reviewer that posts a plausible-looking wrong
+comment gets muted on the second day, and after that its correct findings are worth
 comment gets muted on the second day, and after that its correct findings are worth
 nothing either.
 
@@ -103,14 +121,30 @@ already marked, every run, is precisely how a bot gets turned off.
 
 ## A measurement trap worth naming
 
-The first run of this reported **96% retracted** across 1,720 files, which looked like a
-spectacular result. It was an artefact: `assert-in-source` fired 9,248 times and 8,906 of
-those defeats were "the file is a test". One badly scoped proposer dominated the
-denominator entirely.
+The first run of this reported a spectacular retraction rate, and it was an artefact of
+one badly scoped proposer dominating the denominator. Re-measured over the folder, with
+`--include-tests` to reproduce the mistake:
+
+```
+  BY RULE  (proposed / confirmed)
+    assert-in-source         23843 / 207   99% retracted
+    open-without-with          251 / 79    69% retracted
+    swallowed-exception         27 / 26    4% retracted
+    bare-except                  5 / 0     100% retracted
+    mutate-while-iterating       3 / 3     0% retracted
+    mutable-default              2 / 2     0% retracted
+
+  ALL FILES: files=3,028  proposed=24131  confirmed=317  retracted=23814 (99%)
+```
+
+**99% retracted**, and 23,635 of the 23,814 defeats are one proposer being told "the file
+is a test". Subtract the test files and `assert-in-source` proposes 208 times and is
+retracted once; everything else in the table barely moves.
 
 A review bot does not lint asserts in a test suite, so test files are excluded by default
-and the honest number is 24%. The 96% is not reported anywhere except here, as the
-mistake it was.
+and the honest number is 33%. The 99% is not reported anywhere except here, as the mistake
+it was — and it is worth keeping runnable, because the shape of it is the most common way
+a precision number gets published too high.
 
 ## What I wrote vs what I installed
 
@@ -132,14 +166,14 @@ findings it had not checked, which is the failure this project is built to avoid
 - **Python only.**
 - **It does not post comments anywhere.** It prints and exits; wiring it to a forge is
   deliberately left out.
-- **A 24% retraction rate is not 100% precision.** It means 24% of what would have been
+- **A 33% retraction rate is not 100% precision.** It means 33% of what would have been
   posted was caught first. The remainder has not been independently validated, and on a
   different codebase every number here would change.
 
 ## Run it
 
 ```bash
-uv run pytest -q                              # 36 tests
+uv run pytest -q                              # 40 tests
 uv run review-bot scan <path> --show-retracted
 uv run review-bot diff <repo> --ref HEAD~1
 uv run python ui/server.py                    # then: cd ui && npm install && npm run dev

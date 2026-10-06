@@ -176,3 +176,67 @@ def test_every_rewritten_file_still_parses():
             return len(b) if a else ""
     """).lstrip()
     ast.parse(modernise_until_stable("t.py", source)[0])
+
+
+# -- the denominator the scan never printed -------------------------------
+
+
+def test_the_scan_prints_the_file_count_and_names_what_it_could_not_parse(tmp_path, capsys):
+    """It counted parse errors and never counted the files it read.
+
+    The README quoted "files scanned = 1,675" in a block this command did not print,
+    so the denominator under "19 edits" had no source in the tool. And "parse errors
+    = 2" does not tell you whether they are vendored fixtures or your own source, so
+    they are named.
+    """
+    from pathlib import Path
+
+    from pilot.cli import main
+
+    (tmp_path / "modern.py").write_text("x: list[int] = []\n", encoding="utf-8")
+    (tmp_path / "old.py").write_text(
+        "from typing import List\n\nx: List[int] = []\n", encoding="utf-8"
+    )
+    (tmp_path / "broken.py").write_text("def f(:\n", encoding="utf-8")
+
+    assert main(["scan", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+
+    assert "files scanned    : 3" in out
+    assert "parse errors     : 1" in out
+    assert "broken.py" in out, "the unparseable file is named, not just counted"
+    assert "files with edits : 1" in out
+    assert Path(tmp_path / "broken.py").exists(), "and nothing was rewritten"
+
+
+def test_a_scan_of_nothing_reports_a_denominator_of_nothing(tmp_path, capsys):
+    from pilot.cli import main
+
+    assert main(["scan", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "files scanned    : 0" in out
+    assert "files with edits : 0" in out
+
+
+def test_the_mechanical_behavioural_split_is_what_the_readme_leads_with(tmp_path, capsys):
+    """The README's ratio flipped when the corpus changed; the split did not.
+
+    It said "more of what a scan finds changes behaviour than does not" on 7
+    mechanical against 12 behavioural, and the folder now gives 18 against 12. What
+    is stable is which rule falls on which side, so that is what is asserted.
+    """
+    from pilot.cli import main
+
+    (tmp_path / "both.py").write_text(
+        "from datetime import datetime\nfrom typing import List\n\n"
+        "def f() -> List[int]:\n    return [datetime.utcnow().year]\n",
+        encoding="utf-8",
+    )
+    assert main(["scan", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+
+    assert RULE_KIND["pep585-generics"] == MECHANICAL
+    assert RULE_KIND["utcnow-deprecated"] == BEHAVIOURAL
+    assert "mechanical       : 1" in out
+    assert "behavioural      : 1" in out
+    assert "REVIEW" in out, "the behavioural edit is marked for review, never applied"

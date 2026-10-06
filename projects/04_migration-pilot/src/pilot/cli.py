@@ -60,6 +60,9 @@ def _scan_command(args: argparse.Namespace) -> int:
     counts: Counter = Counter()
     files_with_edits = 0
     errors = 0
+    unreadable = 0
+    scanned = 0
+    unparsed: list[tuple[object, str]] = []
     rows = []
 
     with warnings.catch_warnings():
@@ -68,10 +71,16 @@ def _scan_command(args: argparse.Namespace) -> int:
             try:
                 source = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
+                unreadable += 1
                 continue
+            scanned += 1
             scan = scan_source(str(path), source, rules)
             if scan.parse_error:
+                # Named, not just counted. A file this tool could not read is a file
+                # it cannot say anything about, and "parse errors = 2" does not tell
+                # you whether they are vendored test fixtures or your own source.
                 errors += 1
+                unparsed.append((path, scan.parse_error))
                 continue
             if not scan.edits:
                 continue
@@ -99,8 +108,22 @@ def _scan_command(args: argparse.Namespace) -> int:
         print(f"... and {len(rows) - args.limit} more files")
 
     print()
+    # The denominator. The README quoted "files scanned = 1,675" and this command
+    # never printed a file count, so the number that makes "19 edits" readable had
+    # no source in the tool.
+    print(f"  files scanned    : {scanned:,}")
+    if unreadable:
+        print(f"  unreadable       : {unreadable}  (not in that count)")
     print(f"  files with edits : {files_with_edits}")
     print(f"  parse errors     : {errors}")
+    for path, why in unparsed[:8]:
+        try:
+            shown = path.relative_to(target)
+        except ValueError:
+            shown = path
+        print(f"      {shown}: {str(why)[:60]}")
+    if len(unparsed) > 8:
+        print(f"      ... and {len(unparsed) - 8} more")
     print(f"  mechanical       : {mechanical}   (provably equivalent, safe to apply)")
     print(f"  behavioural      : {behavioural}   (changes meaning, never auto-applied)")
     for rule, n in counts.most_common():
