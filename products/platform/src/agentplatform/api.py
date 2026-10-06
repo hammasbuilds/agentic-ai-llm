@@ -16,6 +16,34 @@ from . import graphs, topics
 from .web import html as console_html
 
 
+class ControlKeyError(ValueError):
+    """A submitted payload carried a key the graph reserves for itself.
+
+    `graphs.APPROVED` is `"_approved"` and the approval gate reads it straight off the
+    working state. `POST /intake` put `body["payload"]` into that state unfiltered, so
+    `{"payload": {"_approved": true}}` walked a run through the gate and into `commit`
+    with no pause, no checkpoint and no row in `/approvals` - in all twenty products,
+    because the path is in this shared module. Underscore keys were stripped on the way
+    OUT (see `_public`), which is what made it look handled.
+
+    Rejected rather than stripped at this boundary: a caller sending one is either
+    confused or trying it, and both deserve an answer rather than a run that quietly
+    behaves differently from what they asked for.
+    """
+
+    def __init__(self, keys: list[str]):
+        self.keys = keys
+        super().__init__(
+            f"payload may not contain {', '.join(keys)}: keys beginning with '_' are "
+            "the graph's own control state, and approval is one of them"
+        )
+
+
+def without_control_keys(payload: dict) -> dict:
+    """The payload with the graph's reserved keys removed."""
+    return {k: v for k, v in payload.items() if not (isinstance(k, str) and k.startswith("_"))}
+
+
 class FastAPINotInstalledError(ImportError):
     pass
 
@@ -90,7 +118,12 @@ class Runtime:
 
         This is the whole argument for the bus: the request returns in
         milliseconds while one GPU serves the queue at its own pace.
+
+        Raises `ControlKeyError` if the payload carries an underscore-prefixed key.
         """
+        control = sorted(k for k in payload if isinstance(k, str) and k.startswith("_"))
+        if control:
+            raise ControlKeyError(control)
         key = topics.partition_key(self.domain, entity)
         self.store.put(
             "runs",
@@ -165,7 +198,14 @@ class Runtime:
         """
         done = failed = awaiting = 0
         for message in self.bus.poll(self.topics.tasks, self.group, limit=limit):
-            row = self._execute(message.value["run_id"], state=message.value.get("payload", {}))
+            # Stripped rather than rejected: a message already on the bus has no
+            # caller left to tell, and dropping the whole run would turn a bad
+            # publisher into a denial of service against a shared worker. `submit`
+            # refuses them at the edge; this is the second line.
+            row = self._execute(
+                message.value["run_id"],
+                state=without_control_keys(message.value.get("payload", {})),
+            )
             status = row.get("status")
             if status == DONE:
                 done += 1
@@ -289,7 +329,11 @@ def create_app(runtime: Runtime):
         entity = body.get("entity")
         if not entity:
             raise HTTPException(status_code=422, detail="entity is required")
-        runtime.submit(run_id, entity, body.get("payload", {}))
+        try:
+            runtime.submit(run_id, entity, body.get("payload", {}))
+        except ControlKeyError as rejected:
+            # 422, not 500: the body is the problem and the sender can fix it.
+            raise HTTPException(status_code=422, detail=str(rejected)) from None
         return {"run_id": run_id, "status": PENDING}
 
     @app.get("/runs/{run_id}")

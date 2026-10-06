@@ -104,7 +104,12 @@ def capture(product: Path) -> dict:
         lag = rt.bus.lag(rt.topics.tasks, rt.group)
         rt.drain()
         paused = dict(rt.run_row("run_1"))
-        gated = dict(rt._checkpoints["run_1"].state)
+        # `rt.checkpoint(run_id)`, not `rt._checkpoints[run_id]`. The private dict was
+        # replaced by a store-backed checkpoint and the public accessor added for
+        # exactly this, and this file was not updated - so the generator behind every
+        # product's Input/Output section raised AttributeError on all twenty, and
+        # nothing imports it or runs it in CI.
+        gated = dict(rt.checkpoint("run_1").state)
         done = dict(rt.approve("run_1"))
 
         exit_name = EXIT_TEST.get(product.name, DEFAULT_EXIT_TEST)
@@ -187,7 +192,20 @@ def main() -> None:
             failed += 1
             print(f"  {product.name:18} FAILED {type(exc).__name__}: {exc}")
             runs[product.name] = {"error": f"{type(exc).__name__}: {exc}"}
-    OUT.write_text(json.dumps(runs, indent=2), encoding="utf-8")
+    if failed:
+        # The committed file is what all twenty READMEs are checked against, so a
+        # partial run must not replace it. It did: `python scripts/capture.py` printed
+        # "0/20 captured" having already overwritten runs.json with twenty error stubs
+        # - the README's own instruction destroying the artefact the README says every
+        # figure came from.
+        print(f"\n{failed} of {len(PRODUCTS)} failed; {OUT.name} left as it was")
+        raise SystemExit(1)
+
+    # `newline="\n"`, because `write_text` translates on Windows and the committed file
+    # is LF. Without it a run that changes nothing rewrites all 1,701 lines, so the
+    # diff that is supposed to show whether a figure moved shows the whole file instead.
+    with OUT.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(runs, indent=2))
     print(f"\n{len(PRODUCTS) - failed}/{len(PRODUCTS)} captured -> {OUT}")
 
 

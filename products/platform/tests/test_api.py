@@ -336,3 +336,74 @@ def test_a_checkpoint_refuses_state_it_cannot_encode():
     checkpoint = graphs.Checkpoint("r1", "next", {"handle": Opaque()})
     with pytest.raises(TypeError, match="cannot hold Opaque"):
         checkpoint.to_row()
+
+
+# -- the approval gate is not reachable from the request body ------------------
+
+
+def test_a_payload_carrying_the_approval_key_is_refused():
+    """The interrupt was bypassable from `POST /intake`, in all twenty products.
+
+    `graphs.APPROVED` is the string `"_approved"` and the gate reads it straight off the
+    working state, which `/intake` filled from `body["payload"]` unfiltered. So
+    `{"payload": {"_approved": true}}` walked a run past the interrupt into the tool
+    node with no pause, no checkpoint and no row in `/approvals` - and because the path
+    is in this shared module, every product had it.
+
+    Underscore keys were stripped on the way OUT, which is what made it look handled.
+    """
+    rt = runtime()
+    client = TestClient(api.create_app(rt))
+
+    refused = client.post(
+        "/intake", json={"run_id": "r-bad", "entity": "e1", "payload": {"_approved": True}}
+    )
+    assert refused.status_code == 422, refused.text
+    assert "_approved" in refused.json()["detail"]
+    # And nothing was recorded: a refused submit must not leave a run behind.
+    assert client.get("/runs/r-bad").status_code == 404
+    assert rt.bus.lag(rt.topics.tasks, rt.group) == 0
+
+
+def test_the_honest_path_still_pauses():
+    """The other half. A gate that refuses everything is not a working gate."""
+    client = TestClient(api.create_app(runtime()))
+    assert client.post("/intake", json={"run_id": "r1", "entity": "e1"}).status_code == 202
+    client.post("/drain")
+    assert client.get("/runs/r1").json()["status"] == api.AWAITING_APPROVAL
+
+
+@pytest.mark.parametrize("key", ["_approved", "_checkpoint", "_anything"])
+def test_every_underscore_key_is_refused_not_just_the_approval_one(key):
+    """The reserved namespace, not one name.
+
+    Pinning `_approved` alone would leave the next control key - or a rename of this
+    one - open, and the rename is the likelier of the two.
+    """
+    client = TestClient(api.create_app(runtime()))
+    reply = client.post("/intake", json={"run_id": "r", "entity": "e", "payload": {key: 1}})
+    assert reply.status_code == 422, (key, reply.text)
+    assert key in reply.json()["detail"]
+
+
+def test_submit_names_every_offending_key_at_once():
+    """So a caller fixes the body in one pass instead of one key per round trip."""
+    rt = runtime()
+    with pytest.raises(api.ControlKeyError) as raised:
+        rt.submit("r", "e", {"_approved": True, "_other": 1, "fine": 2})
+    assert raised.value.keys == ["_approved", "_other"]
+
+
+def test_a_control_key_already_on_the_bus_is_stripped_rather_than_obeyed():
+    """The second boundary. A message published directly to the broker never saw
+    `submit`, and there is no caller left to return 422 to - so the key is dropped and
+    the run proceeds normally, which is a pause. Rejecting the whole run here would let
+    one bad publisher stop a shared worker instead."""
+    rt = runtime()
+    rt.bus.publish(rt.topics.tasks, "k", {"run_id": "r-direct", "payload": {"_approved": True}})
+    rt.drain()
+    assert rt.run_row("r-direct")["status"] == api.AWAITING_APPROVAL
+
+
+def test_without_control_keys_keeps_everything_else():
+    assert api.without_control_keys({"_a": 1, "b": 2, "c_": 3}) == {"b": 2, "c_": 3}
