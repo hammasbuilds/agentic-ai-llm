@@ -230,7 +230,18 @@ def test_an_unidentified_licence_is_reported_as_a_conflict():
 # -- against the real corpus ----------------------------------------------
 
 
-CORPUS = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+# Siblings of this repository, not `~/code`: that default does not exist on the
+
+
+# machine these numbers were measured on, so every tool using it silently found
+
+
+# nothing and reported success over an empty corpus.
+
+
+CORPUS = Path(
+    os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[3].parent
+).expanduser()
 
 
 @pytest.mark.skipif(not CORPUS.exists(), reason="local checkout not present")

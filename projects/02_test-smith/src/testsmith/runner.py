@@ -111,6 +111,16 @@ class RunReport:
         ]
 
     @property
+    def coverage_measured(self) -> bool:
+        """Whether the trace ran. Without it, `covered_score` is 0 over an empty pool
+        and every sentence derived from it is about nothing."""
+        return self.coverage is not None and self.coverage.measured
+
+    @property
+    def coverage_failure(self) -> str:
+        return "" if self.coverage is None else self.coverage.failure
+
+    @property
     def covered_score(self) -> float:
         """Mutation score restricted to lines the suite actually executes.
 

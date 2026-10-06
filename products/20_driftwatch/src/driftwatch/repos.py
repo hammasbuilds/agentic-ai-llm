@@ -20,7 +20,15 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+# Siblings of this repository, not `~/code`: that default does not exist on the
+
+# machine these numbers were measured on, so every tool using it silently found
+
+# nothing and reported success over an empty corpus.
+
+ROOT = Path(
+    os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[4].parent
+).expanduser()
 
 # A README sentence, roughly. Splitting on markdown structure first keeps a
 # table row or a bullet from being glued onto the paragraph above it.

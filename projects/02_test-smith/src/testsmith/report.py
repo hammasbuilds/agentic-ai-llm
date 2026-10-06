@@ -26,7 +26,9 @@ def to_dict(report: RunReport) -> dict:
         "timed_out": report.timed_out,
         "errored": report.errored,
         "score": round(report.score, 4),
-        "covered_score": round(report.covered_score, 4),
+        "covered_score": round(report.covered_score, 4) if report.coverage_measured else None,
+        "coverage_measured": report.coverage_measured,
+        "coverage_failure": report.coverage_failure,
         "covered_mutants": report.covered_mutants,
         "executed_lines": cov.total if cov else 0,
         "survivors_on_covered_lines": [
@@ -78,10 +80,18 @@ def render_text(report: RunReport) -> str:
     add("")
     add("  SCORE")
     add(f"    overall            {report.score:.0%}  over {report.scored} scored mutants")
-    add(
-        f"    on executed lines  {report.covered_score:.0%}  over "
-        f"{report.covered_mutants} mutants"
-    )
+    if report.coverage_measured:
+        add(
+            f"    on executed lines  {report.covered_score:.0%}  over "
+            f"{report.covered_mutants} mutants"
+        )
+    else:
+        # A failed measurement is not a clean one. This printed "0% over 0 mutants"
+        # and then "every executed line that could be mutated was checked", which is
+        # a success sentence over zero observations - reachable for real by any suite
+        # that calls sys.settrace(None), which pytest-cov and xdist both do.
+        add("    on executed lines  not measured")
+        add(f"      {report.coverage_failure or 'coverage was not collected'}")
 
     survivors = report.survivors_on_covered_lines
     add("")
@@ -89,7 +99,10 @@ def render_text(report: RunReport) -> str:
     add("  A coverage report marks these lines green. The test ran them, the code")
     add("  was wrong, and nothing failed.")
     add("")
-    if not survivors:
+    if not report.coverage_measured:
+        add("    not measured - there is no coverage to restrict the mutants to.")
+        add("    Everything below is over ALL mutants, not over executed lines.")
+    elif not survivors:
         add("    none - every executed line that could be mutated was checked.")
     else:
         for r in survivors[:15]:

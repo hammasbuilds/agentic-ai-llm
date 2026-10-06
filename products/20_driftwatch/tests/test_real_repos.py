@@ -68,7 +68,11 @@ def test_almost_nothing_in_a_readme_can_be_settled_by_a_machine(repos):
     claims = [Claim(c) for r in repos for c in r.claims]
     assert len(claims) > 4000
     share = verifiable_share(claims)
-    assert 0.010 < share < 0.030
+    # A band, because the surveyed folder is live and committing to any checkout in it
+    # moves the count. Tightened: it was 0.010-0.030, which is 67% wider than the
+    # 1.64% it was written for on one side, so it passed for 2.74% as happily. The
+    # exact published figure is pinned against tests/fixtures/survey.json instead.
+    assert 0.020 < share < 0.035, share
 
 
 def test_a_third_of_even_those_have_no_fact_to_check_against(verdicts):
@@ -76,10 +80,12 @@ def test_a_third_of_even_those_have_no_fact_to_check_against(verdicts):
     assert 0.6 < len(checked) / len(verdicts) < 0.85
 
 
-def test_roughly_one_in_ten_checkable_claims_is_false(verdicts):
+def test_roughly_one_in_twenty_checkable_claims_is_false(verdicts):
     checked = [v for _, v in verdicts if v.checked]
     wrong = broken([v for _, v in verdicts])
-    assert 0.03 < len(wrong) / len(checked) < 0.20
+    # Also tightened, from 0.03-0.20 around a published 9.1%. The published figure is
+    # now 5.3% and lives in the fixture.
+    assert 0.03 < len(wrong) / len(checked) < 0.09, len(wrong) / len(checked)
 
 
 def test_the_flagship_zero_dependency_finding_was_not_drift(verdicts):
@@ -233,3 +239,75 @@ def test_a_count_claim_is_checked_against_what_is_there():
     facts = {"project_count": 11, "root": str(ROOT)}
     assert verify(Claim("Eleven standalone tools, 11 projects in all."), facts).holds
     assert verify(Claim("There are 20 projects here."), facts).holds is False
+
+
+# -- the published figures, frozen -----------------------------------------
+
+
+def _frozen() -> dict:
+    import json
+    from pathlib import Path as _Path
+
+    return json.loads(
+        (_Path(__file__).resolve().parent / "fixtures" / "survey.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+
+def test_the_readme_table_is_the_frozen_survey():
+    """Nothing checked the published figures. `grep -rn "1.64" tests/` found no match.
+
+    The live bands above were 67% wider than the number they were written for, so
+    they passed for 2.74% exactly as happily as for 1.64%. A band says the tool still
+    behaves; it cannot say the README still describes what it did.
+
+    This fixture drifts fast, which is the argument for having it: the first freeze
+    differed from the README by 21 candidate claims within hours, because the surveyed
+    folder includes this repository and its prose had been edited that day.
+    """
+    import re
+    from pathlib import Path as _Path
+
+    frozen = _frozen()
+    readme = (_Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+
+    def cell(label: str) -> str:
+        found = re.search(rf"\| {re.escape(label)} \| \**([\d,]+)\**", readme)
+        assert found, f"the table no longer states {label!r}"
+        return found.group(1).replace(",", "")
+
+    assert int(cell("Candidate claims (README sentences)")) == frozen["candidate_claims"]
+    assert int(cell("Claims a machine can adjudicate")) == frozen["mechanical"]
+    assert int(cell("Of those, claims with a fact to check against")) == frozen["checked"]
+    assert int(cell("Claims that were checked and reported **false**")) == frozen["false"]
+
+    # And the percentages are those counts, not separately typed numbers.
+    assert f"({frozen['mechanical'] / frozen['candidate_claims'] * 100:.2f}%)" in readme
+    assert f"({frozen['checked'] / frozen['mechanical'] * 100:.1f}%)" in readme
+    assert f"({frozen['false'] / frozen['checked'] * 100:.1f}% of checked)" in readme
+
+
+def test_the_frozen_survey_is_internally_consistent():
+    frozen = _frozen()
+    assert frozen["mechanical"] <= frozen["candidate_claims"]
+    assert frozen["checked"] <= frozen["mechanical"]
+    assert frozen["false"] <= frozen["checked"]
+    assert len(frozen["false_findings"]) == frozen["false"]
+    assert frozen["measured"], "a frozen survey with no date cannot be judged stale"
+
+
+def test_the_live_survey_has_not_drifted_far_from_the_frozen_one(repos, verdicts):
+    """A band on the gap, so the fixture cannot quietly become fiction.
+
+    If this fails, the folder has moved enough that `tests/freeze_survey.py` should be
+    re-run and the README updated - which is a decision, not a repair.
+    """
+    frozen = _frozen()
+    claims = sum(len(r.claims) for r in repos)
+    assert abs(claims - frozen["candidate_claims"]) < frozen["candidate_claims"] * 0.15, (
+        f"{claims} candidate claims now against {frozen['candidate_claims']} frozen; "
+        "re-run tests/freeze_survey.py"
+    )
+    checked = [v for _, v in verdicts if v.checked]
+    assert abs(len(checked) - frozen["checked"]) < max(10, frozen["checked"] * 0.2)

@@ -20,7 +20,15 @@ from nicegui import ui  # noqa: E402
 
 from testsmith.runner import run  # noqa: E402
 
-DEFAULT_ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+# Siblings of this repository, not `~/code`: that default does not exist on the
+
+# machine these numbers were measured on, so every tool using it silently found
+
+# nothing and reported success over an empty corpus.
+
+DEFAULT_ROOT = Path(
+    os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[3].parent
+).expanduser()
 
 state: dict = {"report": None, "running": False}
 

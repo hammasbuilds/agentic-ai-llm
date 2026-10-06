@@ -227,7 +227,12 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Web view for release-captain")
-    default_root = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+    # Siblings of this repository, not `~/code`: that default does not exist on the
+    # machine these numbers were measured on, so every tool using it silently found
+    # nothing and reported success over an empty corpus.
+    default_root = Path(
+        os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[3].parent
+    ).expanduser()
     parser.add_argument(
         "folder", nargs="?", default=str(default_root), help="folder containing git checkouts"
     )

@@ -167,9 +167,13 @@ imports it.
 ## Run it
 
 ```bash
-uv run pytest -q                                   # 39 tests
+uv run pytest -q                                   # 44 tests
 uv run testsmith run <repo> --limit 40
 uv run python scripts/sweep.py 40                  # reproduces the table above
+# It reads the eight checkouts from the folder this repository sits in. Set REPOS_ROOT
+# to point elsewhere. The default used to be `~/code`, which exists on no machine here:
+# the documented command printed "missing" eight times, skipped the table because
+# `rows` was empty, and exited 0. It exits 1 and names the folder now.
 uv run --extra ui python ui/app.py                 # UI on :8081
 ```
 

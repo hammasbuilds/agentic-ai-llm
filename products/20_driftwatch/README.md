@@ -14,10 +14,10 @@ figures were over 35, and over the folder every one of them moves. Measured 2026
 
 | | |
 |---|---:|
-| Candidate claims (README sentences) | **10,908** |
-| Claims a machine can adjudicate | **299** (2.74%) |
-| Of those, claims with a fact to check against | 224 (74.9%) |
-| Claims that were checked and reported **false** | **12** (5.4% of checked) |
+| Candidate claims (README sentences) | **10,929** |
+| Claims a machine can adjudicate | **300** (2.74%) |
+| Of those, claims with a fact to check against | 225 (75.0%) |
+| Claims that were checked and reported **false** | **12** (5.3% of checked) |
 | Of those, hand-verified as real drift | **5** |
 
 **Fewer than three sentences in a hundred can be settled by a checker.** Doc-linting tools
@@ -194,7 +194,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 20_driftwatch
-python -m pytest -q                      # 51 passed, 18 skipped
+python -m pytest -q                      # 72 passed
 PYTHONPATH="src;../platform/src" python -m driftwatch.app    # console on http://127.0.0.1:8000
 ```
 

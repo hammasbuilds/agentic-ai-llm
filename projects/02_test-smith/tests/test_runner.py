@@ -214,3 +214,126 @@ def test_only_a_real_collection_failure_is_excluded(tmp_path: Path, source, expe
     )
     output = done.stdout + done.stderr
     assert _looks_like_collection_error(output, done.returncode) is expected, output[-400:]
+
+
+# -- a coverage measurement that failed is not a clean one ----------------
+
+
+def test_a_failed_coverage_measurement_says_so_rather_than_reporting_zero(tmp_path):
+    """`Coverage(lines={})` was returned for a crash, a timeout and a clean run that
+    covered nothing, and the report turned all three into "0% over 0 mutants" followed
+    by "none - every executed line that could be mutated was checked". A success
+    sentence over zero observations, exit 0.
+    """
+    import os
+    import sys
+
+    from testsmith.coverage import measure
+
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_slow.py").write_text(
+        "import time"
+        + chr(10) * 2
+        + "def test_slow():"
+        + chr(10)
+        + "    time.sleep(30)"
+        + chr(10),
+        encoding="utf-8",
+    )
+    env = dict(os.environ, PYTHONPATH=str(tmp_path))
+
+    timed_out = measure(sys.executable, tmp_path, env, timeout=2)
+    assert timed_out.measured is False
+    assert "did not finish within 2s" in timed_out.failure
+    assert timed_out.lines == {}
+
+    crashed = measure("C:/no/such/python.exe", tmp_path, env, timeout=10)
+    assert crashed.measured is False
+    assert crashed.failure, "a crash has to say what it was"
+
+
+def test_a_clean_measurement_of_nothing_is_distinguishable_from_a_failure():
+    from testsmith.coverage import Coverage
+
+    nothing_ran = Coverage(lines={}, failure="the suite did not finish within 2s")
+    ran_covered_nothing = Coverage(lines={})
+
+    assert nothing_ran.measured is False
+    assert ran_covered_nothing.measured is True
+    assert nothing_ran.total == ran_covered_nothing.total == 0, (
+        "the two are identical in every field the report used to read"
+    )
+
+
+def test_the_report_refuses_to_claim_a_clean_run_when_coverage_failed():
+    from testsmith.coverage import Coverage
+    from testsmith.report import render_text
+
+    class _Report:
+        repo = "demo"
+        total_mutants = 4
+        baseline_seconds = 1.0
+        killed = 2
+        survived = 2
+        timed_out = 0
+        errored = 0
+        score = 0.5
+        scored = 4
+        covered_score = 0.0
+        covered_mutants = 0
+        coverage_measured = False
+        coverage_failure = "the suite did not finish within 2s"
+        survivors_on_covered_lines: list = []
+        survivors_on_uncovered_lines: list = []
+        results: list = []
+        by_operator: dict = {}
+        coverage = Coverage(lines={}, failure="the suite did not finish within 2s")
+
+    text = render_text(_Report())
+    assert "on executed lines  not measured" in text
+    assert "did not finish within 2s" in text
+    assert "every executed line that could be mutated was checked" not in text
+    assert "not measured - there is no coverage to restrict the mutants to." in text
+
+
+def test_the_sweep_script_refuses_an_empty_corpus(tmp_path):
+    """It printed "missing" eight times, skipped its own table and exited 0.
+
+    The default root was `~/code`, which exists on no machine this was measured on,
+    so the command the README offers as "reproduces the table above" reproduced
+    nothing and said so only in the sense that each line read `missing`. `rows` was
+    empty, lines 55-76 were skipped, and the exit code was green.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    done = subprocess.run(
+        [sys.executable, str(root / "scripts" / "sweep.py"), "2"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        env={
+            "REPOS_ROOT": str(tmp_path),
+            "PATH": __import__("os").environ.get("PATH", ""),
+            "PYTHONPATH": str(root / "src"),
+            "SYSTEMROOT": __import__("os").environ.get("SYSTEMROOT", ""),
+        },
+        timeout=300,
+    )
+    assert done.returncode == 1, f"an empty sweep exited {done.returncode}"
+    assert "No repository was measured" in done.stderr
+    assert str(tmp_path) in done.stderr, "it has to name where it looked"
+    assert "REPOS_ROOT" in done.stderr
+
+
+def test_the_sweep_default_is_the_folder_this_repository_sits_in():
+    """Rather than `~/code`, which is why the documented command measured nothing."""
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[1] / "scripts" / "sweep.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'Path.home() / "code"' not in source
+    assert "parents[3].parent" in source

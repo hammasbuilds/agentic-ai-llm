@@ -26,7 +26,14 @@ REPOS = [
 ]
 
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 40
-ROOT = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+# Sibling checkouts live beside the monorepo, so that is the default. It used to be
+# `~/code`, which does not exist on the machine the README's table was measured on -
+# so the documented reproduction printed "missing" eight times, skipped the table and
+# the summary because `rows` was empty, and exited 0. A green run that measured
+# nothing is the failure mode this whole project is about.
+ROOT = Path(
+    os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[3].parent
+).expanduser()
 
 print(
     f"{'repo':26s} {'mut':>4s} {'kill':>4s} {'live':>4s} {'err':>4s} "
@@ -51,6 +58,16 @@ for name in REPOS:
         f"{r.score:6.0%} {r.covered_score:9.0%} {len(r.survivors_on_covered_lines):8d}",
         flush=True,
     )
+
+if not rows:
+    print("-" * 78)
+    print(f"No repository was measured. Looked in {ROOT}", file=sys.stderr)
+    print(
+        "Set REPOS_ROOT to the folder holding these checkouts, or run this from a "
+        "clone that sits beside them.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 if rows:
     import statistics

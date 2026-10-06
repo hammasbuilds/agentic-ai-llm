@@ -1,0 +1,71 @@
+{
+  "measured": "2026-10-06",
+  "note": "The survey the README's Results table quotes, frozen. The live checks keep a band because the folder changes; these are the exact figures published. Regenerate with tests/freeze_survey.py when they change on purpose.",
+  "repositories": 76,
+  "candidate_claims": 10929,
+  "mechanical": 300,
+  "checked": 225,
+  "false": 12,
+  "false_findings": [
+    {
+      "repo": "agent-sandbox",
+      "detail": "out.txt is missing",
+      "claim": "read `out.txt` back."
+    },
+    {
+      "repo": "browser-agent",
+      "detail": "scripts/wide_attribution.py is missing",
+      "claim": "`data-*`: `scripts/wide_attribution.py` (`results/wide_attribution.json`) reruns the tasks"
+    },
+    {
+      "repo": "classical-computer-vision",
+      "detail": "README says 57, found 63",
+      "claim": "57 projects spanning 14 algorithm families."
+    },
+    {
+      "repo": "classical-computer-vision",
+      "detail": "README says 41, found 63",
+      "claim": "This is what makes 41 projects tractable"
+    },
+    {
+      "repo": "harness-ablation",
+      "detail": "tokenizer.json is missing",
+      "claim": "`tokenizers` (token counts without loading a model, from `tokenizer.json` of"
+    },
+    {
+      "repo": "harness-ablation",
+      "detail": "tokenizer.json is missing",
+      "claim": "It is now `tokenizer.json` from"
+    },
+    {
+      "repo": "job-radar",
+      "detail": "robots.txt is missing",
+      "claim": "Rozee.pk stays unread.** It is bigger than Mustakbil and every path, `robots.txt`"
+    },
+    {
+      "repo": "pak-law-assistant",
+      "detail": "claude_desktop_config.json is missing",
+      "claim": "In `claude_desktop_config.json`:"
+    },
+    {
+      "repo": "terminal-agent",
+      "detail": "./script.sh is missing",
+      "claim": "`make`, `./script.sh` and `npm run build` are mutating, not dangerous - so inline-code checks"
+    },
+    {
+      "repo": "trial-match",
+      "detail": "trials.json is missing",
+      "claim": "interrupted run resumes where it stopped (`--fresh` starts over), and `trials.json` only"
+    },
+    {
+      "repo": "worktree-fleet",
+      "detail": "results/summary.json is missing",
+      "claim": "All numbers: `results/summary.json`."
+    },
+    {
+      "repo": "worktree-fleet",
+      "detail": "results/report_table.txt is missing",
+      "claim": "in `results/report_table.txt`):"
+    }
+  ]
+}

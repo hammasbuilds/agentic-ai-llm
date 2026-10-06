@@ -72,7 +72,7 @@ figure below was typed by hand; each is asserted by a test that runs the code ov
 | [17](17_fleet-desk) | [**fleet-desk**](17_fleet-desk) | 6 TSPLIB instances + proven optima | "Go round the city in a circle" is **92% worse at 52 stops, 181% at 150** |
 | [18](18_campus-ops) | [**campus-ops**](18_campus-ops) | 5,571 scheduled events | A room-only checker misses the **9 overlaps that are physically impossible** |
 | [19](19_agri-desk) | [**agri-desk**](19_agri-desk) | all 898 NCBI GenBank genomes, 23 countries | **422 emerging variants become 2**; false-alarm rate **0.9954** — and the 2 are real |
-| [20](20_driftwatch) | [**driftwatch**](20_driftwatch) | 35 real repositories | **1.64%** of README sentences are machine-settleable; 9.1% of those are false |
+| [20](20_driftwatch) | [**driftwatch**](20_driftwatch) |  76 real repositories | **2.74%** of README sentences are machine-settleable; 5.3% of those are false, and 5 of those 12 are real |
 
 ### Four of them contradicted their own README
 
@@ -117,8 +117,16 @@ is not.
   collapsed every country into one stratum. It also counted an unlabelled record as a
   second site, letting a single-site variant clear the multi-site guard by being partly
   unlabelled.
-- **driftwatch** caught a live drift in this very repository: the README claims zero runtime
-  dependencies while `pyproject.toml` declares thirteen.
+- **driftwatch** had this entry as "caught a live drift in this very repository: the README
+  claims zero runtime dependencies while `pyproject.toml` declares thirteen" — and that was
+  not drift. The sentence is "In [`projects/`](../projects). Zero runtime dependencies and
+  zero LLM calls", all eleven packages under that directory declare `dependencies = []`,
+  and the thirteen are this root's web layer. driftwatch's own README retracts it under
+  "Its own flagship finding was not drift"; this index went on crediting it for six weeks
+  longer. What driftwatch did find, and still finds, is five real drifts across the folder —
+  `classical-computer-vision` stating 57 projects and 41 in another paragraph while holding
+  63, a `scripts/` file `browser-agent` references and does not have, and two `results/`
+  paths `worktree-fleet` names that are neither present nor ignored.
 - **watchtower** read every `affected` block in OSV's PyPI export, pulling 454 npm, Maven,
   NuGet, crates.io and Go packages into a PyPI scan and ordering Go pseudo-versions with a
   PEP 440 key. It also had no notion that 39% of the database is malicious-package reports

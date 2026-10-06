@@ -61,9 +61,34 @@ raise SystemExit(int(code))
 
 @dataclass
 class Coverage:
-    """Executed lines, keyed by repo-relative posix path."""
+    """Executed lines, keyed by repo-relative posix path.
+
+    `failure` is why nothing was measured, and it is the difference between "the
+    suite executed no mutable line" and "the trace never ran". Both used to be
+    `Coverage(lines={})`: a crash, a timeout or a missing output file returned the
+    same empty mapping as a clean measurement of nothing, and the report printed
+    "none - every executed line that could be mutated was checked" over zero
+    observations and exited 0.
+
+    What this does NOT catch is a *partial* loss. A suite that calls
+    `sys.settrace(None)` part-way - which pytest-cov, xdist and any debugger do -
+    keeps the lines traced before that point and loses the rest, and from the outside
+    a line whose tracing was switched off is indistinguishable from a line that was
+    never executed. Measured here: a one-test suite calling `settrace(None)` traced 6
+    lines against 7 for the same suite without it, so the loss is real and silent. The
+    consequence is that `survivors_on_covered_lines` can under-report and
+    `survivors_off_covered_lines` over-report, in the direction that makes the suite
+    look better. There is no fix from inside the tracer; it is a reason to read the
+    unrestricted score beside the restricted one, which the report prints.
+    """
 
     lines: dict[str, set[int]]
+    failure: str = ""
+
+    @property
+    def measured(self) -> bool:
+        """Whether the trace ran at all. False is not the same as "covered nothing"."""
+        return not self.failure
 
     def executed(self, path: str, line: int) -> bool:
         return line in self.lines.get(path, ())
@@ -97,10 +122,12 @@ def measure(
             timeout=timeout,
         )
         if not out.exists():
-            return Coverage(lines={})
+            return Coverage(lines={}, failure="the trace wrote no output file")
         raw = json.loads(out.read_text(encoding="utf-8"))
-    except Exception:
-        return Coverage(lines={})
+    except subprocess.TimeoutExpired:
+        return Coverage(lines={}, failure=f"the suite did not finish within {timeout}s")
+    except Exception as exc:  # noqa: BLE001 - any failure here is "not measured"
+        return Coverage(lines={}, failure=f"{type(exc).__name__}: {exc}")
     finally:
         script.unlink(missing_ok=True)
         out.unlink(missing_ok=True)

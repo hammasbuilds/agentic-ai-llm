@@ -25,7 +25,12 @@ from pathlib import Path
 
 # The folder whose git checkouts are surveyed. Set REPOS_ROOT to point it
 # elsewhere; the default is ~/code.
-REPOS = Path(os.environ.get("REPOS_ROOT") or Path.home() / "code").expanduser()
+# Siblings of this repository, not `~/code`: that default does not exist on the
+# machine these numbers were measured on, so every tool using it silently found
+# nothing and reported success over an empty corpus.
+REPOS = Path(
+    os.environ.get("REPOS_ROOT") or Path(__file__).resolve().parents[4].parent
+).expanduser()
 
 # Files a person does not write line by line. A committed dataset or a
 # regenerated result file produces enormous numbers of "edits" that were never
