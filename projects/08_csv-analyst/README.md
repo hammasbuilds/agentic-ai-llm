@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-47-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-53-success" alt="tests">
   <img src="https://img.shields.io/badge/rows%20measured-1.07M-orange" alt="rows">
 </p>
 
@@ -43,53 +43,97 @@ the values that would not parse get their own section of the report.
 ```
 $ csv-analyst report online-retail-ii.csv
 
-120,000 rows and 8 columns (5 numeric, 2 categorical, 1 date), delimiter ',', utf-8.
+1,067,371 rows and 8 columns (5 numeric, 2 categorical, 1 date), delimiter ',', read as utf-8.
 
 ## Integrity
-- 1,292 rows are exact duplicates of an earlier row (1.1%). Any count, sum or mean
+
+- 34,335 rows are exact duplicates of an earlier row (3.2%). Any count, sum or mean
   over this file double-counts them unless they are removed first.
 
 ## Columns a numeric cast would thin out
-- `Invoice` is 97.9% numeric. The remaining 2,534 values ('C489449', 'C489459',
+
+- `Invoice` is 98.2% numeric. The remaining 19,500 values ('C489449', 'C489459',
   'C489476') will not parse. Loading this column as a number drops those rows from
-  every aggregate computed over it, and nothing in the output will say so.
-- `StockCode` is 79.2% numeric. The remaining 24,925 values ('79323P', '79323W',
+  every aggregate computed over it, and nothing in the output will say so. They are
+  kept as text here.
+- `StockCode` is 87.4% numeric. The remaining 134,986 values ('79323P', '79323W',
   '48173C') will not parse. ...
 
 ## Column warnings
+
+- `Invoice`: 19500 of 1067371 values are not numbers ('C489449', 'C489459',
+  'C489476') - any mean here silently excludes them
+- `StockCode`: looks like an identifier rather than a measurement - its mean
+  (28,350.2) is not a meaningful quantity
+- `Quantity`: 360 value(s) beyond 8 standard deviations (e.g. 80995)
+- `Price`: 250 value(s) beyond 8 standard deviations (e.g. -53594.4)
 - `CustomerID`: looks like an identifier rather than a measurement - its mean
-  (15,316.2) is not a meaningful quantity
-- `Price`: 81 value(s) beyond 8 standard deviations (e.g. 8985.6)
+  (15,324.6) is not a meaningful quantity
+
+## Computed
+
+- Quantity: distribution: computed from 1,067,371 rows.
+- Price: distribution: computed from 1,067,371 rows.
+- Invoice: the values a numeric cast would delete: computed from 684 rows.
+    Caveat: 19,500 values in this column are not numbers; loading it as numeric
+    drops those rows from every aggregate
+- StockCode: the values a numeric cast would delete: computed from 5,920 rows.
+    Caveat: 134,986 values in this column are not numbers; loading it as numeric
+    drops those rows from every aggregate
 
 ---
 Every figure above was computed by a query that ran and passed validation.
 No number here was written by a language model.
 ```
 
+That block used to quote **120,000 rows and 1,292 duplicates (1.1%)** — a `--limit`
+run, printed as though it were the file. The corpus table further down said 1,067,371
+rows and 34,335 duplicates (3.2%) for the same file, so the README disagreed with
+itself by a factor of nine on the number its headline finding rests on. Both are
+regenerated from full runs now.
+
 Also:
 
 ```
-$ csv-analyst coercion <csv>          # what a silent numeric cast costs, per column
-$ csv-analyst charts <csv> --out dir  # one SVG per column, no plotting library
+$ csv-analyst coercion <csv>           # what a silent numeric cast costs, per column
+$ csv-analyst charts <csv> --out dir   # one SVG per column, no plotting library
+$ csv-analyst sweep <folder>           # every delimited file in it - the table below
 $ uv run --extra ui marimo edit ui/notebook.py
 ```
 
 ## Measured across 13 real datasets
 
 The files in `machine-learning/data/raw`, each with a SHA-256 recorded at download.
+`csv-analyst sweep <folder>` prints this table; it used to be quoted with nothing here
+computing it, and the warning count was ten too high.
 
 | | |
 |---|---|
-| Files | 13 |
+| Files in the folder | 18 |
+| Profiled | 13 |
 | Columns profiled | 816 |
-| Warnings raised | 146 |
-| Largest file | 1,067,371 rows |
+| Warnings raised | 134 |
+| Largest file | 1,067,371 rows (`online-retail-ii.csv`) |
 | Exact duplicate rows in it | 34,335 (3.2%) |
-| Contaminated numeric columns | 2 |
+| Contaminated numeric columns | 2 (both in that file) |
 
-`StockCode`'s 134,986 non-numeric values are not product codes either. The most common
-are `POST`, `DOT`, `M` and `ADJUST` - postage, manual entries and adjustments. A numeric
-cast deletes every shipping and adjustment line from the file.
+The five not profiled are named rather than dropped: three zips, and two `.arff` files,
+which are not delimited text with a header row. Profiling one as a CSV gave a single
+column literally named `@relation freMTPL2freq` and then reported it as a **contaminated
+numeric column** — which took this table''s last row from 2 to 4, both of the extras
+artefacts of the tool rather than anything in the data. A file whose first line starts
+with `@`, `%`, `<` or `{` is refused as not delimited.
+
+`StockCode`'s 134,986 non-numeric values are 1,715 distinct codes, and counting them
+changes what the finding is. **95.5% of them — 128,892 rows — are ordinary product codes
+with a letter suffix**: `85123A`, `85099B`, `82494L`, the top three. The administrative
+codes are 4.1%: `POST` 2,122, `DOT` 1,446, `M` 1,421, `BANK CHARGES` 102, `ADJUST` 67.
+
+This paragraph used to name only those administrative codes and conclude that a numeric
+cast "deletes every shipping and adjustment line from the file". It does, and that is the
+small half of it: the cast deletes 129 thousand sales of real products whose code happens
+to end in a letter, which is twenty-three times as many rows and is not a category of
+exception at all.
 
 ## Three enforcement points, not three warnings
 
@@ -132,7 +176,7 @@ by hand. `marimo` is an optional extra used only by the notebook view.
 ## Run it
 
 ```bash
-uv run pytest -q                                  # 47 tests
+uv run pytest -q                                  # 53 tests, 9 of them over the real corpus
 uv run csv-analyst report <csv> --limit 100000
 uv run csv-analyst coercion <csv>
 uv run --extra ui marimo edit ui/notebook.py
