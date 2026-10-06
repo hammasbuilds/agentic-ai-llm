@@ -4,10 +4,10 @@ Paste a bug report, pick a repository, and watch four retrievers disagree about 
 fix goes: BM25 over paths, embeddings over paths, the coder model naming files from its own
 knowledge, and the same model reranking BM25's shortlist.
 
-The finding this was built from: BM25 scores 74.5% when the issue quotes the file path and
-**8.4% when it does not**, on SWE-bench Lite. The model naming files freely gets 55.8% on
-that hard half — but only 17.5% when restricted to reranking, which is the evidence that
-its advantage is knowing the repository rather than reading the issue.
+The finding this was built from: BM25 scores 75% (38 of 51) when the issue quotes the file
+path and **8.5% (13 of 153) when it does not**, on SWE-bench Lite. The model naming files
+freely gets 55.8% on that hard half — but only 17.5% when restricted to reranking, which
+is the evidence that its advantage is knowing the repository rather than reading the issue.
 
 This is a hybrid-retrieval demo in the strict sense: lexical and dense retrievers are run
 over the same candidate set and fused into one ranking, and the LLM arms are scored against
@@ -134,13 +134,15 @@ ABOUT = """
 cheap ones.</p>
 <p>The measurement behind it, on 299 of SWE-bench Lite's 300 instances — one has a gold
 file that is in no cached listing, and it is excluded rather than counted as a miss:
-<b>BM25 falls from 74.5% recall@10 when the issue quotes the file path to 8.5% when it
-does not.</b> Embeddings get 29.2% on that hard half, and the coder model naming files
+<b>BM25 falls from 38 of 51 instances when the issue quotes the file path to 13 of 153
+when it does not.</b> Embeddings get 29.2% on that hard half, and the coder model naming files
 from memory gets 55.8%.</p>
 <p>That BM25 row is reproducible offline from this repository:
 <code>python -m apps._engine.localize_eval</code>. It was not, until recently — the
 measurement was a set of pieces in <code>apps/_engine</code> with nothing composing
-them, and the figure quoted here was 8.4%, which is 13/153 rounded the wrong way.</p>
+them. The figures here were also rates to one decimal place - 74.5% on 51 instances,
+where one instance is two points, and 8.4% where 13/153 is 8.5% - so the fractions are
+quoted instead and the tier table prints them beside every rate.</p>
 <p>The reranker column is the control. Restricted to reordering BM25's top-30, the same
 model manages 17.5% on that half — while realising 92% of the ceiling it is handed. It is
 not a better ranker; it proposes candidates first-stage retrieval never surfaces, which is

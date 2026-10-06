@@ -10,7 +10,13 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .charts import bars, histogram
-from .execute import column_summary, contamination_findings, load
+from .execute import (
+    DuplicateColumnError,
+    NoColumnsError,
+    column_summary,
+    contamination_findings,
+    load,
+)
 from .narrate import narrate
 from .profile import (
     honest_mean,
@@ -356,7 +362,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except (NoColumnsError, DuplicateColumnError) as exc:
+        # A wrong argument, answered as one. A 0-byte CSV used to come back as
+        # `sqlite3.OperationalError: near ")": syntax error` with a traceback, which
+        # tells a reader nothing about the file they passed.
+        print(exc, file=sys.stderr)
+        return 2
+    except FileNotFoundError as exc:
+        print(f"no such file: {exc.filename}", file=sys.stderr)
+        return 2
+    except UnicodeDecodeError as exc:
+        print(f"{args.csv}: not text this tool can read ({exc.reason})", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

@@ -5,8 +5,11 @@ code". Every piece of it was here and nothing composed them: `evaluate.print_rep
 `trees.commit_listings`, `trees.listing_for`, `trees.fetch_at_commit` and
 `differential.find_many` had no callers anywhere in the repository. The pieces were the
 fingerprint of a driver that had been run on this machine and never committed, so the
-headline — BM25 collapsing from 74.5% to 8.4% depending only on whether the issue quotes
-the file path — could not be reproduced from the repository that states it.
+headline - BM25 collapsing from 38/51 to 13/153 depending only on whether the issue
+quotes the file path - could not be reproduced from the repository that states it. The
+figure was also written as 8.4%, which is 13/153 rounded the wrong way; the tier table
+now prints the fraction beside every rate, because 51 and 18 instances do not support
+the decimal place the old table printed.
 
 This is that driver. The lexical arm needs nothing but the files already on disk: the
 SWE-bench Lite parquet in the Hugging Face cache and the tree listings under

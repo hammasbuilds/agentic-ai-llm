@@ -155,14 +155,29 @@ def require(raw: str | None, *, what: str = "generation") -> str:
 #: pattern and the third was the one on the hot path.
 DOWN_FOR = float(os.environ.get("OLLAMA_RETRY_AFTER", "5.0"))
 _down_until = 0.0
+
+#: How long a *successful* tag listing is believed. The down-memory above fixed the
+#: machine with no Ollama; on a machine with one, `tags()` still made an HTTP round trip
+#: on every call. `health()` is called by every page handler, so every render of every
+#: app paid it - 0.29s measured here, against a server on localhost. `_tags` already
+#: held the answer and nothing read it: the cache was written and never wired up, which
+#: is why the cost was invisible.
+#:
+#: Short, because pulling a model has to show up without a restart. A pull takes minutes
+#: and this is seconds, so the badge is behind by at most one page refresh.
+TAGS_TTL = float(os.environ.get("OLLAMA_TAGS_TTL", "5.0"))
 _tags: tuple[str, ...] = ()
+_tags_until = 0.0
 
 
 async def tags() -> tuple[str, ...]:
     """Every model tag the server holds, as `name:tag`."""
-    global _down_until, _tags
-    if time.monotonic() < _down_until:
+    global _down_until, _tags, _tags_until
+    now = time.monotonic()
+    if now < _down_until:
         return ()
+    if now < _tags_until:
+        return _tags
     try:
         async with httpx.AsyncClient(timeout=PROBE_TIMEOUT) as client:
             r = await client.get(f"{OLLAMA}/api/tags")
@@ -170,10 +185,23 @@ async def tags() -> tuple[str, ...]:
             names = tuple(m["name"] for m in r.json().get("models", []) if m.get("name"))
     except (httpx.HTTPError, ValueError, KeyError):
         _down_until = time.monotonic() + DOWN_FOR
+        # Kept consistent with `_down_until` rather than left behind. This does not
+        # close the stale window - the TTL check above runs before any probe, so inside
+        # it a dead server is still reported as up, and `TAGS_TTL` is the only thing
+        # that bounds that. `test_a_server_that_went_away_is_still_reported_up_for_as
+        # _long_as_the_ttl` pins the window at five seconds for exactly that reason.
+        _tags, _tags_until = (), 0.0
         return ()
     _down_until = 0.0
     _tags = names
+    _tags_until = time.monotonic() + TAGS_TTL
     return names
+
+
+def forget_tags() -> None:
+    """Drop the cached listing. For tests, and for a caller that just pulled."""
+    global _tags, _tags_until, _down_until
+    _tags, _tags_until, _down_until = (), 0.0, 0.0
 
 
 async def available(model: str = DEFAULT_MODEL) -> bool:

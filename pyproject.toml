@@ -36,7 +36,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.16,<0.17"]
+# fakeredis so the Redis-up branches are testable. Fifteen of the nineteen async
+# functions in `apps/_platform/cache.py` had only their except-branch exercised: every
+# test ran with no Redis, so "it degrades" was covered and "it works" was not.
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.16,<0.17", "fakeredis>=2.39"]
 
 [build-system]
 requires = ["hatchling"]

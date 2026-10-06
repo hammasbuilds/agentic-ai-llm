@@ -1,5 +1,5 @@
 <h1 align="center">agentic-ai-llm</h1>
-<p align="center"><i>Ten measurement tools for local coder models, each shipped as a running product — and eleven agent-infrastructure tools underneath them.</i></p>
+<p align="center"><i>Ten measurement tools for local coder models, eleven standalone developer tools, and twenty agent products on one shared platform.</i></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
@@ -84,8 +84,8 @@ same **317 passed, 38 skipped** either way.
 quote a median across a chosen 29 that nothing in the tool computed, and the five JSONs
 shipped beside it covered five of those rows.
 
-- **BM25 collapses from 74.5% to 8.5%** depending only on whether the issue quotes the file
-  path. The same 14B model scores 55.8% on that hard half when naming files freely and
+- **BM25 collapses from 75% (38 of 51) to 8.5% (13 of 153)** depending only on whether the
+  issue quotes the file path. The same 14B model scores 55.8% on that hard half when naming files freely and
   **17.5% when restricted to reranking** — its advantage is knowing the repository, not
   reading the issue. It also invents one path in five.
 - **Devign's always-SAFE baseline is 54.1%**, against published accuracies around 62% —

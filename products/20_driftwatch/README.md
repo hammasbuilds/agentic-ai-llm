@@ -194,9 +194,15 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 20_driftwatch
-python -m pytest -q                      # 72 passed
+python -m pytest -q                      # 51 passed, 21 skipped
 PYTHONPATH="src;../platform/src" python -m driftwatch.app    # console on http://127.0.0.1:8000
 ```
+
+The 21 skips are the half that reads a folder of real git checkouts. `REPOS_ROOT` names
+that folder and defaults to the one this repository sits in, so on the machine this was
+written on all 72 run - and this line said "72 passed" for a while, a figure true on
+exactly one computer. The number above is a fresh clone's, which is what a reader gets:
+`REPOS_ROOT=/path/to/your/checkouts python -m pytest -q` runs the other 21.
 
 `app.py` picks a model by capability rather than by tag — `models.resolve("general", …)`
 returns the best one installed and records which it was, so a later run on a larger model

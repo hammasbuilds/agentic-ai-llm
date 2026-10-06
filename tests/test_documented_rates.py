@@ -97,7 +97,10 @@ def mutation_summary(app: Path) -> dict | None:
 #: their figures checked against it; the eight whose numbers came from a GPU run get
 #: this and nothing stronger, and the gap is stated rather than hidden.
 STATED_FIGURES: dict[str, int] = {
-    "01_localizer": 13,
+    # 13 -> 15: the headline moved from "74.5% to 8.5%" to the fractions it came
+    # from, "38 of 51" and "13 of 153", because 51 instances do not support a
+    # decimal place and the same figure appeared elsewhere as 8.4%.
+    "01_localizer": 15,
     "02_false_accepts": 21,
     "03_vuln_baseline": 12,
     "04_size_curve": 12,

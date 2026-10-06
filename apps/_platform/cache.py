@@ -43,6 +43,8 @@ import redis.asyncio as aioredis
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 GEN_PREFIX = "gen:"  # generation cache
+GEN_HITS = "stat:gen:hits"  # lookups this cache answered
+GEN_MISSES = "stat:gen:misses"  # lookups it did not
 JOB_PREFIX = "job:"  # job state hash
 PROGRESS_CHANNEL = "progress:{job_id}"
 RESULT_TTL = 60 * 60 * 24 * 7
@@ -119,9 +121,18 @@ async def get_generation(
     model: str, prompt: str, temperature: float, seed: int | None
 ) -> str | None:
     try:
-        return await call(client().get, gen_key(model, prompt, temperature, seed))
+        found = await call(client().get, gen_key(model, prompt, temperature, seed))
     except Exception:
         return None  # a cold cache is slow, not broken
+    # Counted here, on this cache's own keys. `cache_stats` used to divide Redis'
+    # `keyspace_hits` by `keyspace_misses`, which are server-wide across every key and
+    # every database on the instance: job-state reads, the `scan_iter` in this same
+    # module, and anything else sharing the Redis. It was reported as the generation
+    # cache's hit rate and had no relation to it. A failed INCR is not worth failing a
+    # lookup over, so it is suppressed - and `cache_stats` says when that has happened.
+    with suppress(Exception):
+        await call(client().incr, GEN_HITS if found is not None else GEN_MISSES)
+    return found
 
 
 async def put_generation(
@@ -131,21 +142,39 @@ async def put_generation(
         await call(client().set, gen_key(model, prompt, temperature, seed), response, ex=GEN_TTL)
 
 
+#: What `cache_stats` returns when Redis cannot be read. `hit_rate` is None rather than
+#: 0.0: a cache nobody asked anything of has no hit rate, and reporting one as zero is
+#: the same claim as a cache that missed every time.
+_NO_STATS: dict[str, Any] = {
+    "generations": 0,
+    "hit_rate": None,
+    "hits": 0,
+    "misses": 0,
+    "lookups": 0,
+}
+
+
 async def cache_stats() -> dict[str, Any]:
+    """The generation cache's own figures, over its own keys.
+
+    `hits + misses` is the denominator and is returned as `lookups`, because a 100% hit
+    rate over four lookups and over four hundred thousand are different claims and read
+    identically without it.
+    """
     try:
         r = client()
-        info = await call(r.info, "stats")
-        hits = int(info.get("keyspace_hits", 0))
-        misses = int(info.get("keyspace_misses", 0))
-        total = hits + misses
+        hits = int(await call(r.get, GEN_HITS) or 0)
+        misses = int(await call(r.get, GEN_MISSES) or 0)
+        lookups = hits + misses
         return {
             "generations": len([k async for k in r.scan_iter(f"{GEN_PREFIX}*", count=500)]),
-            "hit_rate": hits / total if total else 0.0,
+            "hit_rate": hits / lookups if lookups else None,
             "hits": hits,
             "misses": misses,
+            "lookups": lookups,
         }
     except Exception:
-        return {"generations": 0, "hit_rate": 0.0, "hits": 0, "misses": 0}
+        return dict(_NO_STATS)
 
 
 # --- the fallback for when Redis is not there -----------------------------------------
@@ -240,8 +269,16 @@ async def recent_jobs(app: str, limit: int = 12) -> list[dict]:
         await call(r.ping)  # one attempt, so a missing Redis costs one timeout not a scan
         async for key in r.scan_iter(f"{JOB_PREFIX}*", count=500):
             data = await r.hgetall(key)
+            job_id = key.removeprefix(JOB_PREFIX)
+            # Local fields win, as they do in `get_job`. They did not here: a job
+            # created in Redis and finished locally after it went down was listed with
+            # its Redis row alone, so the history page showed `queued` for a run the
+            # job page showed as `done` - two pages in the same app disagreeing about
+            # the same job, with the stale one winning on the page that lists them.
+            local = _LOCAL_JOBS.get(job_id)
+            if local:
+                data = {**data, **local}
             if data.get("app") == app:
-                job_id = key.removeprefix(JOB_PREFIX)
                 data["job_id"] = job_id
                 seen.add(job_id)
                 out.append(data)

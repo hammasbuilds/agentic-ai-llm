@@ -103,6 +103,12 @@ def create_app(
             "model": await _model_up(model),
             "model_name": model.split(":")[0],
             "cached": stats.get("generations", 0),
+            # The hit rate and its denominator. These were computed in `cache_stats`
+            # and read by nothing, which is how they went unnoticed as the server-wide
+            # `keyspace_hits` rather than this cache's own. `None` means nobody has
+            # looked anything up yet, which is not the same as having missed.
+            "cache_hit_rate": stats.get("hit_rate"),
+            "cache_lookups": stats.get("lookups", 0),
         }
 
     def ctx(request: Request, **extra) -> dict:

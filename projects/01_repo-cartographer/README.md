@@ -4,8 +4,9 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-32-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-36%20%2B%2013%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/median%20resolution-81%25-orange" alt="resolution">
+  <img src="https://img.shields.io/badge/pooled%20resolution-75%25-orange" alt="pooled">
 </p>
 
 ---
@@ -13,8 +14,8 @@
 ## Results
 
 **A plain `ast` walk binds 81% of a repository's internal calls to their definitions
-(median across 77 real checkouts, 1,729 modules, 335,560 lines). No embeddings, no model,
-no index.**
+(median across 78 real checkouts, 1,740 modules, 339,739 lines) - and 75% when every
+call site in all of them is pooled into one fraction. No embeddings, no model, no index.**
 
 The usual approach to "explain this codebase" is to embed every chunk and retrieve by
 similarity. For structural questions - *what calls this, what breaks if I change it, where
@@ -69,7 +70,7 @@ $ cartographer compare ~/code                         # every checkout under a f
 $ cartographer map <repo> --json -o map.json             # for the UI
 ```
 
-## Measured across 77 repositories
+## Measured across 78 repositories
 
 Every checkout in one folder, not a chosen subset — `cartographer compare <folder>`, whose
 last three lines are this table. Measured 2026-10-06, and it is a snapshot: these are live
@@ -78,14 +79,24 @@ repositories and committing to any of them moves the row it is in. The five maps
 
 | | |
 |---|---|
-| Repositories measured | 77 |
-| Modules | 1,729 |
-| Lines | 335,560 |
+| Repositories measured | 78 |
+| Modules | 1,740 |
+| Lines | 339,739 |
 | **Median repo-call resolution** | **81%** |
+| **Pooled over all 32,527 internal call sites** | **75%** |
 | Median over *all* call sites, for contrast | 21% |
-| At or above 90% | 17 of 77 |
+| At or above 90% | 18 of 78 |
+| With fewer than 50 internal call sites | 9 of 78 |
 | Parse failures | 1 |
 | Checkouts holding no Python, skipped | 26 |
+
+The median and the pooled rate differ by six points, and the row `n` in the table above
+says why: the median weighs a repository with nine internal call sites the same as one
+with 1,345. `vision-language-lab` scores 100% on nine, `visual-analytics` 67% on three.
+Nine of the 78 have fewer than fifty, which is where a percentage is a coin flip with a
+decimal point. The pooled fraction is the one to quote for the resolver; the median is the
+one to quote for a repository picked at random, and both are printed because neither
+answers the other's question.
 
 This said **99% across 29 repositories** until two things changed, and both moved it down.
 
@@ -100,7 +111,9 @@ notebooks, scripts or someone else's vendored code, the median is 81%. The lowes
 
 A repository of two scripts with almost no internal calls swings several points on one
 miss, which is why the median is quoted rather than the mean — and why the count at or
-above 90% is beside it.
+above 90% is beside it. `compare` used to print that rate with no `n` beside it, so those
+repositories were invisible: 100% over nine call sites and 100% over nine thousand were
+the same line of output.
 
 ## The denominator matters more than the resolver
 
@@ -156,10 +169,18 @@ questions this tool exists for.
 ## Run it
 
 ```bash
-uv run pytest -q                      # 47 tests
+uv run pytest -q                      # 36 passed, 13 skipped
 uv run cartographer map <repo>
 uv run cartographer compare <folder>  # every checkout under it
 ```
+
+The 13 skips need a folder of real git checkouts, which `REPOS_ROOT` names; it defaults
+to the folder this repository sits in, so all 49 run on the machine this was written on.
+The figure above is a fresh clone's. One of those tests used to *fail* rather than skip
+there - it asserted that at least one shipped map was still at the revision it records,
+which cannot be true when there is no checkout to compare against - so the suite was red
+in exactly the configuration CI runs in, with a message telling the reader to regenerate
+artifacts that were current.
 
 ## Layout
 

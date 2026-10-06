@@ -69,6 +69,15 @@ def summarize(results: list[dict], ks: tuple[int, ...] = KS) -> dict:
         for tier, trows in tiers.items():
             by_tier[tier] = {
                 "n": len(trows),
+                # The numerator too, because the rate alone was printed to one decimal
+                # on tiers as small as 18 instances - where one instance is 5.6
+                # percentage points, so the digit after the point was noise shown with
+                # the authority of a measurement. `hits@10` lets the table print the
+                # fraction the rate came from.
+                **{
+                    f"hits@{k}": sum(1 for t in trows if recall_at_k(t["ranked"], t["gold"], k) > 0)
+                    for k in ks
+                },
                 **{
                     f"recall@{k}": sum(recall_at_k(t["ranked"], t["gold"], k) for t in trows)
                     / len(trows)
@@ -157,8 +166,14 @@ def print_report(summary: dict, ks: tuple[int, ...] = KS) -> None:
             t = s["by_tier"].get(tier)
             if not t:
                 continue
-            v = t["recall@10"]
-            print(f"    {tier:16} n={t['n']:4}  {v:6.1%}  {_bar(v)}")
+            v, n = t["recall@10"], t["n"]
+            # One decimal place is only meaningful when n supports it: each instance
+            # moves the rate by 100/n points, so a tier of 18 is quoted whole and a
+            # tier of 153 to one decimal. The fraction is printed either way, which is
+            # the reading that does not need a rule.
+            places = 1 if n >= 100 else 0
+            rate = f"{v:6.{places}%}"
+            print(f"    {tier:16} n={n:4}  {rate:>7}  {t['hits@10']:4}/{n:<4} {_bar(v)}")
 
     print("\n" + "=" * 74)
     print("RECALL@10 - by repository")

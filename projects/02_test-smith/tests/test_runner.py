@@ -199,6 +199,15 @@ def test_only_a_real_collection_failure_is_excluded(tmp_path: Path, source, expe
 
     Driven through real pytest rather than a hand-written string, because the question
     is what pytest actually prints.
+
+    Run from inside `tmp_path` with `.` as the argument, not from here with the absolute
+    path. `tmp_path` lives under the user-wide temp directory, which on a shared machine
+    other processes are creating and deleting directories in; pytest's own collection
+    walked an entry there that vanished between the listing and the `lstat`, and printed
+    `FileNotFoundError ... Interrupted: 1 error during collection`. The two cases
+    expecting `False` then failed - correctly, since the output really did contain a
+    collection error, just not the one under test. Making `tmp_path` the rootdir keeps
+    the subprocess from looking above it, so the only output is the one this asserts on.
     """
     import subprocess
     import sys as _sys
@@ -207,7 +216,8 @@ def test_only_a_real_collection_failure_is_excluded(tmp_path: Path, source, expe
 
     (tmp_path / "test_it.py").write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [_sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)],
+        [_sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "."],
+        cwd=str(tmp_path),
         capture_output=True,
         text=True,
         timeout=300,

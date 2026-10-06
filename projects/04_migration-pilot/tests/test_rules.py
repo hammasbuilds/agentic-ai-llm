@@ -240,3 +240,47 @@ def test_the_mechanical_behavioural_split_is_what_the_readme_leads_with(tmp_path
     assert "mechanical       : 1" in out
     assert "behavioural      : 1" in out
     assert "REVIEW" in out, "the behavioural edit is marked for review, never applied"
+
+
+def test_the_runnable_proof_prints_what_the_readme_says_it_prints():
+    """The README quoted `-> False` and the script printed `-> True`.
+
+    The stored timestamp was hardcoded to 2026-09-17 against a one-hour window, so
+    the documented output was correct on the day it was written and wrong on every
+    day after. It is relative to now, so the answer is stable - which matters because
+    this script is cited as the evidence behind refusing to auto-apply the rule.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    done = subprocess.run(
+        [sys.executable, str(root / "scripts" / "prove_utcnow.py")],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={
+            "PYTHONPATH": str(root / "src"),
+            "PATH": __import__("os").environ.get("PATH", ""),
+            "SYSTEMROOT": __import__("os").environ.get("SYSTEMROOT", ""),
+        },
+    )
+    assert done.returncode == 0, done.stderr
+
+    assert "session_expired_old(stored) -> False" in done.stdout
+    assert "can't subtract offset-naive and offset-aware datetimes" in done.stdout
+
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "session_expired_old(stored) -> False" in readme
+    assert "session_expired_old(stored) -> True" not in readme
+
+    # And the date in the README block is not asserted, because it is a clock reading;
+    # what is asserted is that the script no longer hardcodes one.
+    # Code only. A comment recording the old value is the record of the fix, and the
+    # first version of this assertion tripped on my own explanation of it.
+    source = (root / "scripts" / "prove_utcnow.py").read_text(encoding="utf-8")
+    code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
+    assert "datetime(2026, 9, 17" not in code, "the fixed date is back"
+    assert "timedelta(minutes=10)" in code

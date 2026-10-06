@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-28-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-29-success" alt="tests">
   <img src="https://img.shields.io/badge/files%20scanned-3%2C028-orange" alt="files">
 </p>
 
@@ -23,7 +23,8 @@ elsewhere then raises at runtime - in a function the diff never touched.
 ```
 $ python scripts/prove_utcnow.py
 
-A stored naive timestamp: 2026-09-17 12:00:00 (tzinfo=None)
+A stored naive timestamp: 2026-10-06 04:25:29 (tzinfo=None)
+  ten minutes ago, inside the one-hour session window
 
 before the fix:
   session_expired_old(stored) -> False
@@ -31,6 +32,12 @@ before the fix:
 after applying the documented replacement:
   TypeError: can't subtract offset-naive and offset-aware datetimes
 ```
+
+The timestamp is whatever ten minutes ago is, not a fixed date. It was
+`datetime(2026, 9, 17, 12, 0, 0)` against a one-hour window, so that `False`
+printed on the day it was written and `True` every day after - a documented
+output that decayed with the calendar, in the script that is supposed to be the
+runnable evidence behind the rule.
 
 So this tool classifies every rule before it will run it:
 
@@ -177,7 +184,7 @@ matters. Only the Vue front end needs npm.
 ## Run it
 
 ```bash
-uv run pytest -q                        # 28 tests
+uv run pytest -q                        # 29 tests
 uv run python scripts/prove_utcnow.py   # the demonstration
 uv run migration-pilot scan ~/code
 uv run migration-pilot rules

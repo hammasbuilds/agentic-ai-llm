@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-35-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-44-success" alt="tests">
   <img src="https://img.shields.io/badge/repos%20measured-8-orange" alt="repos">
 </p>
 

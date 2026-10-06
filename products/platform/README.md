@@ -9,7 +9,7 @@ LangGraph ones skip too when that extra is absent, each naming the package rathe
 pretending the feature is untested for some other reason.
 
 ```
-python -m pytest -q                      # 158 passed, 9 skipped
+python -m pytest -q                      # 161 passed, 12 skipped
 ```
 
 ## What is here

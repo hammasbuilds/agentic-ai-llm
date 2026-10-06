@@ -7,6 +7,7 @@ to post the plausible-looking ones.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import textwrap
 from pathlib import Path
@@ -14,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from reviewbot.checks import propose
+from reviewbot.cli import main as cli_main
 from reviewbot.review import added_lines, render, review_diff, review_source
 from reviewbot.verify import FileContext, verify
 
@@ -348,3 +350,46 @@ def test_a_rate_is_never_printed_without_its_denominator(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "files=0" in out
     assert "proposed=0" in out
+
+
+# -- a file no rule could run over is not a reviewed file ---------------------
+
+
+def test_an_unparseable_file_is_not_counted_as_reviewed(tmp_path, capsys):
+    """`propose` returned `[]` on SyntaxError, which reads as "reviewed, found nothing".
+
+    So `files=` counted work that did not happen. On the published scan two files in the
+    surveyed folder are not parseable by this interpreter, and both sat in the
+    denominator of every per-file figure looking exactly like clean code.
+    """
+    (tmp_path / "clean.py").write_text("def f(x=[]):\n    return x\n", encoding="utf-8")
+    (tmp_path / "broken.py").write_text("def broken(:\n", encoding="utf-8")
+    (tmp_path / "notpython.py").write_text("this is not python at all ((\n", encoding="utf-8")
+
+    assert cli_main(["scan", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+
+    assert "files=1" in out, out
+    assert "2 file(s) are not parseable Python and are not in that count" in out, out
+    assert "broken.py" in out and "notpython.py" in out, out
+
+
+def test_the_unparseable_count_is_in_the_json(tmp_path):
+    """The figure a reader would quote, in the machine-readable output too."""
+    (tmp_path / "clean.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "broken.py").write_text("def broken(:\n", encoding="utf-8")
+    out = tmp_path / "scan.json"
+
+    assert cli_main(["scan", str(tmp_path), "--json", str(out)]) == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+
+    assert data["files_reviewed"] == 1
+    assert data["files_unparseable"] == 1
+
+
+def test_review_source_says_whether_it_parsed(tmp_path):
+    """The state the CLI counts on, asserted where it is produced."""
+    assert review_source("a.py", "x = 1\n").parsed is True
+    assert review_source("b.py", "def broken(:\n").parsed is False
+    # And an unparseable file proposes nothing, which is why the two looked alike.
+    assert review_source("b.py", "def broken(:\n").verdicts == []

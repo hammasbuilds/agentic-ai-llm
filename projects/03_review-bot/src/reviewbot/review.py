@@ -13,7 +13,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .checks import Proposal, propose
+from .checks import Proposal, parse, propose
 from .verify import FileContext, Verdict, verify_all
 
 
@@ -22,6 +22,9 @@ class FileReview:
     path: str
     verdicts: list[Verdict] = field(default_factory=list)
     changed_lines: set[int] | None = None
+    #: False when the file could not be parsed, so no rule ran over it. "No verdicts"
+    #: and "never read" print identically otherwise.
+    parsed: bool = True
 
     @property
     def confirmed(self) -> list[Verdict]:
@@ -66,6 +69,7 @@ class Review:
 def review_source(path: str, source: str, changed_lines: set[int] | None = None) -> FileReview:
     """Propose on the whole file, verify with full context, filter to the diff."""
     context = FileContext.build(path, source)
+    parsed = parse(source) is not None
     proposals: list[Proposal] = propose(source)
 
     if changed_lines is not None:
@@ -79,6 +83,7 @@ def review_source(path: str, source: str, changed_lines: set[int] | None = None)
         path=path,
         verdicts=verify_all(context, proposals),
         changed_lines=changed_lines,
+        parsed=parsed,
     )
 
 

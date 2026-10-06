@@ -89,22 +89,27 @@ def _compare_command(args: argparse.Namespace) -> int:
 
     # Both columns, because the gap between them IS the finding. A table of only
     # repo-internal rates cannot show that the all-call-sites metric is the broken one.
+    # `repo-calls` is a rate, and a rate with no denominator beside it is not a
+    # reading: 100% over three internal call sites printed identically to 100% over
+    # three thousand, and the small repositories in a portfolio are exactly the ones
+    # that score highest for having almost nothing to resolve. `n` is that denominator.
     print(
         f"{'repo':28s} {'mods':>5s} {'defs':>6s} {'lines':>8s} "
-        f"{'all-calls':>10s} {'repo-calls':>11s}  core module"
+        f"{'all-calls':>10s} {'repo-calls':>11s} {'n':>7s}  core module"
     )
-    print("-" * 96)
+    print("-" * 104)
     for name, rep, err in rows:
         if err:
             print(
-                f"{name:28s} {'-':>5s} {'-':>6s} {'-':>8s} {'-':>10s} {'-':>11s}  "
-                f"error: {err[:30]}"
+                f"{name:28s} {'-':>5s} {'-':>6s} {'-':>8s} {'-':>10s} {'-':>11s} "
+                f"{'-':>7s}  error: {err[:30]}"
             )
             continue
         core = rep.core_modules[0].module if rep.core_modules else "-"
         print(
             f"{name:28s} {rep.modules:5d} {rep.symbols:6d} {rep.loc:8,d} "
-            f"{rep.resolution_rate:9.0%} {rep.repo_resolution_rate:10.0%}  {core}"
+            f"{rep.resolution_rate:9.0%} {rep.repo_resolution_rate:10.0%} "
+            f"{rep.in_scope_calls:7,d}  {core}"
         )
 
     # The summary the README quotes. It used to quote a median that nothing here
@@ -115,7 +120,7 @@ def _compare_command(args: argparse.Namespace) -> int:
     rates = sorted(rep.repo_resolution_rate for rep in measured)
     failed = [name for name, rep, err in rows if err]
     empty = len(repos) - len(measured) - len(failed)
-    print("-" * 96)
+    print("-" * 104)
     if rates:
         middle = len(rates) // 2
         median = rates[middle] if len(rates) % 2 else (rates[middle - 1] + rates[middle]) / 2
@@ -130,6 +135,23 @@ def _compare_command(args: argparse.Namespace) -> int:
             f"{len(measured)} repositories measured, "
             f"{sum(1 for r in rates if r >= 0.90)} at or above 90%, "
             f"median {median:.0%} repo-internal against {all_median:.0%} over all call sites"
+        )
+        # The median is over repositories, so a repository with four internal calls
+        # weighs as much as one with forty thousand. The pooled rate is the other
+        # reading, and where the two disagree the small checkouts are the reason.
+        in_scope = sum(rep.in_scope_calls for rep in measured)
+        resolved = sum(rep.resolved_calls for rep in measured)
+        thin = sum(1 for rep in measured if rep.in_scope_calls < 50)
+        if in_scope:
+            print(
+                f"  pooled over every call site: {resolved:,} of {in_scope:,} "
+                f"resolved ({resolved / in_scope:.0%})"
+            )
+        else:
+            print("  no repo-internal call sites to pool")
+        print(
+            f"  {thin} of {len(measured)} repositories have fewer than 50 internal call "
+            f"sites, where a rate is not yet a measurement"
         )
         print(
             f"{sum(rep.modules for rep in measured):,} modules, "

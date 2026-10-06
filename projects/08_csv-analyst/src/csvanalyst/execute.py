@@ -63,10 +63,48 @@ def _safe(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+class NoColumnsError(ValueError):
+    """The file has no header row, so there is nothing to make a table out of."""
+
+
+class DuplicateColumnError(ValueError):
+    """Two columns share a name, so a query naming one is ambiguous.
+
+    `a,a,a` is a real CSV and a real thing to be handed. It reached
+    `CREATE TABLE csv (a TEXT, a TEXT, a TEXT)` and came back as
+    `sqlite3.OperationalError: duplicate column name: a` with a traceback.
+
+    Refused rather than de-duplicated, because renaming the second `a` to `a_2`
+    would make every figure this tool prints about `a_2` a figure about a column
+    nobody has - which is the whole class of defect this project exists to find.
+    """
+
+
 def load(path: Path, profile: TableProfile, limit: int | None = None) -> sqlite3.Connection:
-    """Load the CSV into an in-memory table with types taken from the profile."""
+    """Load the CSV into an in-memory table with types taken from the profile.
+
+    A file with no columns used to reach `CREATE TABLE csv ()` and come back as
+    `sqlite3.OperationalError: near ")": syntax error` with a traceback - a 0-byte
+    file, or one whose first line is blank, is a wrong argument rather than a crash.
+    """
     conn = sqlite3.connect(":memory:")
     conn.row_factory = None
+
+    if not profile.columns:
+        raise NoColumnsError(
+            f"{path.name} has no header row, so it has no columns to profile "
+            f"({path.stat().st_size if path.exists() else 0} bytes)"
+        )
+
+    names = [c.name for c in profile.columns]
+    repeated = sorted({n for n in names if names.count(n) > 1})
+    if repeated:
+        raise DuplicateColumnError(
+            f"{path.name} has more than one column called "
+            + ", ".join(repr(n) for n in repeated)
+            + "; a query naming one of them would be ambiguous and this tool will not "
+            "guess which you meant"
+        )
 
     cols = ", ".join(f"{_safe(c.name)} {_sqlite_type(c)}" for c in profile.columns)
     conn.execute(f"CREATE TABLE {TABLE} ({cols})")

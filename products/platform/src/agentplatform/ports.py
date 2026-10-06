@@ -11,6 +11,8 @@ the real one will, so per-entity ordering is demonstrated rather than assumed.
 from __future__ import annotations
 
 import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -126,7 +128,13 @@ class InMemoryBus:
 
         The console reads the event feed; it must not steal messages from the
         projector that is also reading it.
+
+        `limit` is validated because the slice does not validate it: `out[-0:]` is
+        the whole list, so `GET /events?limit=0` returned every event ever, and a
+        negative limit truncated from the wrong end.
         """
+        if limit < 1:
+            raise ValueError(f"limit must be at least 1, got {limit}")
         out: list[Message] = []
         for (t, _partition), log in sorted(self._log.items()):
             if t == topic:
@@ -186,23 +194,52 @@ class InMemoryCache:
     """
 
     _values: dict = field(default_factory=dict)
+    _expiry: dict = field(default_factory=dict)
     _guard: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    #: Injectable so a test can expire a key without sleeping.
+    _clock: Callable[[], float] = field(default=time.monotonic, repr=False)
 
     def set(self, key: str, value: str, ttl_seconds: int | None = None) -> None:
         with self._guard:
             self._values[key] = value
+            self._note_expiry(key, ttl_seconds)
 
     def get(self, key: str) -> str | None:
-        return self._values.get(key)
+        with self._guard:
+            if self._has_expired(key):
+                self._values.pop(key, None)
+                self._expiry.pop(key, None)
+                return None
+            return self._values.get(key)
 
     def add(self, key: str, value: str, ttl_seconds: int | None = None) -> bool:
         """SET NX. Returns False when the key is already held — this is the lock."""
         with self._guard:
-            if key in self._values:
+            if key in self._values and not self._has_expired(key):
                 return False
             self._values[key] = value
+            self._note_expiry(key, ttl_seconds)
             return True
 
     def delete(self, key: str) -> None:
         with self._guard:
             self._values.pop(key, None)
+            self._expiry.pop(key, None)
+
+    def _note_expiry(self, key: str, ttl_seconds: int | None) -> None:
+        """Record when this key dies. TTLs were dropped entirely here.
+
+        `RedisCache` honours `ttl_seconds` and this did not, which made expiry the
+        one behavioural difference between the two implementations of the `Cache`
+        port - and `test_contract.py`, which exists to run the same assertions
+        against both, had no expiry assertion to catch it. A lock whose TTL is
+        ignored is a lock that never releases.
+        """
+        if ttl_seconds is None:
+            self._expiry.pop(key, None)
+        else:
+            self._expiry[key] = self._clock() + ttl_seconds
+
+    def _has_expired(self, key: str) -> bool:
+        deadline = self._expiry.get(key)
+        return deadline is not None and self._clock() >= deadline

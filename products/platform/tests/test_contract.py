@@ -20,6 +20,11 @@ REDIS = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
 POSTGRES = os.environ.get("POSTGRES_DSN", "postgresql://agent:agent@127.0.0.1:5432/agent")
 
 
+def _key(name: str) -> str:
+    """A cache key unique to this process, so two runs cannot collide."""
+    return f"contract:{name}:{os.getpid()}"
+
+
 def _topic(name: str) -> str:
     return f"contract-{name}-{os.getpid()}"
 
@@ -183,3 +188,42 @@ def test_the_declared_infra_extra_is_the_client_the_adapter_imports():
     assert "from kafka import" in source
     assert "kafka-python" in names, f"adapter imports `kafka`, infra declares {sorted(names)}"
     assert "confluent-kafka" not in names
+
+
+def test_both_caches_expire_a_key_when_its_ttl_passes(cache):
+    """The one behavioural difference between the two implementations of this port.
+
+    `RedisCache` honoured `ttl_seconds` and `InMemoryCache` dropped it entirely, and
+    this file - which exists to run the same assertions against both - had no expiry
+    assertion, so the difference sat in the one place designed to catch it. A lock
+    whose TTL is ignored is a lock that never releases.
+
+    One second rather than a fake clock, because the real Redis cannot be given one
+    and a contract test that only holds for the fake is the thing this file is about.
+    """
+    import time
+
+    key = _key("expiry")
+    cache.set(key, "v", ttl_seconds=1)
+    assert cache.get(key) == "v"
+
+    time.sleep(1.2)
+    assert cache.get(key) is None, "the key outlived its TTL"
+
+
+def test_both_caches_release_a_lock_when_its_ttl_passes(cache):
+    """`add` is the lock, so this is the property that matters most."""
+    import time
+
+    key = _key("lock-expiry")
+    assert cache.add(key, "worker-a", ttl_seconds=1) is True
+    assert cache.add(key, "worker-b", ttl_seconds=1) is False, "held, as it should be"
+
+    time.sleep(1.2)
+    assert cache.add(key, "worker-b", ttl_seconds=1) is True, "the lock never released"
+
+
+def test_both_caches_keep_a_key_with_no_ttl(cache):
+    key = _key("no-ttl")
+    cache.set(key, "v")
+    assert cache.get(key) == "v"

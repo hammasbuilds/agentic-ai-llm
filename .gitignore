@@ -10,3 +10,4 @@ __pycache__/
 # Output of scripts/test_all.py, regenerated on demand.
 test_all.log
 run_tests.bat
+.test_all_fresh/

@@ -124,16 +124,35 @@ def test_the_maps_still_compared_are_counted():
 
     A per-artifact skip is honest; five of them silently is this file passing while
     checking nothing.
+
+    The two reasons a map is not comparable are different and were counted as one.
+    `assert comparable >= 1` is unsatisfiable on a fresh clone, where `REPOS_ROOT` holds
+    no checkouts at all - so this test failed in exactly the configuration CI runs, and
+    the failure said "regenerate them" about artifacts that were perfectly current. It
+    was found by sweeping the tree with `REPOS_ROOT` pointed at an empty directory,
+    which is the only way to see what a reader sees.
+
+    Present-but-moved still fails, because that is the case the test is for.
     """
     import json
 
-    comparable = 0
+    present, comparable = 0, 0
     for stored in UI_DATA:
         root = REPOS_ROOT / stored.stem
         if not root.exists():
             continue
+        present += 1
         held = json.loads(stored.read_text(encoding="utf-8"))
         if held.get("at_commit") == _head_commit(root):
             comparable += 1
-    print(f"{comparable} of {len(UI_DATA)} shipped maps are at the recorded revision")
-    assert comparable >= 1, "no shipped map is still comparable; regenerate them"
+
+    print(
+        f"{comparable} of {present} present checkouts are at the recorded revision "
+        f"({len(UI_DATA)} maps shipped)"
+    )
+    if not present:
+        pytest.skip(f"no checkouts under {REPOS_ROOT}; nothing to compare against")
+    assert comparable >= 1, (
+        f"{present} of the five checkouts are here and none is at the revision its map "
+        "records; regenerate them"
+    )

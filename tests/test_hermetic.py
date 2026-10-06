@@ -153,8 +153,10 @@ def test_the_flagship_measurement_reproduces_with_no_cache_and_no_network(empty_
     tiers = out["recall"]["bm25"]["by_tier"]
 
     assert out["population"]["scored"] == 299
-    assert round(tiers["full_path"]["recall@10"] * 100, 1) == 74.5
-    assert round(tiers["not_mentioned"]["recall@10"] * 100, 1) == 8.5
+    # Fractions, not rates to one decimal: 51 instances do not support the decimal
+    # place, and the same headline was written as both 8.4% and 8.5% elsewhere.
+    assert (tiers["full_path"]["hits@10"], tiers["full_path"]["n"]) == (38, 51)
+    assert (tiers["not_mentioned"]["hits@10"], tiers["not_mentioned"]["n"]) == (13, 153)
 
 
 def test_the_readme_does_not_promise_a_download(empty_cache):

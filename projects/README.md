@@ -27,8 +27,16 @@ make it rather than asking something to guess.
 | 10 | [**contract-reader**](10_contract-reader) | Read a licence, and cite the character span behind every claim |
 | 11 | [**study-tutor**](11_study-tutor) | Spaced repetition where the scheduler is arithmetic and the model only writes questions |
 
-**452 tests across the eleven**, every one of them runnable without a network, a model or a
+**458 tests across the eleven**, every one of them runnable without a network, a model or a
 GPU. The per-package counts are in the table that `scripts/test_all.py` prints.
+
+On a fresh clone 444 run and 14 skip: `repo-cartographer` has thirteen and
+`compliance-auditor` one that read a folder of real git checkouts, named by `REPOS_ROOT`.
+That folder defaults to the one this repository sits in, so all 458 run on the machine
+they were written on - which is why the per-package lines say "passed, skipped" rather
+than a single total, and why `scripts/test_all.py --write-counts` records the counts with
+those inputs withheld. A published figure a reader cannot reproduce is not the figure to
+publish.
 
 ## Running them
 

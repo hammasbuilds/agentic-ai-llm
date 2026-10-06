@@ -182,11 +182,25 @@ class _Proposer(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+def parse(source: str) -> ast.AST | None:
+    """The file's tree, or None when it is not Python this interpreter can read.
+
+    Separated from `propose` because returning an empty proposal list made the two
+    indistinguishable: a file written for a newer syntax, or not Python at all, was
+    reported in `files=` as reviewed with nothing found, which is the same output as a
+    clean file. On a tree of 1,325 files that is a denominator counting work that did
+    not happen.
+    """
+    try:
+        return ast.parse(source)
+    except SyntaxError:
+        return None
+
+
 def propose(source: str) -> list[Proposal]:
     """Every suspicion in one file. Over-eager by design."""
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
+    tree = parse(source)
+    if tree is None:
         return []
     proposer = _Proposer(source.splitlines())
     proposer.visit(tree)

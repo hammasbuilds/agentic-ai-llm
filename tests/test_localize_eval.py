@@ -5,7 +5,7 @@ code". Every piece was here and nothing composed them: `evaluate.print_report`,
 `trees.commit_listings`, `trees.listing_for`, `trees.fetch_at_commit` and
 `differential.find_many` had no caller anywhere in the repository, which is the
 fingerprint of a driver that was run on this machine and never committed. The headline
-— BM25 at 74.5% when the issue quotes the file path and 8.5% when it does not — could
+— BM25 at 38 of 51 when the issue quotes the file path and 13 of 153 when it does not — could
 not be reproduced from the repository stating it.
 
 `localize_eval` is that driver, and these are the properties worth holding:
@@ -144,18 +144,31 @@ def test_the_per_commit_repair_adds_instances_rather_than_improving_the_score():
 
 @needs_data
 def test_bm25_reproduces_the_headline_the_root_readme_states():
-    """74.5% when the issue quotes the path, 8.5% when it does not."""
+    """38 of 51 when the issue quotes the path, 13 of 153 when it does not.
+
+    Pinned as fractions, not as rates. The README quoted `74.5%` on 51 instances, where
+    one instance is two percentage points, so the decimal place was a digit the sample
+    could not support - and the same headline appeared elsewhere as `8.4%`, which is
+    13/153 rounded the wrong way. A fraction cannot be rounded wrongly, and it is the
+    form the tier table now prints.
+    """
     out = le.run()
     tiers = out["recall"]["bm25"]["by_tier"]
 
     assert out["population"]["scored"] == 299
-    assert round(tiers["full_path"]["recall@10"] * 100, 1) == 74.5
-    assert round(tiers["not_mentioned"]["recall@10"] * 100, 1) == 8.5
+    assert (tiers["full_path"]["hits@10"], tiers["full_path"]["n"]) == (38, 51)
+    assert (tiers["not_mentioned"]["hits@10"], tiers["not_mentioned"]["n"]) == (13, 153)
+    assert (tiers["basename"]["hits@10"], tiers["basename"]["n"]) == (12, 18)
+    assert (tiers["stem_only"]["hits@10"], tiers["stem_only"]["n"]) == (39, 77)
+    # The four tiers are the whole scored population, so none of them is a subset
+    # quietly standing in for the rest.
+    assert sum(t["n"] for t in tiers.values()) == 299
     assert tiers["full_path"]["recall@10"] > tiers["not_mentioned"]["recall@10"] * 8
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "74.5%" in readme
-    assert "8.5%" in readme, "the README said 8.4%, which is 13/153 rounded the wrong way"
+    assert "75% (38 of 51)" in readme
+    assert "8.5% (13 of 153)" in readme, "it said 8.4%, which is 13/153 rounded the wrong way"
+    assert "74.5%" not in readme, "the over-precise form is back"
 
 
 # -- one implementation per arm -------------------------------------------

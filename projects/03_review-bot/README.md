@@ -4,15 +4,15 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-40-success" alt="tests">
-  <img src="https://img.shields.io/badge/files%20measured-1%2C325-orange" alt="files">
+  <img src="https://img.shields.io/badge/tests-43-success" alt="tests">
+  <img src="https://img.shields.io/badge/files%20measured-2%2C110-orange" alt="files">
 </p>
 
 ---
 
 ## Results
 
-**Across 2,105 source files, 33% of the findings this reviewer would have posted were
+**Across 2,110 source files, 33% of the findings this reviewer would have posted were
 wrong — and for one rule, every single one of them was.**
 
 ```
@@ -27,8 +27,9 @@ $ review-bot scan <folder of checkouts>
     mutable-default              2 / 2     0% retracted
 
 ==============================================================================
-  SOURCE FILES ONLY: files=2,105  proposed=414  confirmed=277  retracted=137 (33%)
-  (923 test files skipped; pass --include-tests to review them)
+  SOURCE FILES ONLY: files=2,110  proposed=414  confirmed=277  retracted=137 (33%)
+  2 file(s) are not parseable Python and are not in that count: ...
+  (926 test files skipped; pass --include-tests to review them)
 ```
 
 That `SOURCE FILES ONLY` line used to be quoted here in a format the command never
@@ -36,7 +37,12 @@ printed, over a population the command never counted: `scan` reported per-rule p
 and confirmations and no file total at all. It prints the denominator now, with the test
 files it skipped and any file it could not read, because a retraction rate with no file
 count under it is not a readable number. Re-run over the folder as it stands, 1,325 files
-became 2,105 and 24% retracted became 33%. Measured 2026-10-06 — a folder of live
+became 2,110 and 24% retracted became 33%.
+
+The two unparseable files are excluded rather than counted. `propose` returned an empty
+list on `SyntaxError`, so a file no rule could run over printed as a reviewed file with
+nothing found - identical output to a clean one, and work that did not happen sitting in
+the denominator of every per-file figure. Measured 2026-10-06 — a folder of live
 checkouts, so the file count moves with it. What has not moved across re-runs is
 which rule is retracted and which is not.
 
@@ -175,7 +181,7 @@ findings it had not checked, which is the failure this project is built to avoid
 ## Run it
 
 ```bash
-uv run pytest -q                              # 40 tests
+uv run pytest -q                              # 43 tests
 uv run review-bot scan <path> --show-retracted
 uv run review-bot diff <repo> --ref HEAD~1
 uv run python ui/server.py                    # then: cd ui && npm install && npm run dev

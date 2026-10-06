@@ -35,9 +35,19 @@ def session_expired_fixed(last_seen: datetime) -> bool:
 def main() -> int:
     # A naive timestamp, the kind already sitting in a database column or
     # deserialised from JSON somewhere else in the application.
-    stored = datetime(2026, 9, 17, 12, 0, 0)
+    #
+    # Relative to now, not a fixed date. It was `datetime(2026, 9, 17, 12, 0, 0)`
+    # against a one-hour window, so the "before the fix" line printed False on the day
+    # it was written and True every day after - a documented output that decayed with
+    # the calendar, in a script whose whole job is to be the runnable evidence behind a
+    # rule. Ten minutes ago is inside the window for ever.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        stored = datetime.utcnow() - timedelta(minutes=10)  # noqa: DTZ003 - the point
+    stored = stored.replace(microsecond=0)
 
     print("A stored naive timestamp:", stored, f"(tzinfo={stored.tzinfo})")
+    print("  ten minutes ago, inside the one-hour session window")
     print()
 
     print("before the fix:")

@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-47-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-46%20%2B%201%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/repos%20audited-78-orange" alt="repos">
 </p>
 
@@ -155,7 +155,7 @@ build step, the `.js` file in `ui/` is the source that runs.
 ## Run it
 
 ```bash
-uv run pytest -q                              # 47 tests
+uv run pytest -q                              # 46 passed, 1 skipped
 uv run compliance-auditor audit ~/code
 uv run compliance-auditor policy
 uv run python ui/serve.py                     # :8100

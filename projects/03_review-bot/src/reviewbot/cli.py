@@ -63,6 +63,7 @@ def _scan_command(args: argparse.Namespace) -> int:
     skipped_tests = 0
     reviewed = 0
     unreadable = 0
+    unparsed: list[str] = []
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", SyntaxWarning)
@@ -79,8 +80,13 @@ def _scan_command(args: argparse.Namespace) -> int:
                 shown = str(path.relative_to(target))
             except ValueError:
                 shown = str(path)
-            reviewed += 1
             file_review = review_source(shown, source)
+            if not file_review.parsed:
+                # Not reviewed: no rule ran over it. Counting it in `files=` put work
+                # that did not happen into the denominator of every per-file figure.
+                unparsed.append(shown)
+                continue
+            reviewed += 1
             if file_review.verdicts:
                 review.files.append(file_review)
 
@@ -98,6 +104,13 @@ def _scan_command(args: argparse.Namespace) -> int:
     )
     if unreadable:
         print(f"  {unreadable} file(s) could not be read and are not in that count")
+    if unparsed:
+        shown = ", ".join(sorted(unparsed)[:3])
+        more = f" and {len(unparsed) - 3} more" if len(unparsed) > 3 else ""
+        print(
+            f"  {len(unparsed)} file(s) are not parseable Python and are not in that "
+            f"count: {shown}{more}"
+        )
     if skipped_tests:
         print(f"  ({skipped_tests} test files skipped; pass --include-tests to review them)")
 
@@ -112,6 +125,7 @@ def _scan_command(args: argparse.Namespace) -> int:
                     "files_reviewed": reviewed,
                     "test_files_skipped": skipped_tests,
                     "files_unreadable": unreadable,
+                    "files_unparseable": len(unparsed),
                     "by_rule": {
                         k: {"proposed": p, "confirmed": c}
                         for k, (p, c) in review.by_rule().items()

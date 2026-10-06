@@ -41,6 +41,15 @@ def lock(entity_type: str, entity_id: str, ttl_seconds: int = 60) -> Key:
     The TTL is short on purpose: a worker killed mid-generation must not hold a
     record hostage. Renew it from a heartbeat rather than raising it.
     """
+    # Both bounds. Only the upper one was checked, so `lock(..., ttl_seconds=0)` was
+    # accepted and returned a key with no expiry at all - in a module whose own
+    # docstring says "a lock without one is an outage". A lock that never expires is
+    # the failure the upper bound exists to prevent, taken to its limit.
+    if ttl_seconds < 1:
+        raise ValueError(
+            f"a lock needs a TTL, got {ttl_seconds}: without one a worker killed "
+            "mid-generation holds the record for ever"
+        )
     if ttl_seconds > 300:
         raise ValueError(
             "a lock held longer than five minutes is an outage waiting to happen; "

@@ -75,9 +75,21 @@ def test_writing_to_a_cache_that_is_not_there_is_not_an_error():
     run(cache.put_generation("m", "p", 0.0, None, "an answer"))
 
 
-def test_cache_stats_reports_zeroes_rather_than_raising():
+def test_cache_stats_reports_no_hit_rate_rather_than_a_zero_one():
+    """`hit_rate` is None with no Redis, not 0.0.
+
+    Zero is the rate of a cache that missed every time. Reporting it for a cache that
+    was never reachable makes the badge say the cache is useless when what happened is
+    that there is no cache, and the two want different actions from the reader.
+    """
     stats = run(cache.cache_stats())
-    assert stats == {"generations": 0, "hit_rate": 0.0, "hits": 0, "misses": 0}
+    assert stats == {
+        "generations": 0,
+        "hit_rate": None,
+        "hits": 0,
+        "misses": 0,
+        "lookups": 0,
+    }
 
 
 def test_reading_a_job_that_was_never_written_is_none():
@@ -125,9 +137,17 @@ def no_model(monkeypatch: pytest.MonkeyPatch):
     model, so a test that called `generate` would occupy the GPU and take minutes, and
     one that asserted `available() is False` would fail here and pass in CI for the
     wrong reason. A closed port is the same code path and costs nothing.
+
+    `forget_tags()` because a successful listing is now cached for `TAGS_TTL`, so on
+    this machine a test that ran earlier and reached the real Ollama would leave that
+    answer behind and `available()` would report True from the cache without ever
+    touching the closed port. Pointing the URL somewhere else is not enough once there
+    is a cache in front of it.
     """
     monkeypatch.setattr(model, "OLLAMA", "http://127.0.0.1:1")
-    return model
+    model.forget_tags()
+    yield model
+    model.forget_tags()
 
 
 def test_the_model_reports_itself_unavailable(no_model):
@@ -581,3 +601,95 @@ def test_the_broker_is_configured_for_the_partitioning_the_readme_claims():
     assert 'KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"' in compose, (
         "auto-created topics are what pick this count up"
     )
+
+
+# -- the tag listing, which every page render asks for -------------------------
+
+
+class _FakeResponse:
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {"models": [{"name": "qwen2.5-coder:14b"}]}
+
+
+def test_a_successful_tag_listing_is_not_fetched_again_on_the_next_call(monkeypatch):
+    """`_tags` was assigned and read by nothing.
+
+    So the down-memory covered the machine with no Ollama, and the machine *with* one
+    paid an HTTP round trip on every call - while `health()` is called by every page
+    handler of all ten apps. Measured against a server on localhost it was 0.29s a
+    render, three times the cost of everything else on the page put together.
+    """
+    model.forget_tags()
+    calls: list[str] = []
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url):
+            calls.append(url)
+            return _FakeResponse()
+
+    monkeypatch.setattr(model.httpx, "AsyncClient", lambda **kw: FakeClient())
+    try:
+        assert run(model.tags()) == ("qwen2.5-coder:14b",)
+        assert run(model.tags()) == ("qwen2.5-coder:14b",)
+        assert run(model.tags()) == ("qwen2.5-coder:14b",)
+        assert len(calls) == 1, f"fetched {len(calls)} times, not once"
+    finally:
+        model.forget_tags()
+
+
+def test_a_server_that_went_away_is_still_reported_up_for_as_long_as_the_ttl(monkeypatch):
+    """The cost of the cache, measured rather than asserted away.
+
+    The TTL check happens before any probe, so inside the window `tags()` makes no
+    request and cannot know the server has gone: `available()` returns True and the Run
+    button stays enabled for a model nobody can generate with. That is inherent to
+    caching the answer, and the only thing that bounds it is how long the TTL is.
+
+    The first version of this test called `forget_tags()` before the second lookup,
+    which cleared exactly the state under test - it passed against the stale-serving
+    code and against the correct code alike, which is to say it asserted nothing. What
+    is checked instead is the window itself: five seconds by default, so a reader who
+    raises it to five minutes sees here what they are buying.
+    """
+    assert model.TAGS_TTL <= 5.0, (
+        f"the badge can be wrong about a dead server for {model.TAGS_TTL}s; "
+        "that window is the whole cost of caching the tag listing"
+    )
+
+    model.forget_tags()
+    state = {"up": True}
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url):
+            if not state["up"]:
+                raise model.httpx.ConnectError("gone")
+            return _FakeResponse()
+
+    monkeypatch.setattr(model.httpx, "AsyncClient", lambda **kw: FakeClient())
+    try:
+        assert run(model.tags()) == ("qwen2.5-coder:14b",)
+        state["up"] = False
+        # Inside the TTL: no request, so the old answer. Named, not hidden.
+        assert run(model.available("qwen2.5-coder:14b")) is True
+
+        # Past it, the next lookup probes and finds the server gone.
+        monkeypatch.setattr(model, "_tags_until", 0.0)
+        assert run(model.tags()) == ()
+        assert run(model.available("qwen2.5-coder:14b")) is False
+    finally:
+        model.forget_tags()
