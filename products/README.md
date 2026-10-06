@@ -259,7 +259,31 @@ docker compose up -d
 `adapters/` binds the ports to the real thing — `RedisCache`, `KafkaBus`, `PostgresStore`.
 The contract tests in `platform/tests/test_contract.py` run the *same* assertions against
 the in-memory implementations and against these, and skip the real ones when the service is
-down. A contract test that only ever runs against a fake is a test of the fake.
+down, each skip naming whether the client library is missing or the service did not answer.
+A contract test that only ever runs against a fake is a test of the fake.
+
+**No product binds them.** Every `runtime()` in `products/[0-9][0-9]_*` constructs
+`InMemoryBus()` and `InMemoryStore()`, including on the serving path, and
+`grep -rn "KafkaBus(\|PostgresStore(\|RedisCache(" products/[0-9][0-9]_*` returns one hit
+in twenty products — a measurement script in `13_swarm-lab`. So compose brings up three
+services that nothing dials, and the line at the top of this file about "an operator
+console over a real API, over a real event bus, over a real store" describes the ports
+rather than the wiring. The adapters are tested against the real three and used by none of
+them.
+
+What else is declared and not consulted, named rather than left to a reader to find:
+
+| Declared | Reality |
+|---|---|
+| Six Redis key builders in `keys.py` | only `lock` has a caller in a product or app. `llmcache` is called from `llm.Cached`, which nothing constructs, so it is unused transitively; `ctx`, `idem`, `budget` and `live` have no caller at all |
+| Per-product Redis key tables and Postgres schemas in all twenty READMEs | `PostgresStore` is one generic table, `agent_rows(tbl, key, row)`, and the only logical tables written are `runs` and `checkpoints` |
+| `llm.Cached` and `llm.Budgeted` | wrappers with no product constructing them |
+| `blueprint`'s `UNDER_CORROBORATED` gate | reachable - `01_revenue-desk` passes `state.get("min_sources", 1)` - but nothing in any product or test ever sets that key above 1, so the check `gate.py` calls "the only one most systems check" has never fired |
+| `graphs.to_langgraph` | correct and tested, and no product's serving path calls it |
+| `InMemoryBus.rewind` and `.in_flight` | used by tests only; `admission.Controller.in_flight` is a different thing and is used |
+
+These are a platform built ahead of the products on it, which is a defensible order to
+build in and an indefensible thing to leave undocumented.
 
 Two bugs that only a real broker could have found, both now fixed and both with a test:
 

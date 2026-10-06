@@ -105,7 +105,12 @@ shipped beside it covered five of those rows.
   when written from the implementation. From the task description, just 16% even agree with
   the reference.
 - **Describing the reference code and reimplementing from that beats MBPP's own description
-  by 32.5 points.** That is a leak, not better documentation.
+  by 32.5 points.** That is a leak, not better documentation — and 32.5 is an upper bound
+  on it. App 10's description-only baseline is the one place in this repository that does
+  not hand the model one of MBPP's own asserts, which is why app 04 reports the same 14B
+  at 76.0% on the task description where app 10 reports 48.0%. A `direct_with_test` arm
+  now sits between them; the share of the 32.5 that is the assert rather than the leak is
+  unmeasured until it runs.
 
 ## Architecture
 
@@ -134,7 +139,10 @@ page in every app does exactly that.
 
 **Why one worker.** One GPU means one job at a time. Making that explicit beats letting ten
 web processes each start a run and discover the constraint by thrashing VRAM. Partitioning
-by app keeps a long sweep from starving a short one.
+by app keeps a long sweep from starving a short one — which needed
+`KAFKA_NUM_PARTITIONS: 10` in compose to be true. It was unset, so the broker's default
+of **one** applied and all ten apps shared a single FIFO queue: the exact opposite of the
+claim, with nothing in the repository to say so.
 
 **Redis is load-bearing, not decoration.** Several apps ask the model identical questions —
 the first-attempt prompt in Repair-or-Rewrite is the same one Size Curve sends. Keyed on

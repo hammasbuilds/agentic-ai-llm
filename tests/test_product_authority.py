@@ -140,3 +140,106 @@ def test_the_index_counts_the_routes_the_api_registers():
         f"the index says {stated.group(1)} routes; api.py declares {decorated}"
     )
     assert decorated == 10, "the index and this assertion must move together"
+
+
+# -- what the platform declares and the products do not use ---------------
+
+
+def _product_sources() -> str:
+    return "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for folder in sorted(ROOT.glob("products/[0-9][0-9]_*"))
+        for path in folder.rglob("*.py")
+        if "__pycache__" not in path.parts and ".venv" not in path.parts
+    )
+
+
+def test_no_product_binds_a_real_adapter_on_its_serving_path():
+    """Compose brings up Postgres, Redis and Kafka that nothing dials.
+
+    Every `runtime()` constructs `InMemoryBus()` and `InMemoryStore()`, including the
+    path `main()` serves from, and the index's opening line sells "an operator console
+    over a real API, over a real event bus, over a real store". That describes the
+    ports, not the wiring. The index says so now; this asserts it stays true or the
+    index changes with it.
+    """
+    import re
+
+    sources = _product_sources()
+    constructed = re.findall(r"\b(KafkaBus|PostgresStore|RedisCache)\(", sources)
+    assert len(constructed) == 1, f"{len(constructed)} real-adapter constructions: {constructed}"
+
+    index = (ROOT / "products" / "README.md").read_text(encoding="utf-8")
+    assert "**No product binds them.**" in index
+
+
+@pytest.mark.parametrize("builder", ["ctx", "idem", "budget", "live"])
+def test_the_key_builders_the_index_calls_unused_have_no_callers(builder):
+    """Four of six. The module docstring argues for each of them."""
+    import re
+
+    sources = _product_sources() + "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in (ROOT / "apps").rglob("*.py")
+        if "__pycache__" not in path.parts
+    )
+    assert not re.search(rf"keys\.{builder}\(", sources), (
+        f"keys.{builder} has a caller now; the index table needs updating"
+    )
+
+
+def test_the_one_key_builder_with_a_real_caller_still_has_one():
+    """So the table is not just a list of everything.
+
+    `lock` is the only one of the six called from a product or an app. `llmcache` is
+    called from `llm.Cached`, which no product constructs - so it is reachable in the
+    platform and unused in practice, which is a third state the first version of this
+    test had no name for and asserted away.
+    """
+    import re
+
+    sources = _product_sources() + "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in (ROOT / "apps").rglob("*.py")
+        if "__pycache__" not in path.parts
+    )
+    assert re.search(r"keys\.lock\(", sources), "keys.lock lost its caller"
+
+    platform = (ROOT / "products" / "platform" / "src" / "agentplatform" / "llm.py").read_text(
+        encoding="utf-8"
+    )
+    assert "keys.llmcache(" in platform, "llmcache's only caller is llm.Cached"
+    assert not re.search(r"keys\.llmcache\(", sources), (
+        "llmcache now has a product caller; the index table needs updating"
+    )
+
+
+def test_the_corroboration_gate_has_never_been_able_to_fire():
+    """`gate.py` calls it "the only one most systems check" and `min_sources` is 1.
+
+    Reachable - revenue-desk passes `state.get("min_sources", 1)` - and nothing in any
+    product or test sets that key above 1, so the check has never run.
+    """
+    import re
+
+    sources = _product_sources()
+    raised = [
+        line
+        for line in sources.splitlines()
+        if "min_sources" in line and not re.search(r'min_sources", 1\)|min_sources=state', line)
+    ]
+    assert raised == [], f"min_sources is set somewhere now: {raised}"
+
+    index = (ROOT / "products" / "README.md").read_text(encoding="utf-8")
+    assert "has never fired" in index
+
+
+def test_the_declared_and_unused_table_lists_every_row_it_should():
+    """A table of what is unwired is itself a claim, so its shape is pinned."""
+    index = (ROOT / "products" / "README.md").read_text(encoding="utf-8")
+    table = index[index.index("| Declared | Reality |") :]
+    table = table[: table.index("\n\n")]
+    rows = [line for line in table.splitlines() if line.startswith("|")][2:]
+    assert len(rows) == 6, f"{len(rows)} rows in the unwired table"
+    for needle in ("keys.py", "agent_rows", "llm.Cached", "UNDER_CORROBORATED", "to_langgraph"):
+        assert needle in table, needle

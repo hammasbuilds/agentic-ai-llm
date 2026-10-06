@@ -13,6 +13,20 @@ That is not a model writing good documentation. It is a leak. The description wa
 type, empty-input behaviour, tie-breaking. MBPP's descriptions average 78 characters; the
 model's average 445.
 
+**How much of the 32.5 is the leak is not yet measured, and the gap is an upper bound.**
+This app's `direct` arm is the only MBPP-from-description baseline in the repository that
+does *not* hand the model one of MBPP's own asserts; apps 04, 05, 07, 08 and 09 all do,
+which is why app 04 reports the same 14B at 76.0% where this one reports 48.0%. An assert
+pins the signature, the return type and one input/output pair - exactly the decisions this
+docstring credits the description with carrying. A `direct_with_test` arm exists now and
+sits between the two; until it runs, the honest claim is that the roundtrip beats a
+description-only baseline by 32.5 points and beats a description-plus-assert baseline by
+some smaller amount.
+
+Added as a third arm rather than by changing either of the other two, so the published
+48.0% and 76.0% stay reproducible and the confound becomes a measurement instead of an
+argument.
+
 The practical consequence is worth stating plainly: **a docstring generated from an
 implementation cannot be used to evaluate that implementation.** It is downstream of the
 code and agrees with it by construction.
@@ -52,13 +66,40 @@ IMPLEMENT = """Write a Python function named `{entry}` that does exactly this:
 Output ONLY the function definition and any imports it needs. No explanation, no tests.
 """
 
+#: The same prompt plus one of MBPP's own asserts, which is what apps 04, 05, 07, 08
+#: and 09 hand the model and this app's `direct` arm does not.
+#:
+#: That asymmetry was invisible and load-bearing. App 04 reports the 14B at 76.0% from
+#: a task description; this app reports 48.0% for the same thing, and the root README
+#: prints both while attributing the whole 32.5-point gap to a leak in the generated
+#: description. An assert pins the signature, the return type and one input/output
+#: pair, so some unmeasured share of those 32.5 points is the assert rather than the
+#: leak - and app 08 exists to measure prompt sensitivity, which nobody had applied to
+#: the repository's own cross-app baselines.
+#:
+#: Added as a third arm rather than by changing either of the other two: replacing the
+#: `direct` arm would make the published 48.0% unreproducible, and dropping the assert
+#: from app 04 would do the same to its 76.0%. With three arms a future run resolves
+#: the confound instead of arguing about it.
+IMPLEMENT_WITH_TEST = """Write a Python function named `{entry}` that does exactly this:
+
+{description}
+
+It must satisfy this test:
+{test}
+
+Output ONLY the function definition and any imports it needs. No explanation, no tests.
+"""
+
 
 async def runner(params: dict, emit) -> dict:
     limit = int(params.get("limit", 50))
     tasks = load("mbpp", limit)
     loop = asyncio.get_running_loop()
     n = len(tasks)
-    total = n * 3
+    # Four passes now: describe, then three implementation arms. It was three, and
+    # a progress bar that reaches its end before the work does is its own small lie.
+    total = n * 4
 
     async def progress(done: int, _t: int) -> None:
         await emit(done, total, f"describing {done}/{n}")
@@ -73,10 +114,14 @@ async def runner(params: dict, emit) -> dict:
     await emit(n, total, "descriptions written")
 
     arms: dict[str, list[str]] = {}
-    for idx, arm in enumerate(["direct", "roundtrip"], start=1):
+    for idx, arm in enumerate(["direct", "direct_with_test", "roundtrip"], start=1):
         raws = await model.generate_many(
             [
-                IMPLEMENT.format(
+                IMPLEMENT_WITH_TEST.format(
+                    entry=t.entry_point, description=t.prompt, test=t.tests[0]
+                )
+                if arm == "direct_with_test"
+                else IMPLEMENT.format(
                     entry=t.entry_point,
                     description=t.prompt if arm == "direct" else descs[t.task_id],
                 )

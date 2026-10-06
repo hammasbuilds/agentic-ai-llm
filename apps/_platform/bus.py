@@ -150,7 +150,9 @@ async def emit_completed(job_id: str, app: str, result: dict) -> None:
         )
 
 
-def consumer(topic: str, group: str, from_beginning: bool = False) -> AIOKafkaConsumer:
+def consumer(
+    topic: str, group: str, from_beginning: bool = False, commit: bool = True
+) -> AIOKafkaConsumer:
     return AIOKafkaConsumer(
         topic,
         bootstrap_servers=BOOTSTRAP,
@@ -159,7 +161,10 @@ def consumer(topic: str, group: str, from_beginning: bool = False) -> AIOKafkaCo
         # `earliest` is what makes the completed topic a replayable results database
         # rather than a notification stream.
         auto_offset_reset="earliest" if from_beginning else "latest",
-        enable_auto_commit=True,
+        # A throwaway group that commits leaves an offset behind for ever. `/history`
+        # creates a fresh `replay-{uuid}` group on every render, so committing meant
+        # one permanent entry in `__consumer_offsets` per page view.
+        enable_auto_commit=commit,
     )
 
 
@@ -169,23 +174,35 @@ async def replay_completed(app: str | None = None, limit: int = 200) -> list[dic
     This is the property that justifies a log over a queue: an hour of GPU time is
     recoverable from `jobs.completed` after any crash, redeploy or schema change.
     """
-    out: list[dict] = []
-    c = consumer(TOPIC_COMPLETED, group=f"replay-{uuid.uuid4().hex[:8]}", from_beginning=True)
+    # A bounded window over the WHOLE log, not the first `limit` records in it. The
+    # loop used to stop at `len(out) < limit` reading from offset 0, so `out[-limit:]`
+    # was a no-op and this returned the OLDEST matches: past 200 completions for an
+    # app, "Replayed from the Kafka log" showed the first 200 ever and never the
+    # recent ones. A deque keeps the memory bound while reading to the end.
+    from collections import deque  # noqa: PLC0415
+
+    window: deque[dict] = deque(maxlen=limit)
+    c = consumer(
+        TOPIC_COMPLETED,
+        group=f"replay-{uuid.uuid4().hex[:8]}",
+        from_beginning=True,
+        commit=False,
+    )
     try:
         await c.start()
     except (KafkaError, OSError, AssertionError):
         with contextlib.suppress(Exception):
             await c.stop()  # same half-started client as the producer above
-        return out
+        return []
     try:
-        while len(out) < limit:
-            batch = await c.getmany(timeout_ms=1500, max_records=100)
+        while True:
+            batch = await c.getmany(timeout_ms=1500, max_records=500)
             if not batch:
                 break
             for records in batch.values():
                 for rec in records:
                     if app is None or rec.value.get("app") == app:
-                        out.append(rec.value)
+                        window.append(rec.value)
     finally:
         await c.stop()
-    return out[-limit:]
+    return list(window)

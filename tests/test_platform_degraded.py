@@ -511,3 +511,73 @@ def test_the_repository_picker_says_why_it_is_empty():
     assert "data/trees" in module._repo_hint([])
     populated = module._repo_hint([("a/b", "a/b"), ("c/d", "c/d")])
     assert populated.startswith("2 repositories")
+
+
+# -- the replay window, and the partition count that was never set --------
+
+
+def test_the_replay_keeps_the_most_recent_not_the_oldest():
+    """It returned the OLDEST matches, for ever.
+
+    The loop stopped at `len(out) < limit` while reading from offset 0, so the
+    trailing `out[-limit:]` was a no-op. Past 200 completions for an app, "Replayed
+    from the Kafka log" showed the first 200 ever and never the recent ones - on a
+    topic kept for a year precisely so that old records accumulate.
+
+    Asserted on the shape rather than against a broker, because no Kafka runs here:
+    a deque with `maxlen` keeps the last N of whatever it is fed, and the loop now
+    reads to the end of the log.
+    """
+    from collections import deque
+
+    source = (ROOT / "apps" / "_platform" / "bus.py").read_text(encoding="utf-8")
+    body = source[source.index("async def replay_completed") :]
+
+    assert "deque" in body and "maxlen=limit" in body
+    assert "while len(out) < limit" not in body, "the early stop is back"
+    assert "while True:" in body
+    assert "return list(window)" in body
+
+    # The property itself, over the structure the loop uses.
+    window: deque[int] = deque(maxlen=3)
+    for value in range(10):
+        window.append(value)
+    assert list(window) == [7, 8, 9], "a maxlen deque keeps the newest"
+
+
+def test_a_throwaway_replay_group_does_not_commit_offsets():
+    """`/history` creates a fresh `replay-{uuid}` group on every render.
+
+    With auto-commit on, each page view left one permanent entry in
+    `__consumer_offsets` - unbounded growth from a read-only view.
+    """
+    source = (ROOT / "apps" / "_platform" / "bus.py").read_text(encoding="utf-8")
+    assert "commit: bool = True" in source
+    assert "enable_auto_commit=commit" in source
+
+    body = source[source.index("async def replay_completed") :]
+    assert "commit=False" in body, "the replay group commits again"
+
+
+def test_the_broker_is_configured_for_the_partitioning_the_readme_claims():
+    """`num.partitions` was unset, so Kafka's default is ONE.
+
+    `bus.submit` keys `jobs.requested` by app name so that one app's long sweep
+    occupies one partition and cannot delay another's short run, and the README's
+    diagram says "partitioned by app". With one partition that is a single FIFO queue
+    shared by all ten apps - the opposite of the claim, and nothing in the repository
+    would have said so.
+    """
+    import re
+
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    stated = re.search(r"KAFKA_NUM_PARTITIONS:\s*(\d+)", compose)
+    assert stated, "num.partitions is unset again, so the broker default is 1"
+
+    apps = sorted(p for p in (ROOT / "apps").iterdir() if p.name[0].isdigit())
+    assert int(stated.group(1)) >= len(apps), (
+        f"{stated.group(1)} partitions for {len(apps)} apps: two apps would share one"
+    )
+    assert 'KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"' in compose, (
+        "auto-created topics are what pick this count up"
+    )

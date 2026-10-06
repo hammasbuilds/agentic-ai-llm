@@ -39,6 +39,13 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Ten, one per app, because `bus.submit` keys `jobs.requested` by app name so
+      # that one app's long sweep occupies one partition and cannot delay another's
+      # short run. This was unset, which means Kafka's default of ONE - so the README
+      # line "partitioned by app keeps a long sweep from starving a short one"
+      # described the exact opposite of what shipped: a single FIFO queue shared by
+      # all ten. Auto-created topics take this as their partition count.
+      KAFKA_NUM_PARTITIONS: 10
       # jobs.completed is the replayable record of every measurement ever run here,
       # so it is kept for a year rather than the default week.
       KAFKA_LOG_RETENTION_HOURS: 8760

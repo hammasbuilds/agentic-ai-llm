@@ -106,7 +106,7 @@ STATED_FIGURES: dict[str, int] = {
     "07_repair_rewrite": 7,
     "08_prompt_shapes": 3,
     "09_temperature": 3,
-    "10_roundtrip": 7,
+    "10_roundtrip": 13,
 }
 
 NUMBER = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)%?(?![\w])")
@@ -403,3 +403,65 @@ def test_app_03_still_declines_to_quote_a_model_accuracy():
     assert unexplained == set(), (
         f"figures in the paragraph with no source in the committed run: {sorted(unexplained)}"
     )
+
+
+# -- the prompt asymmetry between apps ------------------------------------
+
+
+def test_which_apps_hand_the_model_one_of_the_benchmarks_asserts():
+    """It was invisible and it was load-bearing.
+
+    App 04 reports the 14B at 76.0% on MBPP from its task description; app 10 reports
+    48.0% for the same thing. App 04's prompt carries "It must satisfy this test:
+    {test}" and app 10's `direct` arm does not - an assert pins the signature, the
+    return type and one input/output pair. The root README prints both figures and
+    attributes the whole 32.5-point gap to a leak in the generated description.
+
+    Pinned as a table, so adding or removing the assert from any app is a deliberate
+    edit here. App 08 exists to measure prompt sensitivity and nobody had applied it
+    to the repository's own cross-app baselines.
+    """
+    carries_assert = {
+        app.name: "It must satisfy this test" in (app / "app.py").read_text(encoding="utf-8")
+        for app in APPS
+    }
+    assert carries_assert == {
+        "01_localizer": False,
+        "02_false_accepts": False,
+        "03_vuln_baseline": False,
+        "04_size_curve": True,
+        "05_debug_ceiling": True,
+        "06_kill_rate": False,
+        "07_repair_rewrite": True,
+        "08_prompt_shapes": True,
+        "09_temperature": True,
+        "10_roundtrip": True,  # in `direct_with_test` only, which is the point
+    }, carries_assert
+
+
+def test_app_10_has_the_arm_that_resolves_the_confound():
+    """Three arms, not two, and the description-only one is unchanged.
+
+    Replacing `direct` would make the published 48.0% unreproducible and dropping the
+    assert from app 04 would do the same to its 76.0%, so the third condition is added
+    rather than either being edited.
+    """
+    app = next(a for a in APPS if a.name == "10_roundtrip")
+    source = (app / "app.py").read_text(encoding="utf-8")
+
+    assert 'IMPLEMENT_WITH_TEST = """' in source
+    assert '["direct", "direct_with_test", "roundtrip"]' in source
+    assert "total = n * 4" in source, "the progress bar has to count four passes"
+
+    text = flat(regions(app)["docstring"])
+    assert "32.5 is" in text or "32.5 points" in text
+    assert "upper bound" in text, "the gap has to be stated as a bound until it is measured"
+
+
+def test_the_root_readme_states_the_confound_too():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    bullet = readme[readme.index("Describing the reference code") :]
+    bullet = bullet[: bullet.index("\n\n")]
+    assert "upper bound" in bullet
+    assert "76.0%" in bullet and "48.0%" in bullet
+    assert "direct_with_test" in bullet
