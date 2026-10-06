@@ -36,7 +36,9 @@ printed, over a population the command never counted: `scan` reported per-rule p
 and confirmations and no file total at all. It prints the denominator now, with the test
 files it skipped and any file it could not read, because a retraction rate with no file
 count under it is not a readable number. Re-run over the folder as it stands, 1,325 files
-became 2,105 and 24% retracted became 33%.
+became 2,105 and 24% retracted became 33%. Measured 2026-10-06 — a folder of live
+checkouts, so the file count moves with it. What has not moved across re-runs is
+which rule is retracted and which is not.
 
 **`bare-except` is retracted every time.** Three of the five re-raise after cleanup, so
 nothing is swallowed; the other two the author marked `noqa`. It is a textbook lint

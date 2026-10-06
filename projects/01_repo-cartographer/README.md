@@ -72,7 +72,9 @@ $ cartographer map <repo> --json -o map.json             # for the UI
 ## Measured across 77 repositories
 
 Every checkout in one folder, not a chosen subset — `cartographer compare <folder>`, whose
-last three lines are this table.
+last three lines are this table. Measured 2026-10-06, and it is a snapshot: these are live
+repositories and committing to any of them moves the row it is in. The five maps under
+`ui/public/data` each record the revision they were taken at for the same reason.
 
 | | |
 |---|---|

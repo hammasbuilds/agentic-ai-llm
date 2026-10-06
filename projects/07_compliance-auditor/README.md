@@ -21,6 +21,8 @@
 Audited across every checkout in one folder — 78 of them, not a chosen subset — it
 holds in **14 of 76** — **18%**.
 
+Measured 2026-10-06 over a folder of live checkouts, so it is a snapshot: committing to any of them moves it. The shape of the finding has survived every re-run; the exact counts have not.
+
 ```
   78 repositories  -  464/740 controls passed (63%)
 

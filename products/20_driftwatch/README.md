@@ -10,7 +10,7 @@ serves the shared operator console at `/`.
 
 **Measured over every checkout in one folder — 76 of them**, their real READMEs, real
 `pyproject.toml` files and real directory contents. Not a chosen subset: the previous
-figures were over 35, and over the folder every one of them moves.
+figures were over 35, and over the folder every one of them moves. Measured 2026-10-06; it is a snapshot, and committing to any checkout in that folder moves it.
 
 | | |
 |---|---:|

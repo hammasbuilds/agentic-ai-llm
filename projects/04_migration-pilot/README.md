@@ -42,7 +42,8 @@ So this tool classifies every rule before it will run it:
 ## Measured
 
 Every Python file under one folder of checkouts — the portfolio plus whatever vendored
-code the repositories in it carry:
+code the repositories in it carry. Measured 2026-10-06; a snapshot over live checkouts,
+and the ratio below is the figure that moves most:
 
 ```
 $ migration-pilot scan <folder> --limit 0
