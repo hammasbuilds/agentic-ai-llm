@@ -27,8 +27,13 @@ _MASKS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\b(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\b"), "<mac>"),
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b"), "<ip>"),
     (re.compile(r"\bblk_-?\d+\b"), "<blk>"),
-    (re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
-                r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"), "<uuid>"),
+    (
+        re.compile(
+            r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+            r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+        ),
+        "<uuid>",
+    ),
     (re.compile(r"\b[0-9a-fA-F]{16,}\b"), "<hex>"),
     (re.compile(r"/[\w./\-]+"), "<path>"),
     (re.compile(r"\b\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?)?\b"), "<ts>"),
@@ -39,9 +44,22 @@ _MASKS: tuple[tuple[re.Pattern, str], ...] = (
 # first. The product's finding is the SPREAD of the compression ratio, and a
 # spread taken from five points says very little about its ends.
 SYSTEMS = (
-    "android", "apache", "bgl", "hadoop", "hdfs", "healthapp", "hpc", "linux",
-    "mac", "openssh", "openstack", "proxifier", "spark", "thunderbird",
-    "windows", "zookeeper",
+    "android",
+    "apache",
+    "bgl",
+    "hadoop",
+    "hdfs",
+    "healthapp",
+    "hpc",
+    "linux",
+    "mac",
+    "openssh",
+    "openstack",
+    "proxifier",
+    "spark",
+    "thunderbird",
+    "windows",
+    "zookeeper",
 )
 
 

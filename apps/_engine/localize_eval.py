@@ -34,7 +34,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from apps._engine.evaluate import KS, print_report, resolve, summarize  # noqa: E402
+from apps._engine.evaluate import (  # noqa: E402
+    KS,
+    fabrication_rate,
+    print_report,
+    resolve,
+    summarize,
+)
 from apps._engine.locate_prompts import (  # noqa: E402
     LOCATE_PROMPT,
     RERANK_PROMPT,
@@ -112,6 +118,16 @@ def run(
         results.extend(_model_arms(scored, repos, at_commit, quiet=quiet))
 
     recall = summarize(results, KS)
+    # The README says the model "invents one path in five". `fabrication_rate`
+    # computes exactly that and had no caller anywhere in the repository, so the
+    # claim had no producer - the generative arm is the only thing that can produce
+    # it, and the arm had no driver either until this module existed.
+    listings = {inst.repo: candidates(inst, repos, at_commit) for inst in scored}
+    fabrication = {
+        name: fabrication_rate([r for r in results if r["retriever"] == name], listings)
+        for name in ("llm", "llm_rerank")
+        if any(r["retriever"] == name for r in results)
+    }
     population = {
         "instances_loaded": len(instances),
         "scored": len(scored),
@@ -126,6 +142,7 @@ def run(
     # is read as one.
     return {
         "recall": recall,
+        "fabrication": fabrication,
         "population": population,
         "skipped": {"no_cached_listing": no_listing, "gold_not_in_listing": gold_absent},
     }
@@ -239,6 +256,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"    scored from a per-commit listing  {population['per_commit_listings_used']}")
     if population["scored"] != population["instances_loaded"]:
         print("    Every rate above is over `scored`, never over `instances loaded`.")
+
+    if summary["fabrication"]:
+        print("\n  FABRICATION  (named paths that exist in the repository)")
+        for name, found in summary["fabrication"].items():
+            print(
+                f"    {name:12} {found['paths_that_exist']:5}/{found['paths_named']:<5} "
+                f"{found['rate_exists']:6.1%} real   over {found['instances_scored']} "
+                f"instance(s), {found['instances_unlistable']} unlistable"
+            )
+    elif not args.model_arms:
+        print("\n  FABRICATION  not measured: it needs --model-arms")
 
     if args.json:
         Path(args.json).write_text(json.dumps(summary, indent=2), encoding="utf-8")

@@ -6,12 +6,13 @@ which files a correct solution touches, which is all the localization experiment
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+
+from . import hf_cache
 
 HF_REPO = "princeton-nlp/SWE-bench_Lite"
 CACHE_DIR_NAME = "datasets--princeton-nlp--SWE-bench_Lite"
@@ -47,29 +48,16 @@ def gold_files_from_patch(patch: str) -> tuple[str, ...]:
     return tuple(seen)
 
 
-def _hf_cache_roots() -> list[Path]:
-    """Every plausible Hugging Face cache location, most specific first.
-
-    Resolved at call time rather than hardcoded: HF_HOME and HF_HUB_CACHE are the
-    documented overrides, and ~/.cache/huggingface/hub is the default on every
-    platform. A hardcoded path only works on the machine that wrote it.
-    """
-    roots = []
-    if env := os.environ.get("HF_HUB_CACHE"):
-        roots.append(Path(env))
-    if env := os.environ.get("HF_HOME"):
-        roots.append(Path(env) / "hub")
-    roots.append(Path.home() / ".cache" / "huggingface" / "hub")
-    return roots
-
-
 def find_parquet() -> Path | None:
-    """Locate the cached test split without importing `datasets`."""
-    for root in _hf_cache_roots():
-        hits = sorted((root / CACHE_DIR_NAME).glob("snapshots/*/data/test-*.parquet"))
-        if hits:
-            return hits[0]
-    return None
+    """The cached test split, or the committed slice, without importing `datasets`.
+
+    The committed slice carries the six columns this module reads. It is the reason
+    `python -m apps._engine.localize_eval` runs on a fresh clone, which the README
+    says it does.
+    """
+    return hf_cache.resolve(
+        f"{CACHE_DIR_NAME}/snapshots/*/data/test-*.parquet", "swebench_lite_test.parquet"
+    )
 
 
 def _frame() -> pd.DataFrame:
@@ -86,7 +74,8 @@ def _frame() -> pd.DataFrame:
             "Fix either one:\n"
             "  pip install datasets        # then it downloads (~1.2 MB)\n"
             "  or set HF_HOME / HF_HUB_CACHE to the cache that already holds it.\n"
-            f"Looked in: {', '.join(str(r) for r in _hf_cache_roots())}"
+            f"Looked in: {', '.join(str(r) for r in hf_cache.cache_roots())}, "
+            f"and for a committed slice at {hf_cache.BENCHMARKS}"
         ) from exc
     return load_dataset(HF_REPO, split="test").to_pandas()
 

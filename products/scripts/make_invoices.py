@@ -67,7 +67,7 @@ def main() -> int:
                 price = Decimal(str(row[c_price] or 0))
             except (TypeError, ValueError, ArithmeticError):
                 continue
-            totals[key] += (Decimal(qty) * price)
+            totals[key] += Decimal(qty) * price
             lines[key] += 1
             if key not in meta:
                 meta[key] = (

@@ -20,15 +20,16 @@ The model's own accuracy is deliberately not quoted here. The figure this file u
 carry was measured against the unrepresentative front-of-file sample, and a number measured
 one way must not be printed beside a baseline computed another. Run it to get one.
 
-The second column removes the rows this dataset is known to duplicate with conflicting
-labels. It moves accuracy by a tenth of a point, which settles the convenient excuse: the
-label noise is real and far too rare to explain anybody's number.
+The second column removes the rows whose code appears twice in the split with
+disagreeing labels, which settles the convenient excuse. Counted rather than asserted:
+**one** function body in the 2,732-row test split is duplicated with conflicting labels.
+Dropping its two rows moves the always-SAFE baseline from 54.06% to 54.07% - 0.003 of a
+point. This paragraph used to claim "a tenth of a point" and no code computed either
+figure; `conflicting_duplicates` does, on every run, and it needs no model.
 """
 
 from __future__ import annotations
 
-import glob
-import os
 import random
 import re
 import sys
@@ -41,6 +42,10 @@ from apps._platform.base import Field, create_app  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SLUG = "vuln-baseline"
+
+#: Below this share of parsable answers the run is refused rather than reported.
+#: Not a tuning knob: the point is that there IS a floor, because there was none.
+MIN_PARSED_SHARE = 0.80
 
 PROMPT = """You are auditing C code for security vulnerabilities.
 
@@ -57,25 +62,68 @@ _WORD = re.compile(r"\b(VULNERABLE|SAFE)\b", re.IGNORECASE)
 
 
 def _load_devign(split: str = "test"):
+    """The Devign split, from the cache or from the committed slice.
+
+    This was the third copy of the cache-root logic in the repository, and like the
+    other two it appended the default underneath HF_HOME instead of letting it
+    override - so the suite could not be pointed at an empty cache to check whether
+    it ran offline. The committed slice carries `func` and `target`, which is what
+    this app reads.
+    """
     import pandas as pd
 
-    roots = [
-        os.environ.get("HF_HUB_CACHE"),
-        (os.environ.get("HF_HOME") or "") + "/hub",
-        str(Path.home() / ".cache" / "huggingface" / "hub"),
-    ]
-    for root in roots:
-        if not root:
-            continue
-        hits = sorted(
-            glob.glob(
-                f"{root}/datasets--google--code_x_glue_cc_defect_detection"
-                f"/snapshots/*/data/{split}-*.parquet"
-            )
+    from apps._engine import hf_cache
+
+    found = hf_cache.resolve(
+        f"datasets--google--code_x_glue_cc_defect_detection/snapshots/*/data/{split}-*.parquet",
+        f"devign_{split}.parquet",
+    )
+    if found is None:
+        raise FileNotFoundError(
+            f"Devign {split} split is in neither the Hugging Face cache "
+            f"({', '.join(str(r) for r in hf_cache.cache_roots())}) nor the committed "
+            f"slices at {hf_cache.BENCHMARKS}"
         )
-        if hits:
-            return pd.read_parquet(hits[0])
-    raise FileNotFoundError("Devign not in the local Hugging Face cache")
+    return pd.read_parquet(found)
+
+
+def conflicting_duplicates(frame) -> dict:
+    """Rows whose code appears more than once in the split with disagreeing labels.
+
+    The docstring above used to describe this as a second results column that
+    "removes the rows this dataset is known to duplicate with conflicting labels"
+    and said it "moves accuracy by a tenth of a point". No code did it: an
+    independent review grepped for the word and found only the sentence claiming it.
+
+    Computed, the excuse is weaker than the sentence gave it credit for. One function
+    body in the test split appears twice with disagreeing labels - two rows of 2,732 -
+    and dropping it moves the always-SAFE baseline by 0.01 points. Label noise in this
+    split is real and cannot account for anything.
+
+    Needs no model, so it runs wherever the data does.
+    """
+    from collections import defaultdict
+
+    labels_for: dict[str, set[bool]] = defaultdict(set)
+    for func, target in zip(frame["func"], frame["target"], strict=True):
+        labels_for[func].add(bool(target))
+
+    conflicting = {code for code, labels in labels_for.items() if len(labels) > 1}
+    rows = len(frame)
+    kept = [index for index, func in enumerate(frame["func"]) if func not in conflicting]
+    safe_all = sum(1 for target in frame["target"] if not bool(target))
+    safe_kept = sum(1 for index in kept if not bool(frame["target"].iloc[index]))
+
+    return {
+        "rows": rows,
+        "distinct_bodies": len(labels_for),
+        "exact_duplicate_rows": rows - len(labels_for),
+        "bodies_with_conflicting_labels": len(conflicting),
+        "rows_dropped": rows - len(kept),
+        "always_safe_all_rows": safe_all / rows,
+        "always_safe_conflicts_removed": safe_kept / len(kept) if kept else 0.0,
+        "shift_in_points": abs(safe_kept / len(kept) - safe_all / rows) * 100 if kept else 0.0,
+    }
 
 
 def _score(pairs: list[tuple[bool, bool]]) -> dict:
@@ -144,20 +192,43 @@ async def runner(params: dict, emit) -> dict:
             continue
         pairs.append((m.group(1).upper() == "VULNERABLE", actual))
 
-    if not pairs:
-        raise ValueError("no parsable answers from the model")
+    # A rate over whatever the model was willing to classify is not a rate over the
+    # split, and unparsability correlates with difficulty - so dropping those rows
+    # selects for the easy ones. The only guard here was `if not pairs`, i.e. 100%
+    # unparsed, so a 70%-unparsed run returned `done` with an accuracy over the
+    # remaining 30%. That is a worse selection than the front-of-file sample this app
+    # was built to replace, because at least the file order was arbitrary.
+    if len(pairs) < MIN_PARSED_SHARE * take:
+        raise ValueError(
+            f"only {len(pairs)} of {take} answers parsed "
+            f"({len(pairs) / take:.0%}); no rate is published below "
+            f"{MIN_PARSED_SHARE:.0%}, because the rows a model declines to classify "
+            "are not a random sample of the rows"
+        )
 
     full = _score(pairs)
+    # The baseline is a property of the split, not of the subsample the model answered.
+    # `_score` recomputes it over `pairs`, so a model scored on the rows it found easy
+    # was compared against a baseline recomputed for those same rows - the comparison
+    # moved with the model's own refusals. This is the constant over every row read.
+    always_safe_over_all = sum(1 for a in labels if not a) / take
     return {
         "rows": take,
         "unparsed": unparsed,
+        "parsed": len(pairs),
+        "parsed_share": len(pairs) / take,
         "full": full,
+        "always_safe_over_all_rows": always_safe_over_all,
+        "vs_always_safe_over_all_rows": full["accuracy"] - always_safe_over_all,
         # Against the constant the question is about, and against the larger class.
         # One field called `beats_baseline` hid which of the two it meant.
         "vs_always_safe": full["accuracy"] - full["always_safe"],
         "vs_majority": full["accuracy"] - full["majority"],
         "said_vulnerable_rate": full["said_vulnerable"] / full["n"],
         "true_vulnerable_rate": sum(1 for _, a in pairs if a) / full["n"],
+        # The second column the docstring describes, which nothing used to compute.
+        # Needs no model, so it is here on every run.
+        "label_noise": conflicting_duplicates(frame),
     }
 
 

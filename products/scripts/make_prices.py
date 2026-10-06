@@ -73,9 +73,7 @@ def main() -> int:
 
     with OUT.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow(
-            ["code", "description", "sales", "units", "modal", "min", "max", "median"]
-        )
+        writer.writerow(["code", "description", "sales", "units", "modal", "min", "max", "median"])
         kept = 0
         for code, points in sorted(prices.items()):
             if len(points) < MIN_SALES:

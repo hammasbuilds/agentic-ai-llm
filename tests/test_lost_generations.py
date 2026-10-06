@@ -212,3 +212,88 @@ def test_both_constants_are_reported_not_only_the_larger():
     assert scored["always_vulnerable"] == 0.3
     assert scored["majority"] == 0.7
     assert scored["accuracy"] == 0.7
+
+
+# -- a rate over the rows the model agreed to classify --------------------
+
+
+def _vuln_baseline():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "vuln_baseline_floor", ROOT / "apps" / "03_vuln_baseline" / "app.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class _PartiallyParsable:
+    """Answers `parsable` of the prompts and waffles at the rest."""
+
+    def __init__(self, parsable: int):
+        self.parsable = parsable
+
+    async def generate_many(self, prompts, **kwargs):
+        return ["SAFE"] * self.parsable + ["I am not sure"] * (len(prompts) - self.parsable)
+
+    def require_all(self, raws, what: str = ""):
+        return list(raws)
+
+
+async def _nothing(*args, **kwargs):
+    return None
+
+
+def test_app_03_refuses_a_rate_over_the_rows_the_model_happened_to_answer(monkeypatch):
+    """It used to report one, and only a 100%-unparsed run raised.
+
+    `require_all` refuses to publish a rate when a generation never reached the
+    model. This is the same principle one step along: a generation that arrived and
+    could not be read is not a row the model got wrong, and the rows a model declines
+    to classify are not a random sample - unparsability tracks difficulty. So an
+    accuracy over the survivors selects for the easy ones, which is a worse selection
+    than the front-of-file sample this app exists to criticise.
+    """
+    module = _vuln_baseline()
+    monkeypatch.setattr(module, "model", _PartiallyParsable(3))
+
+    with pytest.raises(ValueError, match="no rate is published below"):
+        asyncio.run(module.runner({"limit": 10}, _nothing))
+
+
+def test_app_03_reports_a_rate_when_nearly_everything_parsed(monkeypatch):
+    module = _vuln_baseline()
+    monkeypatch.setattr(module, "model", _PartiallyParsable(10))
+
+    out = asyncio.run(module.runner({"limit": 10}, _nothing))
+    assert out["rows"] == 10
+    assert out["parsed"] == 10
+    assert out["parsed_share"] == 1.0
+    assert out["unparsed"] == 0
+
+
+def test_app_03_compares_against_the_splits_baseline_not_the_subsamples(monkeypatch):
+    """The baseline is a property of the data, so it must not move with the model.
+
+    `_score` recomputes `always_safe` over the pairs it was given, so a model scored
+    on the rows it answered was compared against a baseline recomputed for those same
+    rows. `always_safe_over_all_rows` is the constant over every row read.
+    """
+    module = _vuln_baseline()
+    monkeypatch.setattr(module, "model", _PartiallyParsable(9))
+
+    out = asyncio.run(module.runner({"limit": 10}, _nothing))
+    assert out["parsed"] == 9
+    assert "always_safe_over_all_rows" in out
+    assert out["always_safe_over_all_rows"] == pytest.approx(
+        out["full"]["always_safe"] * out["parsed"] / out["rows"], abs=0.2
+    ), "the two baselines should be close here, and they are different numbers"
+    assert out["vs_always_safe_over_all_rows"] == pytest.approx(
+        out["full"]["accuracy"] - out["always_safe_over_all_rows"]
+    )
+
+
+def test_the_floor_is_a_declared_constant_not_a_magic_number():
+    module = _vuln_baseline()
+    assert 0.5 < module.MIN_PARSED_SHARE <= 1.0

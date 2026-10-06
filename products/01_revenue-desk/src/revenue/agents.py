@@ -63,9 +63,7 @@ def qualify(state: dict) -> dict:
     """Fit from a published weights table, so a buyer can argue with a weight."""
     signals = state.get("signals", {})
     weights = {"hiring": 0.4, "funding": 0.3, "stack_match": 0.2, "region": 0.1}
-    score = sum(
-        weights[k] for k, present in signals.items() if present and k in weights
-    )
+    score = sum(weights[k] for k, present in signals.items() if present and k in weights)
     return {
         "lead.score": round(score, 4),
         "lead.stage": "qualified" if score >= 0.5 else "sourced",
@@ -81,8 +79,7 @@ def forecast(state: dict) -> dict:
 def run_gate(state: dict) -> dict:
     """Drop any claim the tools did not actually support."""
     claims = [
-        gate.Claim(c["text"], tuple(c.get("receipts", ())))
-        for c in state.get("claims", [])
+        gate.Claim(c["text"], tuple(c.get("receipts", ()))) for c in state.get("claims", [])
     ]
     issued = set(state.get("issued_receipts", ()))
     result = gate.run(claims, issued, min_sources=state.get("min_sources", 1))

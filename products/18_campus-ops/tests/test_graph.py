@@ -43,10 +43,24 @@ def sources(fail_beta: bool = False):
 def payload(**extra) -> dict:
     base = {
         "sessions": [
-            {"id": "a", "day": "mon", "start": 540, "end": 600, "room": "R1",
-             "teacher": "T1", "cohort": "C1"},
-            {"id": "b", "day": "mon", "start": 600, "end": 660, "room": "R1",
-             "teacher": "T2", "cohort": "C2"},
+            {
+                "id": "a",
+                "day": "mon",
+                "start": 540,
+                "end": 600,
+                "room": "R1",
+                "teacher": "T1",
+                "cohort": "C1",
+            },
+            {
+                "id": "b",
+                "day": "mon",
+                "start": 600,
+                "end": 660,
+                "room": "R1",
+                "teacher": "T2",
+                "cohort": "C2",
+            },
         ],
         "issued_receipts": ["src_a41", "src_b22"],
         "claims": [
@@ -96,14 +110,34 @@ def test_nothing_is_regenerated_across_the_approval():
 def test_the_early_exit_costs_no_generation():
     model = Recorded(script(payload()))
     rt = runtime(model, sources())
-    rt.submit("r1", "e1", payload(**{
-            "sessions": [
-                {"id": "a", "day": "mon", "start": 540, "end": 620, "room": "R1",
-                 "teacher": "T1", "cohort": "C1"},
-                {"id": "b", "day": "mon", "start": 600, "end": 660, "room": "R1",
-                 "teacher": "T2", "cohort": "C2"},
-            ],
-        }))
+    rt.submit(
+        "r1",
+        "e1",
+        payload(
+            **{
+                "sessions": [
+                    {
+                        "id": "a",
+                        "day": "mon",
+                        "start": 540,
+                        "end": 620,
+                        "room": "R1",
+                        "teacher": "T1",
+                        "cohort": "C1",
+                    },
+                    {
+                        "id": "b",
+                        "day": "mon",
+                        "start": 600,
+                        "end": 660,
+                        "room": "R1",
+                        "teacher": "T2",
+                        "cohort": "C2",
+                    },
+                ],
+            }
+        ),
+    )
     rt.drain()
     row = rt.run_row("r1")
     assert row["status"] == api.DONE

@@ -61,8 +61,11 @@ def triage(state: dict) -> dict:
     try:
         solver = cost(state.get("solver_route", []), matrix, stops, depot)
         result = compare(
-            state.get("solver_route", []), state.get("challenger_route", []),
-            matrix, stops, depot,
+            state.get("solver_route", []),
+            state.get("challenger_route", []),
+            matrix,
+            stops,
+            depot,
         )
     except InvalidRouteError as refused:
         return {"invalid_route": True, "refusal": str(refused), "summary_subject": []}

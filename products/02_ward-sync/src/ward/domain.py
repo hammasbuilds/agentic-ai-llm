@@ -40,11 +40,7 @@ def active_medications(events: list[Event]) -> list[Active]:
     state: dict[str, Event | None] = {}
     for event in sorted(events, key=lambda e: e.seq):
         state[event.drug] = event if event.kind == ORDERED else None
-    return [
-        Active(drug, ev.id)
-        for drug, ev in sorted(state.items())
-        if ev is not None
-    ]
+    return [Active(drug, ev.id) for drug, ev in sorted(state.items()) if ev is not None]
 
 
 def discontinued(events: list[Event]) -> set[str]:

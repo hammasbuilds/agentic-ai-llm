@@ -85,9 +85,7 @@ def conversations(path: str | None = None) -> tuple[Conversation, ...]:
             if key.startswith("session_") and not key.endswith("date_time")
             for turn in block.get(key, [])
         ]
-        speakers = tuple(
-            n for n in (block.get("speaker_a"), block.get("speaker_b")) if n
-        )
+        speakers = tuple(n for n in (block.get("speaker_a"), block.get("speaker_b")) if n)
         out.append(
             Conversation(
                 speakers=speakers,

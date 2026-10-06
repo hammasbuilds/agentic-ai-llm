@@ -79,9 +79,7 @@ def test_the_index_contains_same_day_duplicates():
     # a test case without checking for that produced a spurious failure, so it
     # is recorded here rather than worked around silently.
     same_day = [
-        s
-        for s, rows in amended().items()
-        if len({r.effective for r in rows}) < len(rows)
+        s for s, rows in amended().items() if len({r.effective for r in rows}) < len(rows)
     ]
     assert same_day
 
@@ -148,9 +146,7 @@ def test_and_it_can_be_a_decade_out():
 
 def test_the_latest_version_is_not_the_answer_to_a_dated_question():
     section = next(
-        s
-        for s, rows in sorted(amended().items())
-        if rows[0].effective != rows[-1].effective
+        s for s, rows in sorted(amended().items()) if rows[0].effective != rows[-1].effective
     )
     rows = history()[section]
     assert in_force(section, rows[0].effective).effective == rows[0].effective

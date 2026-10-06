@@ -18,7 +18,7 @@ DIMENSIONS = (ROOM, TEACHER, COHORT)
 class Session:
     id: str
     day: str
-    start: int   # minutes from midnight
+    start: int  # minutes from midnight
     end: int
     room: str
     teacher: str
@@ -48,7 +48,7 @@ def clashes(sessions: list[Session]) -> list[Clash]:
     ordered = sorted(sessions, key=lambda s: (s.day, s.start, s.id))
     found: list[Clash] = []
     for i, first in enumerate(ordered):
-        for second in ordered[i + 1:]:
+        for second in ordered[i + 1 :]:
             if not first.overlaps(second):
                 continue
             for dimension in DIMENSIONS:

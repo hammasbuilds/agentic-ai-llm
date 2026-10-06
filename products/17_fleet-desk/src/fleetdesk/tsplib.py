@@ -114,12 +114,7 @@ def optimal_tour(path: str | None = None) -> tuple[int, ...]:
 def matrix(path: str | None = None) -> dict:
     """A full distance matrix keyed by (id, id), in the product's own shape."""
     pts = cities(path)
-    return {
-        (str(a.id), str(b.id)): euc_2d(a, b)
-        for a in pts
-        for b in pts
-        if a.id != b.id
-    }
+    return {(str(a.id), str(b.id)): euc_2d(a, b) for a in pts for b in pts if a.id != b.id}
 
 
 def tour_length(order: list[int], path: str | None = None) -> int:
@@ -128,8 +123,7 @@ def tour_length(order: list[int], path: str | None = None) -> int:
     if len(order) < 2:
         raise ValueError("a tour needs at least two stops")
     return sum(
-        euc_2d(pts[order[i]], pts[order[(i + 1) % len(order)]])
-        for i in range(len(order))
+        euc_2d(pts[order[i]], pts[order[(i + 1) % len(order)]]) for i in range(len(order))
     )
 
 

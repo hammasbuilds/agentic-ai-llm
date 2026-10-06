@@ -87,9 +87,7 @@ def loose(root: str | None = None) -> tuple[Requirement, ...]:
         text = path.read_text(encoding="utf-8", errors="replace")
         for n, line in enumerate(text.splitlines()):
             for match in _LOOSE.finditer(line):
-                out.append(
-                    Requirement(path.stem, n, match.group(1).upper(), line.strip())
-                )
+                out.append(Requirement(path.stem, n, match.group(1).upper(), line.strip()))
     return tuple(out)
 
 

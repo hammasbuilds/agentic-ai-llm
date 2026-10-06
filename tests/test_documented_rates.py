@@ -80,6 +80,84 @@ def mutation_summary(app: Path) -> dict | None:
     return run if run and "mbpp" in run else None
 
 
+#: Every figure each app's prose states, as the count of distinct numbers in it.
+#:
+#: This exists because the two arithmetic checks below cover almost nothing. They
+#: match the shape "N of M (P%)", which only app 02 writes: over the other nine the
+#: `for` body never executes and the test reports a pass having asserted nothing. An
+#: independent review counted it — 18 of 20 reported passes were empty — and this
+#: file's own docstring had already named that failure mode as the thing it exists to
+#: catch, which is the second time the same mistake has been made in the same file.
+#:
+#: Generic regex arithmetic over free prose is the wrong instrument: the apps state
+#: figures as "of the 198 tasks either size can solve, the 3B already handles 75.8%",
+#: and no reasonable pattern pairs those up. So the guarantee here is weaker and
+#: actually holds: every number in every app's prose is pinned by count, so changing
+#: one is a deliberate edit to this table. The two apps with a committed run get
+#: their figures checked against it; the eight whose numbers came from a GPU run get
+#: this and nothing stronger, and the gap is stated rather than hidden.
+STATED_FIGURES: dict[str, int] = {
+    "01_localizer": 13,
+    "02_false_accepts": 21,
+    "03_vuln_baseline": 12,
+    "04_size_curve": 12,
+    "05_debug_ceiling": 11,
+    "06_kill_rate": 7,
+    "07_repair_rewrite": 7,
+    "08_prompt_shapes": 3,
+    "09_temperature": 3,
+    "10_roundtrip": 7,
+}
+
+NUMBER = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)%?(?![\w])")
+
+
+def figures(app: Path) -> set[str]:
+    """The distinct numbers an app's prose states, commas stripped."""
+    return {n.replace(",", "") for n in NUMBER.findall(prose(app))}
+
+
+def test_the_figure_table_covers_every_app():
+    """A table that lists nine of ten apps would let the tenth drift untouched."""
+    assert set(STATED_FIGURES) == {app.name for app in APPS}
+
+
+@pytest.mark.parametrize("app", APPS, ids=[p.name for p in APPS])
+def test_no_figure_in_an_apps_prose_changes_without_this_table_changing(app: Path):
+    found = figures(app)
+    assert len(found) == STATED_FIGURES[app.name], (
+        f"{app.name} states {len(found)} distinct figures, table says "
+        f"{STATED_FIGURES[app.name]}; if this was deliberate, update the table"
+    )
+
+
+def test_how_much_of_the_prose_the_arithmetic_checks_actually_reach():
+    """The coverage of the two checks below, asserted rather than assumed.
+
+    Without this, the eight apps those regexes do not match are eight silent passes.
+    With it, a drop in coverage fails here and the number is in the failure message.
+    """
+    reached = {app.name: len(OF_WITH_PCT.findall(prose(app))) for app in APPS}
+    covered = sorted(name for name, n in reached.items() if n)
+    assert covered == ["02_false_accepts"], (
+        f"arithmetic coverage changed: {reached}. One app of ten is reached by the "
+        "'N of M (P%)' shape; the rest state their figures in prose no pattern pairs "
+        "up, and are held only by STATED_FIGURES."
+    )
+    assert sum(reached.values()) == 1
+
+
+def test_the_two_apps_with_a_committed_run_are_the_two_that_can_be_verified():
+    """So "checked against a run" and "pinned by count" are never confused.
+
+    Eight apps' figures came from runs needing both model sizes on a GPU. Nothing
+    offline can check them, and claiming otherwise is the defect this file is about.
+    """
+    verifiable = sorted(app.name for app in APPS if summary(app) is not None)
+    assert verifiable == ["02_false_accepts", "03_vuln_baseline"]
+    assert len(verifiable) < len(APPS)
+
+
 # -- what holds for every app ---------------------------------------------
 
 
@@ -252,3 +330,76 @@ def test_app_03_still_declines_to_quote_a_model_number():
     text = flat(regions(app)["docstring"])
     assert "The model's own accuracy is deliberately not quoted here" in text
     assert "Run it to get one" in text
+
+
+# -- app 03's second column, which nothing used to compute ----------------
+
+
+def test_app_03_computes_the_label_noise_column_its_docstring_describes():
+    """The paragraph described a second results column and claimed a figure for it.
+
+    An independent review grepped the whole app for the word and found one hit - the
+    sentence making the claim. No dedup code, no second score in the result dict,
+    nothing in the template, no field in the committed summary. And "it moves accuracy
+    by a tenth of a point" is itself a model-derived figure, six lines under a sentence
+    refusing to quote one.
+
+    It is computed now, and the real number is smaller than the claim: one function
+    body in 2,732 rows is duplicated with conflicting labels.
+    """
+    import importlib.util
+
+    app = next(a for a in APPS if a.name == "03_vuln_baseline")
+    spec = importlib.util.spec_from_file_location("vuln_baseline", app / "app.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert hasattr(module, "conflicting_duplicates"), "the column is described, not computed"
+
+    run = summary(app)
+    noise = run["label_noise"]
+    assert noise["rows"] == run["rows"]
+    assert noise["distinct_bodies"] + noise["exact_duplicate_rows"] == noise["rows"]
+    assert noise["bodies_with_conflicting_labels"] == 1
+    assert noise["rows_dropped"] == 2
+    assert noise["always_safe_all_rows"] == run["always_safe"]
+
+    # The whole point: removing the noise moves the baseline by almost nothing.
+    assert noise["shift_in_points"] < 0.01
+    assert abs(
+        noise["always_safe_conflicts_removed"] - noise["always_safe_all_rows"]
+    ) * 100 == pytest.approx(noise["shift_in_points"])
+
+    text = flat(regions(app)["docstring"])
+    assert "one** function body in the 2,732-row test split" in text.replace("*", "*")
+    assert "54.06% to 54.07%" in text
+    assert "0.003 of a point" in text
+    assert "a tenth of a point" not in text or "used to claim" in text
+
+
+def test_app_03_still_declines_to_quote_a_model_accuracy():
+    """And now there is a number in that paragraph which is not one.
+
+    The old guard asserted the disclaimer string was present and never checked that
+    no model figure followed it - a checker that could not fail for the thing it was
+    named after. The figures in that paragraph are now baseline shares, which are
+    computed from the labels alone.
+    """
+    app = next(a for a in APPS if a.name == "03_vuln_baseline")
+    text = flat(regions(app)["docstring"])
+    assert "The model's own accuracy is deliberately not quoted here" in text
+    assert "Run it to get one" in text
+
+    run = summary(app)
+    model_free = {
+        f"{run['always_safe'] * 100:.2f}",
+        f"{run['label_noise']['always_safe_conflicts_removed'] * 100:.2f}",
+        f"{run['always_safe'] * 100:.1f}",
+        f"{run['first_800_safe_share'] * 100:.1f}",
+        f"{run['seeded_800_safe_share'] * 100:.1f}",
+    }
+    quoted = {m for m in NUMBER.findall(text) if "." in m}
+    unexplained = {q for q in quoted if q not in model_free and q not in {"2,732", "0.003"}}
+    assert unexplained == set(), (
+        f"figures in the paragraph with no source in the committed run: {sorted(unexplained)}"
+    )

@@ -26,7 +26,7 @@ class Proposal:
 
 @dataclass
 class Price:
-    value: int              # minor units
+    value: int  # minor units
     applied: Proposal | None = None
     rejected: list = field(default_factory=list)
     reason: str = ""

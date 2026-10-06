@@ -42,12 +42,12 @@ class IndexMissingError(FileNotFoundError):
 
 @dataclass(frozen=True)
 class Version:
-    identifier: str          # the section, e.g. "1910.1200"
+    identifier: str  # the section, e.g. "1910.1200"
     effective: date
     name: str
     removed: bool
     substantive: bool
-    title: int = 29          # the CFR title it belongs to
+    title: int = 29  # the CFR title it belongs to
 
     @property
     def section(self) -> str:

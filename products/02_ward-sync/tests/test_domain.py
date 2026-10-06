@@ -62,7 +62,5 @@ def test_one_good_citation_does_not_excuse_one_invented_one():
 
 
 def test_drop_rate_is_reported():
-    draft = cite_or_drop(
-        [Sentence("a", ("evt_2301",)), Sentence("b"), Sentence("c")], stream()
-    )
+    draft = cite_or_drop([Sentence("a", ("evt_2301",)), Sentence("b"), Sentence("c")], stream())
     assert draft.drop_rate == pytest.approx(2 / 3)

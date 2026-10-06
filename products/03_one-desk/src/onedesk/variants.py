@@ -83,13 +83,9 @@ def renderings(archive: str | None = None) -> tuple[Rendering, ...]:
                 root = ET.fromstring(zf.read(member))
             except ET.ParseError:
                 continue
-            text = " ".join(
-                (node.text or "").strip() for node in root.iter("sent")
-            ).strip()
+            text = " ".join((node.text or "").strip() for node in root.iter("sent")).strip()
             if len(text.split()) >= 30:
-                out.append(
-                    Rendering(match.group("meeting"), match.group("who"), text)
-                )
+                out.append(Rendering(match.group("meeting"), match.group("who"), text))
     return tuple(out)
 
 
@@ -153,7 +149,7 @@ class Significance:
 
     separation: float
     p_value: float
-    low: float          # 95% bootstrap interval on the separation
+    low: float  # 95% bootstrap interval on the separation
     high: float
 
     @property

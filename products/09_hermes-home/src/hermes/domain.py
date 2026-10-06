@@ -62,10 +62,7 @@ def verify(known: list[Constraint], handoff: Handoff) -> list[Constraint]:
     hard = [c for c in lost if c.hard]
     if hard:
         raise ConstraintDroppedError(
-            "handoff to "
-            + handoff.to
-            + " would drop: "
-            + ", ".join(str(c) for c in hard)
+            "handoff to " + handoff.to + " would drop: " + ", ".join(str(c) for c in hard)
         )
     return [c for c in lost if not c.hard]
 

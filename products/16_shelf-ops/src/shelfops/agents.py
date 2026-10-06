@@ -30,8 +30,7 @@ def authority() -> Table:
 def triage(state: dict) -> dict:
     """One authority decides the price from every proposal at once."""
     proposals = [
-        Proposal(p["agent"], p["kind"], p["discount_pct"])
-        for p in state.get("proposals", [])
+        Proposal(p["agent"], p["kind"], p["discount_pct"]) for p in state.get("proposals", [])
     ] or [Proposal("repricer", "reprice", 10.0), Proposal("promotions", "promotion", 15.0)]
 
     if state.get("base"):
@@ -40,9 +39,7 @@ def triage(state: dict) -> dict:
         # A real product, with the lowest price it ever sold at as the floor.
         catalogue = _catalogue()
         code = state.get("sku")
-        product = next(
-            (p for p in catalogue if code in (None, p.code)), catalogue[0]
-        )
+        product = next((p for p in catalogue if code in (None, p.code)), catalogue[0])
         base, floor = product.modal, product.floor
         state = {**state, "sku": product.code, "cost": state.get("cost", product.low)}
 

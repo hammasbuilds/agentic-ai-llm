@@ -26,7 +26,7 @@ class Payment:
 
 @dataclass
 class Matching:
-    matched: dict[str, str] = field(default_factory=dict)      # payment -> invoice
+    matched: dict[str, str] = field(default_factory=dict)  # payment -> invoice
     ambiguous: dict[str, list[str]] = field(default_factory=dict)
     unmatched: list[str] = field(default_factory=list)
 
@@ -46,9 +46,7 @@ def match(payments: list[Payment], invoices: list[Invoice], tolerance: int = 0) 
         raise ValueError("tolerance cannot be negative")
     out = Matching()
     open_invoices = {inv.id: inv for inv in invoices}
-    by_reference = {
-        inv.reference: inv for inv in invoices if inv.reference
-    }
+    by_reference = {inv.reference: inv for inv in invoices if inv.reference}
 
     for payment in payments:
         if payment.reference and payment.reference in by_reference:

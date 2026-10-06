@@ -26,9 +26,41 @@ _WORD = re.compile(r"[a-z0-9']+")
 
 STOP = frozenset(
     [
-        "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "for", "from", "had",
-        "has", "have", "in", "is", "it", "its", "of", "on", "or", "that", "the", "their",
-        "this", "to", "was", "were", "what", "when", "where", "which", "who", "with",
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "been",
+        "but",
+        "by",
+        "for",
+        "from",
+        "had",
+        "has",
+        "have",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "their",
+        "this",
+        "to",
+        "was",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "with",
     ]
 )
 
@@ -42,7 +74,7 @@ class Item:
     id: str
     question: str
     answer: str
-    kind: str          # "bridge" or "comparison"
+    kind: str  # "bridge" or "comparison"
     level: str
     gold: tuple[str, ...]
     paragraphs: dict = field(default_factory=dict)  # title -> text

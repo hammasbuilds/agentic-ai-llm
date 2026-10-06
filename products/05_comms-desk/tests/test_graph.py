@@ -43,10 +43,18 @@ def sources(fail_beta: bool = False):
 def payload(**extra) -> dict:
     base = {
         "commitments": [
-            {"id": "c1", "speaker": "ayesha", "source": "meeting",
-             "text": "I will send the revised pricing sheet to the client before Friday"},
-            {"id": "c2", "speaker": "ayesha", "source": "email",
-             "text": "Sending the revised pricing sheet over to the client by Friday"},
+            {
+                "id": "c1",
+                "speaker": "ayesha",
+                "source": "meeting",
+                "text": "I will send the revised pricing sheet to the client before Friday",
+            },
+            {
+                "id": "c2",
+                "speaker": "ayesha",
+                "source": "email",
+                "text": "Sending the revised pricing sheet over to the client by Friday",
+            },
         ],
         "issued_receipts": ["src_a41", "src_b22"],
         "claims": [

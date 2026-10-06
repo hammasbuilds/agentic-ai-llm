@@ -61,8 +61,7 @@ def individuals(path: str | None = None) -> tuple[Listed, ...]:
     target = Path(path) if path else LIST
     if not target.exists():
         raise ListMissingError(
-            f"{target} is missing. Fetch the UN consolidated list; "
-            "see scripts/fetch_data.sh."
+            f"{target} is missing. Fetch the UN consolidated list; see scripts/fetch_data.sh."
         )
     root = ET.parse(target).getroot()
     block = root.find("INDIVIDUALS")

@@ -45,10 +45,18 @@ def payload(**extra) -> dict:
         "loss_date": "2025-06-01",
         "peril": "flood",
         "versions": [
-            {"id": "v1", "from": "2024-01-01", "to": "2025-12-31",
-             "perils": ["fire", "flood", "theft"]},
-            {"id": "v2", "from": "2026-01-01", "perils": ["fire", "theft"],
-             "exclusions": ["flood"]},
+            {
+                "id": "v1",
+                "from": "2024-01-01",
+                "to": "2025-12-31",
+                "perils": ["fire", "flood", "theft"],
+            },
+            {
+                "id": "v2",
+                "from": "2026-01-01",
+                "perils": ["fire", "theft"],
+                "exclusions": ["flood"],
+            },
         ],
         "issued_receipts": ["src_a41", "src_b22"],
         "claims": [
@@ -98,12 +106,19 @@ def test_nothing_is_regenerated_across_the_approval():
 def test_the_early_exit_costs_no_generation():
     model = Recorded(script(payload()))
     rt = runtime(model, sources())
-    rt.submit("r1", "e1", payload(**{
-            "loss_date": "2023-05-01",
-            "peril": "fire",
-            "versions": [{"id": "v1", "from": "2024-01-01", "to": "2025-12-31",
-                          "perils": ["fire"]}],
-        }))
+    rt.submit(
+        "r1",
+        "e1",
+        payload(
+            **{
+                "loss_date": "2023-05-01",
+                "peril": "fire",
+                "versions": [
+                    {"id": "v1", "from": "2024-01-01", "to": "2025-12-31", "perils": ["fire"]}
+                ],
+            }
+        ),
+    )
     rt.drain()
     row = rt.run_row("r1")
     assert row["status"] == api.DONE

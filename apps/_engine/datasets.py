@@ -11,12 +11,12 @@ No network. Both are already cached and together weigh about 1 MB.
 
 from __future__ import annotations
 
-import glob
 import json
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from . import hf_cache
 
 _CALLED = re.compile(r"assert\s+(?:not\s+)?([A-Za-z_]\w*)\s*\(")
 
@@ -38,22 +38,15 @@ class Task:
         return self.benchmark == "mbpp"
 
 
-def _cache_roots() -> list[Path]:
-    roots = []
-    if env := os.environ.get("HF_HUB_CACHE"):
-        roots.append(Path(env))
-    if env := os.environ.get("HF_HOME"):
-        roots.append(Path(env) / "hub")
-    roots.append(Path.home() / ".cache" / "huggingface" / "hub")
-    return roots
+def _find(pattern: str, fallback: str = "") -> Path | None:
+    """The cached dataset, or the committed slice when one is named.
 
-
-def _find(pattern: str) -> Path | None:
-    for root in _cache_roots():
-        hits = sorted(glob.glob(str(root / pattern)))
-        if hits:
-            return Path(hits[0])
-    return None
+    The cache-root logic lived here, in `swebench_data.py` and in app 03, and all
+    three appended the default underneath HF_HOME rather than letting it override -
+    so none of them could be pointed at an empty directory. One implementation now,
+    in `hf_cache`.
+    """
+    return hf_cache.resolve(pattern, fallback) if fallback else hf_cache.find_in_cache(pattern)
 
 
 def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
@@ -67,7 +60,10 @@ def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
     if split not in {"full", "sanitized"}:
         raise ValueError(f"unknown MBPP split {split!r}; expected full or sanitized")
     if split == "sanitized":
-        path = _find("datasets--Muennighoff--mbpp/snapshots/*/data/sanitized-mbpp.json")
+        path = _find(
+            "datasets--Muennighoff--mbpp/snapshots/*/data/sanitized-mbpp.json",
+            "sanitized-mbpp.json",
+        )
         if path is None:
             raise FileNotFoundError("the sanitized MBPP split is not in the local cache")
         rows = json.loads(path.read_text(encoding="utf-8"))
@@ -86,7 +82,7 @@ def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
             for r in rows
         ]
     else:
-        path = _find("datasets--Muennighoff--mbpp/snapshots/*/data/mbpp.jsonl")
+        path = _find("datasets--Muennighoff--mbpp/snapshots/*/data/mbpp.jsonl", "mbpp.jsonl")
         if path is None:
             raise FileNotFoundError("MBPP not in the local Hugging Face cache")
         lines = path.read_text(encoding="utf-8").splitlines()

@@ -110,7 +110,7 @@ def test_the_recall_figures_are_kept_apart_from_the_population():
     """`print_report` iterates its argument as retrievers; a population dict folded
     in beside them was read as one and crashed on a missing 'overall' key."""
     out = le.run(limit=10)
-    assert set(out) == {"recall", "population", "skipped"}
+    assert set(out) == {"recall", "fabrication", "population", "skipped"}
     for name, scores in out["recall"].items():
         assert {"overall", "by_tier", "by_repo"} <= set(scores), name
         assert "recall@10" in scores["overall"]
@@ -203,3 +203,58 @@ def test_the_unused_parallel_witness_wrapper_is_gone():
 
     assert not hasattr(differential, "find_many")
     assert hasattr(differential, "find_witness")
+
+
+# -- the fabrication rate, which had no caller ----------------------------
+
+
+class _NamingModel:
+    """A model that names two real paths and one it invented, per instance."""
+
+    def __init__(self):
+        self.calls = 0
+
+    async def generate(self, prompt: str, num_predict: int = 256) -> str:
+        self.calls += 1
+        if "numbered list of candidate files" in prompt or "CANDIDATES:" in prompt:
+            return "1\n2\n"
+        return "sklearn/preprocessing/_encoders.py\nsetup.py\nsklearn/invented/nowhere.py\n"
+
+    def require(self, raw, what: str = ""):
+        assert raw is not None, what
+        return raw
+
+
+@needs_data
+def test_the_fabrication_rate_is_computed_by_the_driver(monkeypatch):
+    """The README says the model "invents one path in five".
+
+    `evaluate.fabrication_rate` computes exactly that and had no caller anywhere -
+    the commit that composed the other four orphaned pieces left this one out, and
+    `print_report` never printed it. So the claim had no producer in the repository
+    that makes it.
+    """
+    from apps._platform import model as platform_model
+
+    stub = _NamingModel()
+    monkeypatch.setattr(platform_model, "generate", stub.generate)
+    monkeypatch.setattr(platform_model, "require", stub.require)
+
+    out = le.run(limit=3, model_arms=True, quiet=True)
+
+    assert "llm" in out["fabrication"], "the generative arm did not reach the rate"
+    found = out["fabrication"]["llm"]
+    assert found["paths_named"] > 0
+    assert found["paths_that_exist"] <= found["paths_named"]
+    assert 0.0 <= found["rate_exists"] <= 1.0
+    # The invented path must not count as real, which is the whole point.
+    assert found["paths_that_exist"] < found["paths_named"]
+    assert found["instances_scored"] + found["instances_unlistable"] >= 1
+    assert stub.calls >= 2, "both model arms should have been driven"
+
+
+@needs_data
+def test_the_report_says_when_fabrication_was_not_measured():
+    """Rather than leaving a README claim with nothing beside it."""
+    out = le.run(limit=3)
+    assert out["fabrication"] == {}, "no model arm ran, so there is nothing to report"

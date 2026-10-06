@@ -22,9 +22,26 @@ ROOT = Path(__file__).resolve().parent.parent
 PRODUCTS = sorted(d for d in ROOT.iterdir() if d.is_dir() and d.name[0].isdigit())
 
 PKGS = {
-    "revenue", "ward", "onedesk", "ledger", "comms", "oncall", "hiredesk", "biddesk",
-    "hermes", "kycfloor", "watchtower", "powerguard", "swarmlab", "graphclinic",
-    "claimsfloor", "shelfops", "fleetdesk", "campusops", "agridesk", "driftwatch",
+    "revenue",
+    "ward",
+    "onedesk",
+    "ledger",
+    "comms",
+    "oncall",
+    "hiredesk",
+    "biddesk",
+    "hermes",
+    "kycfloor",
+    "watchtower",
+    "powerguard",
+    "swarmlab",
+    "graphclinic",
+    "claimsfloor",
+    "shelfops",
+    "fleetdesk",
+    "campusops",
+    "agridesk",
+    "driftwatch",
 }
 PKGS |= {f"{p}.{s}" for p in PKGS for s in ("app", "graph", "agents", "domain")}
 
@@ -56,9 +73,7 @@ def serve(product: Path) -> dict:
         rt = tg.runtime(Recorded(make_script(payload)), tg.sources())
 
         port = free_port()
-        config = uvicorn.Config(
-            api.create_app(rt), host="127.0.0.1", port=port, log_level="error"
-        )
+        config = uvicorn.Config(api.create_app(rt), host="127.0.0.1", port=port, log_level="error")
         server = uvicorn.Server(config)
         thread = threading.Thread(target=server.run, daemon=True)
         thread.start()
@@ -131,9 +146,7 @@ def main() -> int:
             print(f"  BAD {product.name:18} {type(exc).__name__}: {exc}")
             results[product.name] = {"error": f"{type(exc).__name__}: {exc}"}
 
-    (ROOT / "scripts" / "served.json").write_text(
-        json.dumps(results, indent=2), encoding="utf-8"
-    )
+    (ROOT / "scripts" / "served.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     print(f"\n{len(PRODUCTS) - bad}/{len(PRODUCTS)} products served over HTTP")
     return 1 if bad else 0
 

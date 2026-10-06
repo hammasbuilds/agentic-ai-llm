@@ -95,13 +95,19 @@ def test_nothing_is_regenerated_across_the_approval():
 def test_the_early_exit_costs_no_generation():
     model = Recorded(script(payload()))
     rt = runtime(model, sources())
-    rt.submit("r1", "e1", payload(**{
-            "since_day": 5,
-            "isolates": [
-                {"id": f"i{n}", "sequence": "ACGT", "site": "multan", "day": 10 + n}
-                for n in range(9)
-            ],
-        }))
+    rt.submit(
+        "r1",
+        "e1",
+        payload(
+            **{
+                "since_day": 5,
+                "isolates": [
+                    {"id": f"i{n}", "sequence": "ACGT", "site": "multan", "day": 10 + n}
+                    for n in range(9)
+                ],
+            }
+        ),
+    )
     rt.drain()
     row = rt.run_row("r1")
     assert row["status"] == api.DONE

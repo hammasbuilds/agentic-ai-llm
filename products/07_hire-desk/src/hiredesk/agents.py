@@ -80,8 +80,7 @@ def _barrier(state: dict) -> list[str]:
     """What redaction removed, and what survived it. Real receipts."""
     results = _audit()
     return [
-        f"conv{r.conversation}:removed={r.exact_removed}:leaks={len(r.leaks)}"
-        for r in results
+        f"conv{r.conversation}:removed={r.exact_removed}:leaks={len(r.leaks)}" for r in results
     ]
 
 

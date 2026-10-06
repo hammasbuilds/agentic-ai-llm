@@ -33,7 +33,7 @@ class Product:
     description: str
     sales: int
     units: int
-    modal: int   # minor units
+    modal: int  # minor units
     low: int
     high: int
     median: int

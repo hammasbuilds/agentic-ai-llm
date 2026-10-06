@@ -48,9 +48,7 @@ def test_the_short_form_can_be_more_common_than_the_name(results):
     # "Mel" survives 59 times after "Melanie" was redacted. Someone reading the
     # blinded document does not need the full name.
     by_short = {
-        (leak.speaker, leak.survived): leak.occurrences
-        for r in results
-        for leak in r.leaks
+        (leak.speaker, leak.survived): leak.occurrences for r in results for leak in r.leaks
     }
     assert by_short[("Melanie", "Mel")] == 59
     assert by_short[("Deborah", "Deb")] == 41

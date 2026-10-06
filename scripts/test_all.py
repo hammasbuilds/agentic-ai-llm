@@ -69,8 +69,12 @@ def run(package: Path) -> tuple[str, dict[str, int], str]:
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"],
-            cwd=package, capture_output=True, text=True, errors="replace",
-            timeout=TIMEOUT, check=False,
+            cwd=package,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=TIMEOUT,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         # A hung suite is one package's problem and must not become every other
@@ -87,12 +91,17 @@ def run(package: Path) -> tuple[str, dict[str, int], str]:
             return "SKIPPED", tally, f"{tally['skipped']} skipped, nothing ran"
         return "ok", tally, ""
     detail = next(
-        (ln.strip() for ln in blob.splitlines()
-         if "ModuleNotFoundError" in ln or "ImportError" in ln or "Error" in ln),
+        (
+            ln.strip()
+            for ln in blob.splitlines()
+            if "ModuleNotFoundError" in ln or "ImportError" in ln or "Error" in ln
+        ),
         f"exit {proc.returncode}",
     )
-    return "FAIL", tally, (
-        f"{tally.get('failed', 0)} failed, {tally.get('error', 0)} errors | {detail[:70]}"
+    return (
+        "FAIL",
+        tally,
+        (f"{tally.get('failed', 0)} failed, {tally.get('error', 0)} errors | {detail[:70]}"),
     )
 
 
@@ -114,8 +123,9 @@ def main() -> int:
         skipped += tally.get("skipped", 0)
         label = f"{package.parent.name}/{package.name}"
         ran = f"{count:>5} ran" + (f" +{tally['skipped']} skip" if tally.get("skipped") else "")
-        print(f"  {label:<34}{ran:>16}   {outcome}"
-              + (f"   {detail}" if detail else ""), flush=True)
+        print(
+            f"  {label:<34}{ran:>16}   {outcome}" + (f"   {detail}" if detail else ""), flush=True
+        )
         if outcome != "ok":
             broken.append((label, detail))
 
@@ -125,8 +135,7 @@ def main() -> int:
     # contributes nothing and must not be quoted as though it did.
     print(
         f"{total:,} tests ran across {len(packages)} packages in "
-        f"{time.time() - started:.0f}s"
-        + (f", {skipped} skipped" if skipped else "")
+        f"{time.time() - started:.0f}s" + (f", {skipped} skipped" if skipped else "")
     )
     if broken:
         print(f"\n{len(broken)} package(s) not green:")

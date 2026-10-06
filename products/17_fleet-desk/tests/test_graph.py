@@ -46,8 +46,14 @@ def payload(**extra) -> dict:
         "stops": ["a", "b"],
         "solver_route": ["d", "a", "b", "d"],
         "challenger_route": ["d", "b", "a", "d"],
-        "matrix": {"d->a": 1000, "a->d": 1000, "d->b": 2000, "b->d": 2000,
-                   "a->b": 1200, "b->a": 1200},
+        "matrix": {
+            "d->a": 1000,
+            "a->d": 1000,
+            "d->b": 2000,
+            "b->d": 2000,
+            "a->b": 1200,
+            "b->a": 1200,
+        },
         "issued_receipts": ["src_a41", "src_b22"],
         "claims": [
             {"text": "Backed by a real receipt.", "receipts": ["src_a41"]},
@@ -96,12 +102,19 @@ def test_nothing_is_regenerated_across_the_approval():
 def test_the_early_exit_costs_no_generation():
     model = Recorded(script(payload()))
     rt = runtime(model, sources())
-    rt.submit("r1", "e1", payload(**{
-            "depot": "d", "stops": ["a", "b"],
-            "solver_route": ["d", "a", "d"],
-            "challenger_route": ["d", "a", "b", "d"],
-            "matrix": {"d->a": 1000, "a->d": 1000},
-        }))
+    rt.submit(
+        "r1",
+        "e1",
+        payload(
+            **{
+                "depot": "d",
+                "stops": ["a", "b"],
+                "solver_route": ["d", "a", "d"],
+                "challenger_route": ["d", "a", "b", "d"],
+                "matrix": {"d->a": 1000, "a->d": 1000},
+            }
+        ),
+    )
     rt.drain()
     row = rt.run_row("r1")
     assert row["status"] == api.DONE

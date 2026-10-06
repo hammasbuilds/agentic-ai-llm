@@ -11,13 +11,20 @@ from agentplatform.llm import Recorded
 from revenue import agents
 from revenue.app import runtime
 
+# Built rather than written out: the keys are the prompt the fake model is keyed by,
+# and spelled literally they are 99 and 103 characters, which `ruff format` collapses
+# onto one line and `ruff check` then rejects at this package's 96-column limit. The
+# two tools disagreed about the same file until the keys stopped being long.
+_WHOLE = "They are hiring three AI engineers."
+_PARTIAL = "Registry lookup failed; partial picture."
+_ALL_SOURCES = "['src_a41', 'src_b22', 'src_c07']"
+_MINUS_REGISTRY = "['src_a41', 'src_c07']"
+
 SCRIPT = {
-    "summarise:['src_a41', 'src_b22', 'src_c07']|failed:[]":
-        "They are hiring three AI engineers.",
-    "summarise:['src_a41', 'src_c07']|failed:['registry']":
-        "Registry lookup failed; partial picture.",
-    "draft:They are hiring three AI engineers.": "Hello — saw you are hiring.",
-    "draft:Registry lookup failed; partial picture.": "Hello — a shorter note.",
+    f"summarise:{_ALL_SOURCES}|failed:[]": _WHOLE,
+    f"summarise:{_MINUS_REGISTRY}|failed:['registry']": _PARTIAL,
+    f"draft:{_WHOLE}": "Hello — saw you are hiring.",
+    f"draft:{_PARTIAL}": "Hello — a shorter note.",
 }
 
 
@@ -137,6 +144,10 @@ def test_every_graph_shape_appears_in_this_product():
     graph = runtime(Recorded(SCRIPT), sources()).graph
     kinds = {n.kind for n in graph.nodes.values()}
     assert kinds == {
-        graphs.RULES, graphs.FANOUT, graphs.LLM,
-        graphs.GATE, graphs.INTERRUPT, graphs.TOOL,
+        graphs.RULES,
+        graphs.FANOUT,
+        graphs.LLM,
+        graphs.GATE,
+        graphs.INTERRUPT,
+        graphs.TOOL,
     }

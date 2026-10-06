@@ -262,9 +262,7 @@ def find_reverts(history: list[Edit]) -> list[Revert]:
     for (path, line), commits in per_commit.items():
         # A commit that both adds and removes the line did neither: net zero.
         events = sorted(
-            (seq, next(iter(kinds)))
-            for seq, kinds in commits.items()
-            if len(kinds) == 1
+            (seq, next(iter(kinds))) for seq, kinds in commits.items() if len(kinds) == 1
         )
         first = None
         removed = None
@@ -280,9 +278,7 @@ def find_reverts(history: list[Edit]) -> list[Revert]:
 
 
 @lru_cache(maxsize=2)
-def survey(
-    root: str | None = None, repos: int = 0, limit: int = 10_000
-) -> tuple[Summary, ...]:
+def survey(root: str | None = None, repos: int = 0, limit: int = 10_000) -> tuple[Summary, ...]:
     """Every repository under ``root`` with history, summarised.
 
     ``repos`` defaults to no cap. It used to default to 12, which stopped

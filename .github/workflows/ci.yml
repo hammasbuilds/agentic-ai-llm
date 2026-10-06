@@ -21,6 +21,18 @@ jobs:
       - run: uv run ruff format --check apps tests
       - run: uv run pytest -q
 
+      # The suite has to pass on a machine that is not the one that wrote it. Run
+      # again with the Hugging Face cache pointed at an empty directory: run
+      # hermetically before `data/benchmarks/` existed, this gave 11 FAILURES rather
+      # than skips, because the tests that assert what a runner does when the model
+      # is unreachable hit FileNotFoundError first. CI never caught it - the last
+      # green run predated the commit that added those tests.
+      - name: The same suite with no dataset cache
+        run: uv run pytest -q
+        env:
+          HF_HUB_CACHE: ${{ runner.temp }}/no-hf-cache
+          HF_HOME: ${{ runner.temp }}/no-hf-cache
+
   # Every projects/* and products/* package is independent: its own pyproject,
   # its own pythonpath, its own suite. Running pytest at the root collects them,
   # cannot import them, and dies - so they are run one process each, from their
@@ -38,6 +50,12 @@ jobs:
       # package has its own ruff config and ruff honours the nearest one, so this is
       # eleven plus twenty-one separate rule sets being enforced at once.
       - name: Lint every sub-package
-        run: ruff check projects products
+        run: ruff check projects products scripts worker.py
+      # `format --check` covered only `apps tests`, so 70 files under products/ had
+      # drifted out of format unseen - and in one of them `format` and `check`
+      # disagreed, because formatting collapsed a hand-wrapped dict past the
+      # package's own 96-column limit.
+      - name: Check formatting in every sub-package
+        run: ruff format --check projects products scripts worker.py
       - name: Every sub-package
         run: python scripts/test_all.py

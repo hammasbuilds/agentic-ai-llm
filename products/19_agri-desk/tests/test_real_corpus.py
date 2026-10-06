@@ -64,9 +64,7 @@ def test_collapsing_removes_the_resequenced_records():
 
 
 def test_the_largest_clonal_group_is_the_documented_one():
-    clonal = sorted(
-        (c for c in collapse_clonal(isolates()) if c.clonal), key=lambda c: -c.size
-    )
+    clonal = sorted((c for c in collapse_clonal(isolates()) if c.clonal), key=lambda c: -c.size)
     assert len(clonal) == 64
     assert [c.size for c in clonal[:7]] == [8, 7, 7, 7, 6, 5, 5]
 

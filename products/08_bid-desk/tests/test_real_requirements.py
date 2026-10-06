@@ -32,9 +32,7 @@ from biddesk.rfc import (
     strict,
 )
 
-pytestmark = pytest.mark.skipif(
-    not list(DATA.glob("rfc*.txt")), reason="no RFC text on disk"
-)
+pytestmark = pytest.mark.skipif(not list(DATA.glob("rfc*.txt")), reason="no RFC text on disk")
 
 
 def test_the_documents_load():

@@ -34,8 +34,7 @@ def triage(state: dict) -> dict:
     """
     if state.get("isolates"):
         isolates = [
-            Isolate(i["id"], i["sequence"], i["site"], i["day"])
-            for i in state["isolates"]
+            Isolate(i["id"], i["sequence"], i["site"], i["day"]) for i in state["isolates"]
         ]
     else:
         isolates = _corpus_isolates(state.get("corpus"))

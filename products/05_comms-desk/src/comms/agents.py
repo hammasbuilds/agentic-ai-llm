@@ -37,9 +37,7 @@ def _commitments(state: dict) -> list[Commitment]:
             for c in state["commitments"]
         ]
     found = _ami_commitments(limit_meetings=state.get("meetings", 4))
-    return [
-        Commitment(f"c{i}", u.key, u.text, "meeting") for i, u in enumerate(found)
-    ]
+    return [Commitment(f"c{i}", u.key, u.text, "meeting") for i, u in enumerate(found)]
 
 
 def triage(state: dict) -> dict:

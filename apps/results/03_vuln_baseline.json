@@ -6,5 +6,15 @@
   "always_safe": 0.5406295754026355,
   "majority": 0.5406295754026355,
   "first_800_safe_share": 0.49625,
-  "seeded_800_safe_share": 0.55625
+  "seeded_800_safe_share": 0.55625,
+  "label_noise": {
+    "rows": 2732,
+    "distinct_bodies": 2731,
+    "exact_duplicate_rows": 1,
+    "bodies_with_conflicting_labels": 1,
+    "rows_dropped": 2,
+    "always_safe_all_rows": 0.5406295754026355,
+    "always_safe_conflicts_removed": 0.5406593406593406,
+    "shift_in_points": 0.002976525670517205
+  }
 }

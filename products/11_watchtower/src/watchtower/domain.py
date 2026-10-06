@@ -42,7 +42,7 @@ def upstream(version: str) -> tuple[int, ...]:
 def revision(version: str) -> str:
     """The distribution suffix — ``-4ubuntu1.2``. The backport signal."""
     match = _UPSTREAM.match(version.strip())
-    return version.strip()[match.end():] if match else ""
+    return version.strip()[match.end() :] if match else ""
 
 
 @dataclass(frozen=True)

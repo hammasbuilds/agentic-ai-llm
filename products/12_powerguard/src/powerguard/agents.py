@@ -41,10 +41,14 @@ def triage(state: dict) -> dict:
         )
     else:
         jobs = _real_jobs()
-        machine = _real_power() if state.get("on_mains") is None else Machine(
-            state["on_mains"],
-            state.get("battery_pct", 100),
-            state.get("minutes_remaining", 120),
+        machine = (
+            _real_power()
+            if state.get("on_mains") is None
+            else Machine(
+                state["on_mains"],
+                state.get("battery_pct", 100),
+                state.get("minutes_remaining", 120),
+            )
         )
     actions = plan(machine, jobs)
     return {

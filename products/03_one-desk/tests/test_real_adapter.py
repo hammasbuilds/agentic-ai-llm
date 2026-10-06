@@ -66,18 +66,14 @@ def test_what_it_does_not_do_is_leave_the_source_behind(measured):
 
 
 def test_how_much_a_platform_transforms_varies_twofold(runs):
-    medians = {
-        p: statistics.median([r.overlaps[p] for r in runs]) for p in PLATFORMS
-    }
+    medians = {p: statistics.median([r.overlaps[p] for r in runs]) for p in PLATFORMS}
     assert medians["instagram"] < medians["x"]
     assert medians["x"] / medians["instagram"] > 1.7
     # Instagram rewrites most, X least - the prompts differ and it shows.
 
 
 def test_the_short_platform_is_the_least_transformed(runs):
-    medians = {
-        p: statistics.median([r.overlaps[p] for r in runs]) for p in PLATFORMS
-    }
+    medians = {p: statistics.median([r.overlaps[p] for r in runs]) for p in PLATFORMS}
     assert max(medians, key=medians.get) == "x"
 
 

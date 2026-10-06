@@ -47,8 +47,7 @@ def grid(items):
     """
     blind = [Commitment(c.id, "ANY", c.text, c.source) for c in items]
     return {
-        (threshold, speaker_blind): len(subject)
-        - len(dedupe(subject, threshold=threshold))
+        (threshold, speaker_blind): len(subject) - len(dedupe(subject, threshold=threshold))
         for threshold in THRESHOLDS
         for speaker_blind, subject in ((False, items), (True, blind))
     }
@@ -117,9 +116,7 @@ def test_speaker_is_a_barrier_not_a_weighted_feature():
         Commitment(
             "c1", "ayesha", "I will send the revised pricing sheet on Friday", "meeting"
         ),
-        Commitment(
-            "c2", "bilal", "I will send the revised pricing sheet on Friday", "meeting"
-        ),
+        Commitment("c2", "bilal", "I will send the revised pricing sheet on Friday", "meeting"),
     ]
     assert len(dedupe(pair, threshold=0.01)) == 2
 

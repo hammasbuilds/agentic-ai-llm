@@ -37,9 +37,9 @@ class Booking:
     id: str
     start: datetime
     stop: datetime
-    room: str        # organisation
-    teacher: str     # provider
-    cohort: str      # patient
+    room: str  # organisation
+    teacher: str  # provider
+    cohort: str  # patient
 
     @property
     def day(self) -> str:

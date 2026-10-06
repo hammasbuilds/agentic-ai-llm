@@ -21,9 +21,26 @@ ROOT = Path(__file__).resolve().parent.parent
 SHOTS = ROOT / "docs" / "screenshots"
 
 PKGS = {
-    "revenue", "ward", "onedesk", "ledger", "comms", "oncall", "hiredesk", "biddesk",
-    "hermes", "kycfloor", "watchtower", "powerguard", "swarmlab", "graphclinic",
-    "claimsfloor", "shelfops", "fleetdesk", "campusops", "agridesk", "driftwatch",
+    "revenue",
+    "ward",
+    "onedesk",
+    "ledger",
+    "comms",
+    "oncall",
+    "hiredesk",
+    "biddesk",
+    "hermes",
+    "kycfloor",
+    "watchtower",
+    "powerguard",
+    "swarmlab",
+    "graphclinic",
+    "claimsfloor",
+    "shelfops",
+    "fleetdesk",
+    "campusops",
+    "agridesk",
+    "driftwatch",
 }
 PKGS |= {f"{p}.{s}" for p in PKGS for s in ("app", "graph", "agents", "domain")}
 
@@ -103,9 +120,7 @@ def main(dirname: str = "01_revenue-desk") -> int:
             ):
                 page = browser.new_page(viewport={"width": width, "height": height})
                 page.goto(f"http://127.0.0.1:{port}/", wait_until="networkidle")
-                page.evaluate(
-                    "t => document.documentElement.setAttribute('data-theme', t)", theme
-                )
+                page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", theme)
                 page.wait_for_timeout(2500)  # let the 2s poll populate the panels
                 out = SHOTS / f"{name}.png"
                 page.screenshot(path=str(out), full_page=True)

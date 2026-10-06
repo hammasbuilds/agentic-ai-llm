@@ -64,7 +64,8 @@ def test_a_sixth_of_the_aliases_are_unmatchable_by_any_string_method(pairs):
     # Skeletons recover a few of them: two names can share a consonant frame
     # while sharing no identical token.
     no_skeleton = [
-        1 for p, a in pairs
+        1
+        for p, a in pairs
         if not (
             {matching.skeleton(x) for x in matching.normalise(p)}
             & {matching.skeleton(x) for x in matching.normalise(a)}
@@ -107,8 +108,7 @@ def test_every_further_point_of_recall_is_bought_with_precision(pairs, negatives
 
     def fp(min_shared):
         hits = sum(
-            1 for a, b in negatives
-            if matching.same_person(a, b, matching.RELAXED, min_shared)
+            1 for a, b in negatives if matching.same_person(a, b, matching.RELAXED, min_shared)
         )
         return hits / len(negatives)
 

@@ -27,7 +27,7 @@ class Job:
     pid: int
     name: str
     kind: str
-    owned: bool          # started by this custodian
+    owned: bool  # started by this custodian
     checkpointable: bool = False
     resumable: bool = True
 
@@ -121,11 +121,15 @@ def plan(
     """The ordered list of actions for the current power state."""
     t = thresholds or Thresholds()
     if machine.on_mains:
-        return [
-            Action(RESUME, j.name, "mains restored, battery above the resume line", j.pid)
-            for j in jobs
-            if j.owned and j.resumable
-        ] if machine.battery_pct >= t.resume_above_pct else []
+        return (
+            [
+                Action(RESUME, j.name, "mains restored, battery above the resume line", j.pid)
+                for j in jobs
+                if j.owned and j.resumable
+            ]
+            if machine.battery_pct >= t.resume_above_pct
+            else []
+        )
 
     actions: list[Action] = []
     for job in sorted(jobs, key=lambda j: (_COST.get(j.kind, 9), j.pid)):
@@ -145,25 +149,19 @@ def plan(
                 )
             )
 
-    actions.append(
-        Action(SLEEP_DISPLAYS, "displays", "nothing is being watched on battery")
-    )
+    actions.append(Action(SLEEP_DISPLAYS, "displays", "nothing is being watched on battery"))
 
     flat = machine.battery_pct <= t.hibernate_below_pct
     brief = machine.minutes_remaining <= t.hibernate_below_minutes
     if flat or brief:
-        reason = (
-            f"battery {machine.battery_pct}%, {machine.minutes_remaining} min left"
-        )
+        reason = f"battery {machine.battery_pct}%, {machine.minutes_remaining} min left"
         # The one action with no pid and machine-wide reach. Everything else
         # here is refused on a process we do not own; this is not, so it names
         # what it will take down with it rather than presenting itself as safe.
         others = collateral(jobs)
         if others:
             named = ", ".join(f"{j.name}({j.pid})" for j in sorted(others, key=lambda j: j.pid))
-            reason += (
-                f"; SUSPENDS {len(others)} job(s) belonging to another session: {named}"
-            )
+            reason += f"; SUSPENDS {len(others)} job(s) belonging to another session: {named}"
         actions.append(Action(HIBERNATE, "system", reason))
     return actions
 

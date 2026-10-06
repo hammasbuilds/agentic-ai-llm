@@ -99,7 +99,7 @@ def contradictions(edges: list[Edge]) -> list[tuple[Edge, Edge]]:
     out: list[tuple[Edge, Edge]] = []
     for group in grouped.values():
         for i, first in enumerate(group):
-            for second in group[i + 1:]:
+            for second in group[i + 1 :]:
                 if first.dst != second.dst and first.source != second.source:
                     out.append((first, second))
     return out

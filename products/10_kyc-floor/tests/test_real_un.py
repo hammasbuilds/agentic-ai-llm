@@ -136,12 +136,8 @@ def test_measured_over_reachable_pairs_they_agree(pairs):
 def test_and_skeletons_are_still_free_here(pairs, negatives):
     # The other half of the OFAC finding, replicated: the recall is bought at
     # one false positive in twenty thousand random different-person pairs.
-    strict_fp = sum(
-        1 for a, b in negatives if matching.same_person(a, b, matching.STRICT)
-    )
-    skeleton_fp = sum(
-        1 for a, b in negatives if matching.same_person(a, b, matching.SKELETON)
-    )
+    strict_fp = sum(1 for a, b in negatives if matching.same_person(a, b, matching.STRICT))
+    skeleton_fp = sum(1 for a, b in negatives if matching.same_person(a, b, matching.SKELETON))
     assert strict_fp == 0
     assert skeleton_fp == 1
 
@@ -152,9 +148,7 @@ def test_relaxing_further_is_worse_here_than_on_ofac(pairs, negatives):
     # are shorter and share common particles more often. The threshold is not
     # transferable between lists even though the ranking of rules is.
     def fp(mode, min_shared):
-        hits = sum(
-            1 for a, b in negatives if matching.same_person(a, b, mode, min_shared)
-        )
+        hits = sum(1 for a, b in negatives if matching.same_person(a, b, mode, min_shared))
         return hits / len(negatives)
 
     assert fp(matching.RELAXED, 2) == pytest.approx(0.0042, abs=0.002)

@@ -52,15 +52,60 @@ def test_no_template_placeholder_survives():
     assert "{{" not in console(TestClient(api.create_app(runtime())))
 
 
+#: `api("/runs")` and ``api(`/approvals/${id}/approve`)`` - both forms, because the
+#: pattern here was `api\("(/[a-z]+)"` and the console makes eight distinct calls. It
+#: matched the six double-quoted lowercase ones and skipped the two template literals,
+#: which are the approve and reject routes - the two this suite has the most reason to
+#: check. A checker whose denominator excludes the interesting cases.
+_CONSOLE_CALL = re.compile(r"""api\(\s*["`](/[^"`?]+)""")
+
+
+def _routes_the_console_calls(body: str) -> set[str]:
+    """Every path the page requests, with `${...}` left as a FastAPI-shaped parameter."""
+    found = set()
+    for raw in _CONSOLE_CALL.findall(body):
+        found.add(re.sub(r"\$\{[^}]*\}", "{id}", raw))
+    return found
+
+
 def test_every_route_the_console_calls_exists():
+    app = api.create_app(runtime())
+    client = TestClient(app)
+    called = _routes_the_console_calls(console(client))
+
+    assert called == {
+        "/health",
+        "/runs",
+        "/intake",
+        "/approvals",
+        "/approvals/{id}/approve",
+        "/approvals/{id}/reject",
+        "/events",
+        "/drain",
+    }, called
+
+    # Compared against the app's own route table rather than by requesting and reading
+    # a status code: a POST to /approvals/nope/approve returns 404 because the *run*
+    # does not exist, which is indistinguishable from the route not being registered.
+    registered = {
+        route.path.replace("{run_id}", "{id}") for route in app.routes if hasattr(route, "path")
+    }
+    missing = called - registered
+    assert missing == set(), f"the console calls routes that are not registered: {missing}"
+
+
+def test_a_route_the_console_calls_is_reachable_by_the_verb_it_uses(client_free=None):
+    """And the two template-literal routes are POST-only, which the old regex never
+    reached. 405 means registered-but-wrong-verb, which is still registered."""
     client = TestClient(api.create_app(runtime()))
-    body = console(client)
-    paths = set(re.findall(r'api\("(/[a-z]+)"', body))
-    assert {"/health", "/runs", "/approvals", "/events", "/drain"} <= paths
-    for path in sorted(paths):
-        # 405 means the route exists but wants another verb, which is still a
-        # route. 404 is the failure this guards: a button wired to nothing.
-        assert client.get(path).status_code in (200, 405), path
+    for path in ("/health", "/runs", "/approvals", "/events"):
+        assert client.get(path).status_code == 200, path
+    for path in ("/drain", "/intake"):
+        assert client.get(path).status_code == 405, path
+    for path in ("/approvals/nope/approve", "/approvals/nope/reject"):
+        # Registered: it answers 404 for the run, not 405 for the verb.
+        assert client.post(path).status_code == 404, path
+        assert client.get(path).status_code == 405, path
 
 
 def test_the_console_reflects_a_run_waiting_for_approval():

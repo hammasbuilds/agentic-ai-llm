@@ -133,8 +133,8 @@ def test_versions_order_numerically():
 
 def test_a_window_is_half_open():
     window = Window("0.10.0", "0.11.1")
-    assert not window.covers("0.9.9")   # before the bug was written
-    assert window.covers("0.10.0")      # the version it was introduced in
+    assert not window.covers("0.9.9")  # before the bug was written
+    assert window.covers("0.10.0")  # the version it was introduced in
     assert window.covers("0.11.0")
     assert not window.covers("0.11.1")  # the fix itself is not affected
 
@@ -209,7 +209,9 @@ def test_a_version_between_two_windows_is_the_false_negative_case():
     # Two maintained branches: fixed in 1.2, broken again in 2.0, fixed in 2.1.
     # 2.0 is above the highest fixed version, so the shortcut clears it.
     adv = Advisory(
-        id="x", package="p", summary="",
+        id="x",
+        package="p",
+        summary="",
         windows=[Window("1.0", "1.2"), Window("2.0", "2.1")],
     )
     assert adv.affects("2.0")

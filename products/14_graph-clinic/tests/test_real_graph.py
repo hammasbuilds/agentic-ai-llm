@@ -62,9 +62,7 @@ def test_and_it_is_useless_on_comparison_questions():
     comparison = subset("comparison")
     assert len(comparison) == 1_487
     assert rate(comparison, lambda i: connected(i, 2)) < 0.02
-    assert rate(comparison, baseline_hits_both) > rate(
-        comparison, lambda i: connected(i, 2)
-    )
+    assert rate(comparison, baseline_hits_both) > rate(comparison, lambda i: connected(i, 2))
 
 
 def test_one_hop_finds_almost_no_comparison_pair_at_all():

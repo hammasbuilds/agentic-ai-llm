@@ -14,7 +14,7 @@ data — is in its own README.
 
 ```
 python -m venv .venv && .venv/Scripts/pip install -e platform[api,infra] pytest ruff
-cd platform        && python -m pytest -q     # 152 passed, 9 skipped
+cd platform        && python -m pytest -q     # 153 passed, 9 skipped
 cd 01_revenue-desk && python -m pytest -q     #  37 passed, 1 skipped
 
 python scripts/capture.py       # runs all 20 for real, writes scripts/runs.json

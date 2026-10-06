@@ -9,7 +9,7 @@ LangGraph ones skip too when that extra is absent, each naming the package rathe
 pretending the feature is untested for some other reason.
 
 ```
-python -m pytest -q                      # 152 passed, 9 skipped
+python -m pytest -q                      # 153 passed, 9 skipped
 ```
 
 ## What is here
@@ -53,8 +53,8 @@ supplied if the caller has none:
 ```python
 app = graphs.to_langgraph(graph)
 config = {"configurable": {"thread_id": run_id}}
-app.invoke(state, config)   # runs to the gate and stops; nothing behind it has run
-app.invoke(None, config)    # the approval; resumes after the gate
+app.invoke(state, config)  # runs to the gate and stops; nothing behind it has run
+app.invoke(None, config)  # the approval; resumes after the gate
 ```
 
 An interrupt whose outgoing edge is conditional, or which leads straight to `END`, has no
@@ -87,8 +87,8 @@ no model at all, was charged in full.
 An admission now **reserves** the estimate and the release **settles** it:
 
 ```python
-decision = controller.admit("acme", estimate)   # reserved, and counted against the budget
-...                                             # the generation runs
+decision = controller.admit("acme", estimate)  # reserved, and counted against the budget
+...  # the generation runs
 controller.release(decision.reservation, completion.total_tokens)
 ```
 
@@ -164,10 +164,10 @@ only way a test can observe the difference:
 
 ```python
 bus.publish("crm.tasks", "deal:1", {"n": 1})
-bus.poll("crm.tasks", "workers")        # read
-bus.lag("crm.tasks", "workers")         # 1 - reading is not finishing
-bus.restart("crm.tasks", "workers")     # the worker died
-bus.poll("crm.tasks", "workers")        # delivered again
+bus.poll("crm.tasks", "workers")  # read
+bus.lag("crm.tasks", "workers")  # 1 - reading is not finishing
+bus.restart("crm.tasks", "workers")  # the worker died
+bus.poll("crm.tasks", "workers")  # delivered again
 ```
 
 `lag` counts what is unacknowledged rather than unread, so a batch in flight no longer

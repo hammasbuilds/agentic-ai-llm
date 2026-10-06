@@ -55,12 +55,26 @@ committed now, and **the BM25 row of the localization table is reproducible with
 and no network**:
 
 ```bash
-python -m apps._engine.localize_eval     # 299 of 300 instances, ~30s, nothing installed
+python -m apps._engine.localize_eval     # 299 of 300 instances, ~30s, no model, no network
 ```
 
 It reports the population it scored and the instances it could not, because the one
 instance whose gold file is in no cached listing is excluded rather than counted as a
 retrieval failure. The two model arms and the dense arm are flags on the same command.
+
+That command used to work only here. It read SWE-bench Lite out of a Hugging Face cache,
+and on a machine without one it raised `FileNotFoundError` — while the four tests that
+verify its numbers skipped in exactly that condition, so the one claim offered as
+checkable by a stranger was checkable only by its author. Worse, `HF_HOME` and
+`HF_HUB_CACHE` were *appended to* the default rather than replacing it, in three separate
+copies of the same resolver, so pointing one at an empty directory isolated nothing and
+every offline check was reading the real cache.
+
+The columns these apps read are committed under
+[`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
+`data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
+guarantee by pointing both variables at an empty directory, and the full suite gives the
+same **317 passed, 38 skipped** either way.
 
 `repo-cartographer`'s resolution table is the last three lines of
 `cartographer compare <folder>` over every checkout in one folder — it used to

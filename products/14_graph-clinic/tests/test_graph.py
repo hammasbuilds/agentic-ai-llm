@@ -51,8 +51,12 @@ def payload(**extra) -> dict:
                 "dst": "ceftriaxone",
                 "source": "doc_1",
             },
-            {"src": "ceftriaxone", "rel": "contraindicated_in",
-             "dst": "penicillin_allergy", "source": "doc_2"},
+            {
+                "src": "ceftriaxone",
+                "rel": "contraindicated_in",
+                "dst": "penicillin_allergy",
+                "source": "doc_2",
+            },
         ],
         "issued_receipts": ["src_a41", "src_b22"],
         "claims": [

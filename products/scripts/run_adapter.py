@@ -61,9 +61,7 @@ def sources(limit: int) -> list[str]:
 
 
 def installed() -> list[str]:
-    listed = subprocess.run(
-        ["ollama", "list"], capture_output=True, text=True, check=False
-    ).stdout
+    listed = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=False).stdout
     return [ln.split()[0] for ln in listed.splitlines()[1:] if ln.strip()]
 
 
@@ -104,9 +102,7 @@ def main(limit: int = 12) -> int:
         variants = {}
         for platform in PLATFORMS:
             try:
-                variants[platform] = generate(
-                    chosen.tag, PROMPTS[platform].format(source=source)
-                )
+                variants[platform] = generate(chosen.tag, PROMPTS[platform].format(source=source))
             except Exception as exc:  # noqa: BLE001
                 print(f"  {i}/{len(texts)} {platform}: FAILED {type(exc).__name__}")
                 break

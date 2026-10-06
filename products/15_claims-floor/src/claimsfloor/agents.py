@@ -77,9 +77,7 @@ def _triage_real(state: dict) -> dict:
         }
 
     asked = (
-        date.fromisoformat(state["loss_date"])
-        if state.get("loss_date")
-        else rows[0].effective
+        date.fromisoformat(state["loss_date"]) if state.get("loss_date") else rows[0].effective
     )
     correct = _in_force(section, asked)
     current = _latest(section)

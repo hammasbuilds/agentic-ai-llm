@@ -42,8 +42,11 @@ def sources(fail_beta: bool = False):
 
 def payload(**extra) -> dict:
     base = {
-        "cv": {"name": "Ayesha Khan", "summary": "Ayesha Khan is a backend engineer.",
-               "skills": ["python"]},
+        "cv": {
+            "name": "Ayesha Khan",
+            "summary": "Ayesha Khan is a backend engineer.",
+            "skills": ["python"],
+        },
         "secrets": ["Ayesha", "Khan"],
         "issued_receipts": ["src_a41", "src_b22"],
         "claims": [
@@ -96,9 +99,16 @@ def test_the_early_exit_costs_no_generation():
     rt.submit(
         "r1",
         "e1",
-        payload(**{"cv": {"skills": ["python"], "notes": "referred by Ayesha",
-    },
-             "secrets": ["Ayesha"]}))
+        payload(
+            **{
+                "cv": {
+                    "skills": ["python"],
+                    "notes": "referred by Ayesha",
+                },
+                "secrets": ["Ayesha"],
+            }
+        ),
+    )
     rt.drain()
     row = rt.run_row("r1")
     assert row["status"] == api.DONE

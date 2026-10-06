@@ -16,13 +16,51 @@ PARTICLES = frozenset({"al", "el", "bin", "ibn", "bint", "abu", "ab", "ul", "ud"
 # Honorifics and ranks. A title is not a name part, and leaving one in breaks
 # subset matching for everyone who happens to carry it: "AL ZAWAHIRI, Dr. Ayman"
 # and "AL-ZAWAHIRI, Ayman Muhammad Rabi" fail to match on `dr` alone.
-TITLES = frozenset({
-    "dr", "mr", "mrs", "ms", "miss", "prof", "professor", "sir", "shaykh", "sheikh",
-    "shaikh", "hajji", "haji", "hajj", "mullah", "maulana", "imam", "sayyid", "sayed",
-    "engineer", "eng", "general", "gen", "colonel", "col", "major", "maj", "captain",
-    "capt", "lieutenant", "lt", "brigadier", "brig", "commander", "cmdr", "admiral",
-    "minister", "president", "chairman", "the", "alias",
-})
+TITLES = frozenset(
+    {
+        "dr",
+        "mr",
+        "mrs",
+        "ms",
+        "miss",
+        "prof",
+        "professor",
+        "sir",
+        "shaykh",
+        "sheikh",
+        "shaikh",
+        "hajji",
+        "haji",
+        "hajj",
+        "mullah",
+        "maulana",
+        "imam",
+        "sayyid",
+        "sayed",
+        "engineer",
+        "eng",
+        "general",
+        "gen",
+        "colonel",
+        "col",
+        "major",
+        "maj",
+        "captain",
+        "capt",
+        "lieutenant",
+        "lt",
+        "brigadier",
+        "brig",
+        "commander",
+        "cmdr",
+        "admiral",
+        "minister",
+        "president",
+        "chairman",
+        "the",
+        "alias",
+    }
+)
 
 # Arabic script does not write short vowels, so the vowels in a transliteration
 # are the transliterator's choice rather than the name. Comparing consonant
@@ -82,7 +120,7 @@ def _drop_leading_particle(token: str) -> str:
     """
     for prefix in PREFIXES:
         if token.startswith(prefix) and len(token) - len(prefix) >= 4:
-            return token[len(prefix):]
+            return token[len(prefix) :]
     return token
 
 
@@ -96,10 +134,7 @@ def normalise(name: str) -> tuple[str, ...]:
     decomposed = unicodedata.normalize("NFKD", name)
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
     cleaned = _NON_LETTER.sub(" ", stripped.lower().replace("-", " "))
-    tokens = [
-        t for t in _SPACES.split(cleaned)
-        if t and t not in PARTICLES and t not in TITLES
-    ]
+    tokens = [t for t in _SPACES.split(cleaned) if t and t not in PARTICLES and t not in TITLES]
     return tuple(sorted({_drop_leading_particle(fold(t)) for t in tokens if t}))
 
 
@@ -164,9 +199,7 @@ class Hit:
 
 def screen(name: str, listed: list[str], mode: str = SKELETON) -> list[Hit]:
     """Every list entry this name could be. Recall first; a human sifts."""
-    return [
-        Hit(entry, normalise(entry)) for entry in listed if same_person(name, entry, mode)
-    ]
+    return [Hit(entry, normalise(entry)) for entry in listed if same_person(name, entry, mode)]
 
 
 def alias_recall(found: set[str], truth: set[str]) -> float:

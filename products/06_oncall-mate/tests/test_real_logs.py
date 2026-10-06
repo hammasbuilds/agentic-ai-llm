@@ -126,10 +126,7 @@ def test_the_corpus_wide_figure_hides_all_of_that(lines):
 def test_a_drip_of_real_templates_still_cannot_chain_forever(lines):
     # The transitivity guard, on real templates rather than invented ones.
     hdfs = by_system(lines, "hdfs")[:200]
-    alerts = [
-        Alert(f"al_{i}", "hdfs", line.template, i * 100)
-        for i, line in enumerate(hdfs)
-    ]
+    alerts = [Alert(f"al_{i}", "hdfs", line.template, i * 100) for i, line in enumerate(hdfs)]
     incidents = collapse(alerts, window=120, max_span=900)
     assert len(incidents) > 1
     assert all(inc.span <= 900 for inc in incidents)

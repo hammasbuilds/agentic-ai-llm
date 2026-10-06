@@ -26,21 +26,33 @@ def test_back_to_back_sessions_do_not_clash():
 
 
 def test_a_double_booked_room_is_a_clash():
-    found = clashes([s("a", 540, 620, room="R1", teacher="T1", cohort="C1"),
-                     s("b", 600, 660, room="R1", teacher="T2", cohort="C2")])
+    found = clashes(
+        [
+            s("a", 540, 620, room="R1", teacher="T1", cohort="C1"),
+            s("b", 600, 660, room="R1", teacher="T2", cohort="C2"),
+        ]
+    )
     assert [c.dimension for c in found] == [ROOM]
 
 
 def test_a_double_booked_teacher_is_a_clash_even_in_different_rooms():
     # The failure the first version shipped.
-    found = clashes([s("a", 540, 620, room="R1", teacher="T1", cohort="C1"),
-                     s("b", 600, 660, room="R2", teacher="T1", cohort="C2")])
+    found = clashes(
+        [
+            s("a", 540, 620, room="R1", teacher="T1", cohort="C1"),
+            s("b", 600, 660, room="R2", teacher="T1", cohort="C2"),
+        ]
+    )
     assert [c.dimension for c in found] == [TEACHER]
 
 
 def test_a_double_booked_cohort_is_a_clash():
-    found = clashes([s("a", 540, 620, room="R1", teacher="T1", cohort="C1"),
-                     s("b", 600, 660, room="R2", teacher="T2", cohort="C1")])
+    found = clashes(
+        [
+            s("a", 540, 620, room="R1", teacher="T1", cohort="C1"),
+            s("b", 600, 660, room="R2", teacher="T2", cohort="C1"),
+        ]
+    )
     assert [c.dimension for c in found] == [COHORT]
 
 

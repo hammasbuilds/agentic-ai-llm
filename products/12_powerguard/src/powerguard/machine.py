@@ -29,9 +29,7 @@ from .domain import DOWNLOAD, OTHER, TRAINING, Job, Machine
 # "train" is a prefix, not a whole word: train_shr.py and training.py are both
 # training runs, and \btrain\b matches neither because _ and letters are word
 # characters. The rest are whole words.
-_TRAINING = re.compile(
-    r"\b(train\w*|finetune|fine_tune|pytest|accelerate|torchrun)\b", re.I
-)
+_TRAINING = re.compile(r"\b(train\w*|finetune|fine_tune|pytest|accelerate|torchrun)\b", re.I)
 _DOWNLOAD = re.compile(r"\b(ollama|curl|wget|aria2c|hf_transfer|huggingface[-_]cli)\b", re.I)
 _DOWNLOAD_ARG = re.compile(r"\b(pip|uv)\s+(install|pip|sync|add)\b", re.I)
 
@@ -156,7 +154,7 @@ def _own_tree() -> set[int]:
             "powershell",
             "-NoProfile",
             "-Command",
-            f"Get-CimInstance Win32_Process -Filter \"ParentProcessId={os.getpid()}\" | "
+            f'Get-CimInstance Win32_Process -Filter "ParentProcessId={os.getpid()}" | '
             "Select-Object ProcessId | ConvertTo-Csv -NoTypeInformation",
         ]
     )

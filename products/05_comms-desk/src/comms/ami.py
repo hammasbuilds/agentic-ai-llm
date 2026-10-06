@@ -119,7 +119,8 @@ def utterances(archive: str | None = None, limit_meetings: int = 0) -> tuple[Utt
     out: list[Utterance] = []
     with zipfile.ZipFile(path) as zf:
         members = sorted(
-            n for n in zf.namelist()
+            n
+            for n in zf.namelist()
             if n.startswith("dialogueActs/") and n.endswith(".dialog-act.xml")
         )
         seen_meetings: set[str] = set()

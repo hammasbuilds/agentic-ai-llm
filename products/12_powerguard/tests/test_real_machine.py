@@ -182,9 +182,7 @@ def test_hibernate_is_the_one_action_that_reaches_another_session():
     #
     # The fix is not to refuse: losing mains on a flat battery ends that work
     # anyway, and unhibernated it ends worse. It is to say so.
-    theirs = [
-        Job(pid=99, name="ollama.exe", kind=TRAINING, owned=False, checkpointable=False)
-    ]
+    theirs = [Job(pid=99, name="ollama.exe", kind=TRAINING, owned=False, checkpointable=False)]
     flat = Machine(on_mains=False, battery_pct=5, minutes_remaining=3)
     (hibernate,) = [a for a in plan(flat, theirs) if a.verb == HIBERNATE]
 

@@ -28,10 +28,7 @@ def authority() -> Table:
 def _alerts(state: dict) -> list[Alert]:
     """Real log lines unless the caller supplied alerts (the unit tests do)."""
     if state.get("alerts") is not None:
-        return [
-            Alert(a["id"], a["service"], a["template"], a["at"])
-            for a in state["alerts"]
-        ]
+        return [Alert(a["id"], a["service"], a["template"], a["at"]) for a in state["alerts"]]
     system = state.get("system", "hdfs")
     lines = [line for line in read() if line.system == system]
     return [

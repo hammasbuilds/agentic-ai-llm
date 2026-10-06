@@ -46,8 +46,13 @@ def payload(**extra) -> dict:
         "battery_pct": 80,
         "minutes_remaining": 40,
         "jobs": [
-            {"pid": 101, "name": "train_shr", "kind": "training", "owned": True,
-             "checkpointable": True},
+            {
+                "pid": 101,
+                "name": "train_shr",
+                "kind": "training",
+                "owned": True,
+                "checkpointable": True,
+            },
             {"pid": 303, "name": "other-session", "kind": "training", "owned": False},
         ],
         "issued_receipts": ["src_a41", "src_b22"],

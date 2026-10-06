@@ -69,7 +69,7 @@ class Run:
         return [
             overlap(self.variants[a], self.variants[b])
             for i, a in enumerate(names)
-            for b in names[i + 1:]
+            for b in names[i + 1 :]
         ]
 
     @property

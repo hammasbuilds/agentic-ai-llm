@@ -4,6 +4,7 @@ Nothing here is invented: each README's Input/Output section is written from
 this file's output, which is a real intake -> drain -> approve cycle plus the
 early-exit path.
 """
+
 import ast
 import importlib
 import inspect
@@ -59,9 +60,23 @@ def _value(node, module):
 
 
 EXIT_FLAGS = (
-    "escalated", "vetoed", "refused", "nothing_to_do", "no_incident", "refused_to_score",
-    "blocked", "handoff_refused", "cleared", "not_reportable", "no_path", "cannot_assess",
-    "held_at_floor", "rejected_route", "not_publishable", "no_emergence", "no_drift",
+    "escalated",
+    "vetoed",
+    "refused",
+    "nothing_to_do",
+    "no_incident",
+    "refused_to_score",
+    "blocked",
+    "handoff_refused",
+    "cleared",
+    "not_reportable",
+    "no_path",
+    "cannot_assess",
+    "held_at_floor",
+    "rejected_route",
+    "not_publishable",
+    "no_emergence",
+    "no_drift",
     "suppressed",
 )
 
@@ -134,9 +149,26 @@ def capture(product: Path) -> dict:
 
 
 _pkgs = {
-    "revenue", "ward", "onedesk", "ledger", "comms", "oncall", "hiredesk", "biddesk",
-    "hermes", "kycfloor", "watchtower", "powerguard", "swarmlab", "graphclinic",
-    "claimsfloor", "shelfops", "fleetdesk", "campusops", "agridesk", "driftwatch",
+    "revenue",
+    "ward",
+    "onedesk",
+    "ledger",
+    "comms",
+    "oncall",
+    "hiredesk",
+    "biddesk",
+    "hermes",
+    "kycfloor",
+    "watchtower",
+    "powerguard",
+    "swarmlab",
+    "graphclinic",
+    "claimsfloor",
+    "shelfops",
+    "fleetdesk",
+    "campusops",
+    "agridesk",
+    "driftwatch",
 }
 _pkgs |= {f"{p}.{sub}" for p in _pkgs for sub in ("app", "graph", "agents", "domain")}
 
