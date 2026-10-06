@@ -8,53 +8,104 @@ serves the shared operator console at `/`.
 
 ## Results
 
-**Measured over 35 real repositories** — their real READMEs, real
-`pyproject.toml` files and real directory contents.
+**Measured over every checkout in one folder — 76 of them**, their real READMEs, real
+`pyproject.toml` files and real directory contents. Not a chosen subset: the previous
+figures were over 35, and over the folder every one of them moves.
 
 | | |
 |---|---:|
-| Candidate claims (README sentences) | **4,757** |
-| Claims a machine can adjudicate | **78** (1.64%) |
-| Of those, claims with a fact to check against | 55 (70.5%) |
-| Claims that were checked and are **false** | **5** (9.1% of checked) |
+| Candidate claims (README sentences) | **10,908** |
+| Claims a machine can adjudicate | **299** (2.74%) |
+| Of those, claims with a fact to check against | 224 (74.9%) |
+| Claims that were checked and reported **false** | **12** (5.4% of checked) |
+| Of those, hand-verified as real drift | **5** |
 
-**Fewer than two sentences in a hundred can be settled by a checker.** Doc-linting tools
+**Fewer than three sentences in a hundred can be settled by a checker.** Doc-linting tools
 are built as though that fraction were most of the file, which is why they produce a wall
-of unfalsifiable findings and get switched off in week two. The other 98.4% is prose: it
+of unfalsifiable findings and get switched off in week two. The other 97.3% is prose: it
 may be wrong, but no tool is going to be the thing that decides.
 
-The five that are false are real drift, found live:
+Note the third row too. A quarter of the mechanically-shaped claims could not be checked
+because no fact answered them — a claim being *checkable in principle* and a checker
+*having the fact* are different things, and conflating them inflates the headline.
+
+### The five that are real
 
 | Repository | Drift |
 |---|---|
-| `agentic-ai-lab` | README says **zero runtime dependencies**; `pyproject.toml` declares 13, including fastapi, redis, aiokafka and langgraph |
-| `classical-computer-vision` | README says **41 projects**; there are **57** |
-| `rag-forge` (x2) | references `RESULTS.md`, which does not exist |
-| `sql-analyst-agent` | references `RESULTS.md`, which does not exist |
+| `classical-computer-vision` | README says **57 projects**, "All 57 built"; there are **63** |
+| `classical-computer-vision` | a later paragraph still says **41 projects** |
+| `browser-agent` | references `scripts/wide_attribution.py`, which does not exist |
+| `worktree-fleet` | "All numbers: `results/summary.json`" — no `results/` directory, and it is not gitignored |
+| `worktree-fleet` | references `results/report_table.txt`, same |
 
-The first of those drifted **during this session**: the dependencies were added by other
-work in the same repository while the README kept its old claim. That is exactly the moment
-this product exists to catch, and it was caught by running the tool rather than by
-constructing an example.
+### And the seven that are not
 
-Note the middle row too. Almost a third of the mechanically-shaped claims could not be
-checked because no fact answered them — a claim being *checkable in principle* and a
-checker *having the fact* are different things, and conflating them inflates the headline.
+This is the part worth reading. **12 reported false, 5 of them real: precision is 42%**, so
+the majority of what this checker says is still its own bug. Each survivor is a distinct
+class, listed because naming them is more useful than a number that sounds better:
 
-Reproduce it:
+| Not drift | Example | Why the checker is wrong |
+|---|---|---|
+| A demo's output described in prose | `` `out.txt` `` in "read `out.txt` back" | the file is created when the demo runs |
+| A third-party model's file | `` `tokenizer.json` `` in harness-ablation (x2) | it lives in a Hugging Face cache |
+| A file on somebody else's website | `` `robots.txt` `` in job-radar | Rozee.pk's, not this repository's |
+| A file the reader creates | `` `claude_desktop_config.json` `` | on their machine, not in the repo |
+| An example command | `` `./script.sh` `` in "`make`, `./script.sh` and `npm run build`" | a command, not a path |
+| A gitignored file said to be so elsewhere | `` `trials.json` `` in trial-match | the sentence carrying "(gitignored)" is a different sentence |
 
-```bash
-REPOS_ROOT=/path/to/your/checkouts \
-cd 20_driftwatch && python -m pytest tests/test_real_repos.py -q     # 10 passed
-#  without REPOS_ROOT it is 10 SKIPPED, 0 passed - these read real repositories
-cd 20_driftwatch && python -m pytest tests/test_structure.py -q     # 11 passed
-```
+**A checker whose first output is an alarming rate is usually measuring itself**, and this
+one was still doing it after the first round of fixes.
 
 ### What had to be fixed to get this number
 
 The first extractor treated every sentence as a claim and reported 4,757 findings, nearly
 all of them unfalsifiable adjectives. Classification has to come before verification, or
-the output is noise with five real defects buried in it.
+the output is noise with the real defects buried in it.
+
+Re-run over the folder rather than the chosen 35, it reported **31 false claims**, and
+most were neither false nor claims. Six classes, each now declined rather than accused:
+
+| False positive | Example | Why it isn't drift |
+|---|---|---|
+| A path under the repository's own `.gitignore` | "the corpus lives in `data/trials.json`" | it was never meant to be tracked |
+| A file the same sentence says is produced | "Run `make eval` to generate `RESULTS.md`" | its absence is the documented state |
+| A path named as somebody else's | "not `coverage.py`", "Django `runtests.py`", "the zip contains `__MACOSX/._x.txt`" | a counterexample, another project, a download |
+| A count of part of the set | "One project per LangGraph shape", "Two projects changed shape", "added to three projects" | binds a number to the noun; states no total |
+| `__pycache__` counted as a project | langchain-lab reported 6 against its stated 5 | p01..p05 is the whole set |
+| A standard-library module read as a dependency | "no runtime dependencies (the DOM is built on `html.parser`)" | the sentence is saying the opposite |
+
+That took it from 31 to 12. The remaining seven false positives are the table above.
+
+### Its own flagship finding was not drift
+
+The previous version of this section led with `agentic-ai-lab`'s README saying **zero
+runtime dependencies** while its `pyproject.toml` declared 13 — and called it drift that
+had appeared *during that session*, caught by running the tool rather than by constructing
+an example.
+
+It is not drift. The sentence is "In [`projects/`](projects). Zero runtime dependencies and
+zero LLM calls", all eleven packages under that directory declare `dependencies = []`, and
+the thirteen belong to the monorepo root's web layer, which the sentence never mentions.
+Worse, the sentence splitter had already cut "In `projects/`" off as its own sentence, so
+the scope was not in the text being adjudicated at all.
+
+A repository whose sub-packages carry their own dependency lists cannot have a root-level
+claim like that settled from the root `pyproject.toml`, so it is declined. The check still
+runs on a repository of one package, and a test covers both.
+
+Reproduce it:
+
+```bash
+cd 20_driftwatch
+REPOS_ROOT=/path/to/your/checkouts python -m pytest tests/test_real_repos.py -q   # 17 passed
+# The variable has to be on the pytest line. This block used to read
+#   REPOS_ROOT=... \
+#   cd 20_driftwatch && python -m pytest ...
+# which sets it for `cd` and not for pytest - so the documented command produced the
+# 17 SKIPPED it warned you about on the next line.
+python -m pytest tests/test_structure.py -q                                       # 31 passed, 1 skipped
+```
 
 ### Some claims are made by layout, not by a sentence
 
@@ -64,7 +115,7 @@ in the heading, the noun it counts is nowhere, and the evidence is the table und
 `structure.py` reads that shape directly: a heading stating a count, checked against the
 first table or list beneath it.
 
-Across the same 35 repositories it finds **6 counted headings, all 6 correct**. That is a
+Across the same 76 repositories it finds **13 counted headings, all 13 correct**. That is a
 small number and it is supposed to be — this checker's value is its precision, because the
 first version reported **81.4% of them wrong** and every one of those was its own bug:
 
@@ -76,8 +127,9 @@ first version reported **81.4% of them wrong** and every one of those was its ow
 | Multi-line list items | a 3-item list whose items wrap | counted as 1 item |
 
 Fixing those took the reported rate from 81.4% to 14.3%, and then to 0% once the one real
-drift was fixed upstream. **A checker whose first output is an alarming rate is usually
-measuring itself.**
+drift was fixed upstream. The sentence checker above went the same way twice, which is why
+it is worth saying once more plainly: an 81% defect rate across other people's
+repositories was never a finding about those repositories.
 
 That one real drift is kept in [`tests/fixtures/code_llm_lab_drift.md`](tests/fixtures/code_llm_lab_drift.md),
 copied verbatim from the commit that carried it. It was asserted against the live
@@ -142,7 +194,7 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 20_driftwatch
-python -m pytest -q                      # 51 passed, 11 skipped
+python -m pytest -q                      # 51 passed, 18 skipped
 PYTHONPATH="src;../platform/src" python -m driftwatch.app    # console on http://127.0.0.1:8000
 ```
 

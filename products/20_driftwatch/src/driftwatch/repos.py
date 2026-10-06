@@ -74,7 +74,11 @@ def _collected_tests(path: Path) -> int | None:
     try:
         proc = subprocess.run(
             ["python", "-m", "pytest", "--collect-only", "-q"],
-            cwd=path, capture_output=True, text=True, timeout=120, check=False,
+            cwd=path,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -82,12 +86,35 @@ def _collected_tests(path: Path) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _ignored_patterns(path: Path) -> list[str]:
+    """The repository's own .gitignore, as patterns. Empty when there is none."""
+    found = path / ".gitignore"
+    if not found.exists():
+        return []
+    try:
+        lines = found.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    return [
+        line.strip().lstrip("/")
+        for line in lines
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+
 def facts_for(path: Path, *, run_pytest: bool = False) -> dict:
     """Everything collectable about a repository, by looking at it."""
     out: dict = {"name": path.name, "root": str(path)}
     projects = path / "projects"
     if projects.exists():
-        out["project_count"] = sum(1 for d in projects.iterdir() if d.is_dir())
+        # Not every directory under projects/ is a project. `__pycache__` is one,
+        # and counting it reported langchain-lab as having six projects where its
+        # README says five and p01..p05 is the whole set - the checker inventing the
+        # drift it then reported. Anything beginning with a dot or an underscore is
+        # machinery.
+        out["project_count"] = sum(
+            1 for d in projects.iterdir() if d.is_dir() and not d.name.startswith((".", "_"))
+        )
 
     pyproject = path / "pyproject.toml"
     if pyproject.exists():
@@ -105,6 +132,21 @@ def facts_for(path: Path, *, run_pytest: bool = False) -> dict:
         ).stdout.strip()
     )
     out["python_files"] = sum(1 for _ in path.rglob("*.py") if ".venv" not in str(_))
+    # What the repository deliberately does not track. A README that names a file
+    # under .gitignore - "the corpus lives in `data/trials.json` (gitignored)" - is
+    # not making a false claim about a missing file, and reporting it as drift was
+    # most of this checker's false positives over a folder of real repositories.
+    out["ignored"] = _ignored_patterns(path)
+    # Sub-packages, each with their own dependency list. In a repository of these, a
+    # root-level "zero runtime dependencies" sentence is not a claim about the root
+    # pyproject, and the root pyproject is the only fact there is.
+    out["sub_pyprojects"] = sum(
+        1
+        for found in path.rglob("pyproject.toml")
+        if found != path / "pyproject.toml"
+        and ".venv" not in found.parts
+        and "site-packages" not in found.parts
+    )
     if run_pytest:
         collected = _collected_tests(path)
         if collected is not None:

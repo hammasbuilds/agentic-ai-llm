@@ -134,9 +134,7 @@ class Counted:
 
     @property
     def detail(self) -> str:
-        return (
-            f"heading says {self.stated}, the {self.kind} beneath it has {self.found}"
-        )
+        return f"heading says {self.stated}, the {self.kind} beneath it has {self.found}"
 
 
 def _stated(heading: str) -> int | None:
@@ -177,9 +175,7 @@ def _count_block(lines: list[str], start: int) -> tuple[str, int]:
     """Rows in the first table, or items in the first list, after ``start``."""
     i = start
     # Skip blank lines and prose until a table or list begins.
-    while i < len(lines) and not (
-        _TABLE_ROW.match(lines[i]) or _LIST_ITEM.match(lines[i])
-    ):
+    while i < len(lines) and not (_TABLE_ROW.match(lines[i]) or _LIST_ITEM.match(lines[i])):
         if _HEADING.match(lines[i]):
             return ("", 0)  # the next heading arrived first; nothing to count
         i += 1

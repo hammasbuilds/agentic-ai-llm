@@ -92,10 +92,16 @@ def test_nothing_is_regenerated_across_the_approval():
 def test_the_early_exit_costs_no_generation():
     model = Recorded(script(payload()))
     rt = runtime(model, sources())
-    rt.submit("r1", "e1", payload(**{
-            "readme_claims": ["Requires Python >= 3.11"],
-            "facts": {"requires_python": ">=3.11"},
-        }))
+    rt.submit(
+        "r1",
+        "e1",
+        payload(
+            **{
+                "readme_claims": ["Requires Python >= 3.11"],
+                "facts": {"requires_python": ">=3.11"},
+            }
+        ),
+    )
     rt.drain()
     row = rt.run_row("r1")
     assert row["status"] == api.DONE

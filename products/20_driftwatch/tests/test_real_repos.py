@@ -10,7 +10,14 @@ two that are exact are exact because they are the finding.
 
 import pytest
 
-from driftwatch.domain import MECHANICAL, Claim, broken, verifiable_share, verify
+from driftwatch.domain import (
+    MECHANICAL,
+    NOT_CHECKABLE,
+    Claim,
+    broken,
+    verifiable_share,
+    verify,
+)
 from driftwatch.repos import ROOT, facts_for, scan, sentences
 
 # A tree of checkouts, not merely a path that exists. The guard used to be
@@ -18,7 +25,7 @@ from driftwatch.repos import ROOT, facts_for, scan, sentences
 # machine, or CI - ran these and FAILED instead of skipping, which is the loudest
 # possible way to report that the corpus is absent.
 pytestmark = pytest.mark.skipif(
-    not any(ROOT.glob('*/.git')), reason="REPOS_ROOT is not a tree of git checkouts"
+    not any(ROOT.glob("*/.git")), reason="REPOS_ROOT is not a tree of git checkouts"
 )
 
 
@@ -75,24 +82,138 @@ def test_roughly_one_in_ten_checkable_claims_is_false(verdicts):
     assert 0.03 < len(wrong) / len(checked) < 0.20
 
 
-def test_the_live_zero_dependency_drift_is_caught(verdicts):
-    # agentic-ai-lab's README says zero runtime dependencies. Its pyproject now
-    # declares fastapi, kafka, redis and langgraph among others.
-    hits = [
-        v for r, v in verdicts
-        if r.name == "agentic-ai-lab" and v.checked and v.holds is False
-    ]
-    assert hits, "expected the zero-dependency claim to be caught"
-    assert "zero dependencies" in hits[0].detail
+def test_the_flagship_zero_dependency_finding_was_not_drift(verdicts):
+    """It was this product's headline example of drift caught live. It was wrong.
+
+    `agentic-ai-lab`'s README says "In `projects/`. Zero runtime dependencies and
+    zero LLM calls", and all eleven packages under that directory declare
+    `dependencies = []`. The root declares thirteen for a web layer the sentence
+    never mentions, and the checker compared the two. The sentence splitter had
+    already cut "In `projects/`" off as its own sentence, so the scope was not even
+    in the text being adjudicated.
+
+    A repository whose sub-packages carry their own dependency lists cannot have a
+    root-level claim like this settled from the root pyproject, so it is declined.
+    """
+    for repo, verdict in verdicts:
+        if repo.name == "agentic-ai-lab" and "dependenc" in verdict.detail:
+            assert not verdict.checked, verdict.detail
+            assert "cannot be settled from the root pyproject alone" in verdict.detail
 
 
-def test_a_missing_referenced_file_is_caught(verdicts):
-    missing = [
-        v for _, v in verdicts
-        if v.checked and v.holds is False and "missing" in v.detail
-    ]
-    assert missing
-    assert any("RESULTS.md" in v.detail for v in missing)
+def test_a_zero_dependency_claim_is_still_checked_in_a_single_package_repo():
+    """The check is not disabled: a repository of one package still gets adjudicated."""
+    held = verify(
+        Claim("Zero runtime dependencies."),
+        {"root": ".", "dependencies": ["httpx>=0.27"], "sub_pyprojects": 0},
+    )
+    assert held.checked
+    assert held.holds is False
+    assert "httpx>=0.27" in held.detail
+
+    clean = verify(
+        Claim("Zero runtime dependencies."),
+        {"root": ".", "dependencies": [], "sub_pyprojects": 0},
+    )
+    assert clean.checked
+    assert clean.holds is True
+
+
+def test_a_missing_referenced_file_is_caught(tmp_path):
+    """Against a repository built here rather than somebody else's checkout.
+
+    This asserted `RESULTS.md` in `rag-forge`, which the same sentence says `make
+    eval` writes — a file the README tells you to generate is not a broken
+    reference, and that one is now declined. The behaviour worth pinning is that a
+    plainly-asserted missing file is still caught, and a fixture is the honest way
+    to pin it.
+    """
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n', encoding="utf-8")
+    caught = verify(
+        Claim("The evaluation table is in `RESULTS.md`."),
+        {"root": str(tmp_path), "ignored": [], "sub_pyprojects": 0},
+    )
+    assert caught.checked
+    assert caught.holds is False
+    assert "RESULTS.md is missing" in caught.detail
+
+
+def test_a_file_the_sentence_says_is_generated_is_not_a_broken_reference(tmp_path):
+    declined = verify(
+        Claim("Run `make eval` to generate `RESULTS.md`."),
+        {"root": str(tmp_path), "ignored": [], "sub_pyprojects": 0},
+    )
+    assert not declined.checked
+    assert "described as generated" in declined.detail
+
+
+def test_a_gitignored_file_is_not_a_broken_reference(tmp_path):
+    declined = verify(
+        Claim("The corpus lives in `data/trials.json`."),
+        {"root": str(tmp_path), "ignored": ["data/"], "sub_pyprojects": 0},
+    )
+    assert not declined.checked
+    assert ".gitignore" in declined.detail
+
+
+def test_a_path_named_as_somebody_elses_is_not_a_broken_reference(tmp_path):
+    for sentence in (
+        "About sixty lines of `sys.settrace`, not `coverage.py`.",
+        "Django `runtests.py` produced seven logs.",
+        "The Algebra zip contains `__MACOSX/._train.txt`.",
+    ):
+        declined = verify(
+            Claim(sentence), {"root": str(tmp_path), "ignored": [], "sub_pyprojects": 0}
+        )
+        assert not declined.checked, sentence
+
+
+def test_a_count_of_part_of_the_set_is_not_a_count_of_the_set():
+    """Nine of the thirty claims reported false were this, and none was drift.
+
+    "One project per LangGraph shape", "Two projects changed shape", "added to
+    three projects" — each binds a number to the noun, and none states how many the
+    repository has.
+    """
+    for sentence in (
+        "One project per LangGraph shape, each built end to end.",
+        "Two projects changed shape when the data was found.",
+        "`qwen2.5-coder:14b` added to three projects.",
+    ):
+        declined = verify(Claim(sentence), {"project_count": 63})
+        assert not declined.checked, sentence
+        assert "part of the set" in declined.detail
+
+    # "259 photographs, twelve per project" never reaches the count check at all:
+    # neither noun is one this checker collects, so it is unfalsifiable earlier.
+    # Worth stating, because it used to be reported as "README says 2, found 63" -
+    # the number came from "Two projects changed shape" in the same sentence.
+    earlier = verify(Claim("259 photographs, twelve per project."), {"project_count": 63})
+    assert not earlier.checked
+    assert earlier.detail == NOT_CHECKABLE
+
+    counted = verify(
+        Claim("57 projects spanning 14 algorithm families."), {"project_count": 63}
+    )
+    assert counted.checked
+    assert counted.holds is False
+
+
+def test_pycache_is_not_a_project(tmp_path):
+    """It was counted as one, which reported langchain-lab as six against its five."""
+    projects = tmp_path / "projects"
+    for name in ("p01_a", "p02_b", "__pycache__", ".ipynb_checkpoints"):
+        (projects / name).mkdir(parents=True)
+    assert facts_for(tmp_path)["project_count"] == 2
+
+
+def test_a_standard_library_module_is_not_a_declared_dependency():
+    declined = verify(
+        Claim("It has no runtime dependencies (the DOM is built on `html.parser`)."),
+        {"dependencies": []},
+    )
+    assert not declined.checked
+    assert "standard library" in declined.detail
 
 
 def test_an_unfalsifiable_sentence_is_reported_not_rewritten():
