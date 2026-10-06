@@ -199,8 +199,9 @@ def test_rank_by_risk_differs_from_rank_by_churn_on_a_dump():
 def test_a_docs_only_release_does_not_clear_the_test_coupling_check():
     """It used to come back PASS, with the detail "no source changes".
 
-    `captain sweep <folder> --since 8` over 75 local checkouts returns 17 clean GO
-    verdicts, and 6 of those 17 are this case - releases of documentation and data,
+    `captain sweep <folder> --since 8` over 75 local checkouts returned 19 clean GO
+    verdicts on 2026-10-06, and 6 of those 19 are this case - releases of documentation
+    and data,
     where "no source shipped untested" is true only because no source shipped. The
     gate printed the same "ok" it prints for a release whose every source file
     arrived with a test.

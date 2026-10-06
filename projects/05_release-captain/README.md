@@ -108,10 +108,15 @@ when `mcp-lab` now reads GO.
 
 | Verdict | Repositories |
 |---|---|
-| GO | 17 |
-| GO WITH WARNINGS | 44 |
+| GO | 19 |
+| GO WITH WARNINGS | 42 |
 | NO-GO | 14 |
 | **measured** | **75** |
+
+Measured 2026-10-06. It is a snapshot and it moves: the window is the last 8 commits of
+each checkout, so committing to any of them can change its verdict. Re-running it the
+same day moved GO from 17 to 19 — which is why the table says when, and why the finding
+below is a share rather than a count.
 
 **13 of the 14 blocked are blocked by the same check: every recent source-changing commit
 changed no test file.** The other three blocks are a single commit scoring past 65. Not a
@@ -119,7 +124,7 @@ subtle signal, and not one a line-count threshold would have produced.
 
 ### A check that measured nothing is not a check that passed
 
-**6 of those 17 clean GO verdicts rest on a check that had nothing to look at.** All six
+**6 of those 19 clean GO verdicts rest on a check that had nothing to look at.** That share has been between a quarter and a third on every run. All six
 shipped only documentation or data in the window, so "no source went out untested" is true
 only because no source went out - and the gate used to print for them the same `ok` it
 prints for a release whose every source file arrived with a test.

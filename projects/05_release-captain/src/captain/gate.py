@@ -21,9 +21,11 @@ WARN = "warn"
 BLOCK = "block"
 #: The check ran and had nothing to look at. Not the same as passing: a release with no
 #: source changes was reported as having *cleared* the test-coupling check. `captain sweep
-#: <folder> --since 8` over 75 local checkouts returns 17 clean GO verdicts, and 6 of
-#: those 17 rest on this check seeing nothing - releases of documentation and data, where
-#: "no source shipped untested" is true only because no source shipped.
+#: <folder> --since 8` over 75 local checkouts returned 19 clean GO verdicts on
+#: 2026-10-06, and 6 of those 19 rest on this check seeing nothing - releases of
+#: documentation and data, where "no source shipped untested" is true only because no
+#: source shipped. The count moves as those repositories are committed to; the share has
+#: been between a quarter and a third on every run, and the 6 has not moved.
 NOT_MEASURED = "not measured"
 
 
