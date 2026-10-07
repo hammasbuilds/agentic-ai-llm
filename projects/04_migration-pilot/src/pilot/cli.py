@@ -206,6 +206,9 @@ def _apply_command(args: argparse.Namespace) -> int:
                 # CPython reads and runs it - and reading it as plain utf-8 keeps the mark as a
                 # character, so `ast.parse` fails and the module is reported as a syntax error.
                 source = path.read_text(encoding="utf-8-sig")
+                # Remembered, because this command writes the file back and the decode
+                # above has already consumed the mark.
+                had_bom = path.read_bytes().startswith(b"\xef\xbb\xbf")
             except (OSError, UnicodeDecodeError) as exc:
                 # Named, not skipped. This is the command that REWRITES source, and a
                 # file it could not read is one it did not modernise - a reader told
@@ -223,7 +226,13 @@ def _apply_command(args: argparse.Namespace) -> int:
             changed += 1
             edits += len(applied)
             if args.write:
-                path.write_text(result, encoding="utf-8")
+                # `utf-8-sig` on the way out when the file had a BOM on the way in.
+                # Reading consumed the mark and writing plain `utf-8` did not put it
+                # back, so modernising a BOM'd file silently dropped its mark as well -
+                # an edit the caller did not ask for, in a command that rewrites source.
+                path.write_text(
+                    result, encoding="utf-8-sig" if had_bom else "utf-8"
+                )
             else:
                 diff = difflib.unified_diff(
                     source.splitlines(keepends=True),

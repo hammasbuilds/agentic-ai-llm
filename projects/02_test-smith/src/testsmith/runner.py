@@ -324,10 +324,13 @@ def run(
 
         for i, mutant in enumerate(mutants, 1):
             target = workspace / mutant.path
-            # utf-8-sig, not utf-8: a file beginning with a BOM is a valid Python file -
-            # CPython reads and runs it - and reading it as plain utf-8 keeps the mark as a
-            # character, so `ast.parse` fails and the module is reported as a syntax error.
-            original = target.read_text(encoding="utf-8-sig")
+            # The BYTES, because these are what go back in the `finally` below. The
+            # decode is for the parser and the bytes are for the file: reading with
+            # `utf-8-sig` consumes a BOM and writing with `utf-8` does not restore it,
+            # so a BOM'd file in the workspace came back without its mark - a permanent
+            # change to a file this tool only ever meant to read, by the command whose
+            # whole promise is that your workspace is as you left it.
+            original = target.read_bytes()
             t0 = time.perf_counter()
             try:
                 target.write_text(mutant.source, encoding="utf-8")
@@ -341,7 +344,7 @@ def run(
                 else:
                     outcome = KILLED
             finally:
-                target.write_text(original, encoding="utf-8")
+                target.write_bytes(original)
             elapsed = time.perf_counter() - t0
             report.results.append(MutantResult(mutant, outcome, round(elapsed, 2)))
             if progress:

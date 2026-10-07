@@ -129,3 +129,107 @@ def _env(project: str) -> dict:
 
     src = ROOT / "projects" / project / "src"
     return {**os.environ, "PYTHONPATH": str(src)}
+
+
+# -- the two readers that write the file back -----------------------------------------
+#
+# Teaching the four AST readers `utf-8-sig` was right and half a fix. `utf-8-sig`
+# consumes the mark on the way in; `utf-8` does not put it back on the way out, and two
+# of the four write the file:
+#
+#   * `testsmith` saves the original, writes a mutant over it, and restores it in a
+#     `finally` - so a BOM'd file came back without its BOM, a permanent change by the
+#     command whose whole promise is that your workspace is as you left it;
+#   * `migration-pilot apply --write` rewrites what it modernises, so a BOM'd file lost
+#     its mark as a side effect of an unrelated edit.
+
+
+def test_test_smith_restores_a_bom_file_byte_for_byte(tmp_path: Path):
+    """Mutation testing writes a mutant over your source and puts it back.
+
+    "Puts it back" has to mean the bytes. The decode is for the parser; what was on
+    disk is what goes back on disk.
+    """
+    sys.path.insert(0, str(ROOT / "projects" / "02_test-smith" / "src"))
+    from testsmith.mutate import generate
+
+    target = tmp_path / "m.py"
+    target.write_bytes(BOM + b"def add(a, b):\n    return a + b\n")
+    before = target.read_bytes()
+
+    mutants = generate(target, "m.py")
+    assert mutants, "a BOM'd file produced no mutants, so this proves nothing"
+
+    # The runner's cycle: keep the original, write a mutant, restore.
+    original = target.read_bytes()
+    target.write_text(mutants[0].source, encoding="utf-8")
+    assert target.read_bytes() != before, "the mutant did not change the file"
+    target.write_bytes(original)
+
+    assert target.read_bytes() == before, "the file came back changed"
+    assert target.read_bytes().startswith(BOM), "the BOM was dropped"
+
+
+def test_the_runner_restores_bytes_not_text():
+    """Read as code, because reaching the `finally` needs a real suite run.
+
+    `original = target.read_text(encoding="utf-8-sig")` followed by
+    `target.write_text(original, encoding="utf-8")` is the defect, and it reads as
+    symmetrical.
+    """
+    source = (
+        ROOT / "projects" / "02_test-smith" / "src" / "testsmith" / "runner.py"
+    ).read_text(encoding="utf-8")
+    assert "original = target.read_bytes()" in source
+    assert "target.write_bytes(original)" in source
+    assert 'original = target.read_text(encoding="utf-8-sig")' not in source
+
+
+def test_migration_pilot_keeps_the_mark_on_the_file_it_rewrites(tmp_path: Path):
+    """End to end, through `apply --write`, which is the command that edits source."""
+    project = tmp_path / "proj"
+    (project / "src" / "pkg").mkdir(parents=True)
+    target = project / "src" / "pkg" / "m.py"
+    target.write_bytes(
+        BOM + b"from typing import List\n\n\ndef f(x: List[int]) -> int:\n    return len(x)\n"
+    )
+
+    done = subprocess.run(
+        [sys.executable, "-m", "pilot.cli", "apply", str(project), "--write"],
+        cwd=str(ROOT / "projects" / "04_migration-pilot"),
+        capture_output=True,
+        text=True,
+        errors="replace",
+        env=_env("04_migration-pilot"),
+        timeout=300,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+
+    after = target.read_bytes()
+    assert b"list[int]" in after, "the file was not modernised, so this proves nothing"
+    assert after.startswith(BOM), "the rewrite dropped the BOM"
+
+
+def test_a_file_without_a_bom_does_not_gain_one(tmp_path: Path):
+    """The other direction. `utf-8-sig` on write ADDS a mark, so it has to be
+    conditional on the file having had one."""
+    project = tmp_path / "proj"
+    (project / "src" / "pkg").mkdir(parents=True)
+    target = project / "src" / "pkg" / "m.py"
+    target.write_bytes(
+        b"from typing import List\n\n\ndef f(x: List[int]) -> int:\n    return len(x)\n"
+    )
+
+    done = subprocess.run(
+        [sys.executable, "-m", "pilot.cli", "apply", str(project), "--write"],
+        cwd=str(ROOT / "projects" / "04_migration-pilot"),
+        capture_output=True,
+        text=True,
+        errors="replace",
+        env=_env("04_migration-pilot"),
+        timeout=300,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    after = target.read_bytes()
+    assert b"list[int]" in after
+    assert not after.startswith(BOM), "a file with no BOM was given one"

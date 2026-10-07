@@ -124,11 +124,16 @@ def _scan_command(args: argparse.Namespace) -> int:
     # The rate as a fragment, so the conditional cannot swallow the line it belongs
     # to - which it did on the first attempt, printing "(no proposals to retract)"
     # with the counts gone.
-    rate = (
-        f"({review.retraction_rate:.0%})"
-        if review.retraction_rate is not None
-        else "(no proposals, so no retraction rate)"
-    )
+    # And a percentage only where one means something. Over one proposal the only
+    # values a rate can take are 0% and 100%, and "retracted=0 (0%)" beside a figure
+    # measured over hundreds reads as the same kind of number. Under five proposals the
+    # fraction IS the information, and it is already on the line.
+    if review.retraction_rate is None:
+        rate = "(no proposals, so no retraction rate)"
+    elif review.proposed < 5:
+        rate = f"(too few proposals for a rate: {review.retracted} of {review.proposed})"
+    else:
+        rate = f"({review.retraction_rate:.0%})"
     print(
         f"  {scope}: files={reviewed:,}  proposed={review.proposed}  "
         f"confirmed={review.confirmed}  retracted={review.retracted} {rate}"
