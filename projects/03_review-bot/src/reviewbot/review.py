@@ -52,8 +52,21 @@ class Review:
         return self.proposed - self.confirmed
 
     @property
-    def retraction_rate(self) -> float:
-        return self.retracted / self.proposed if self.proposed else 0.0
+    def retraction_rate(self) -> float | None:
+        """Share of proposals the verifier withdrew, or None if nothing was proposed.
+
+        `0.0` was the wrong answer. A retraction rate of zero means every proposal
+        survived disproof, which is this tool's best possible result, and it was
+        printed for a scan that proposed nothing at all - twice, once in `render` and
+        once in the CLI's summary line. `cli.py`'s own comment names
+        `files=0 proposed=0 confirmed=0 retracted=0 (0%)` as the defect and only the
+        `files=0` half was fixed.
+
+        The rule is `apps/_platform/cache.py`'s: "a cache nobody asked anything of has
+        no hit rate, and reporting one as zero is the same claim as a cache that
+        missed every time".
+        """
+        return self.retracted / self.proposed if self.proposed else None
 
     def by_rule(self) -> dict[str, tuple[int, int]]:
         out: dict[str, list[int]] = {}
@@ -164,10 +177,14 @@ def review_diff(repo: Path, ref: str = "HEAD~1") -> Review:
 
 def render(review: Review, show_retracted: bool = False) -> str:
     out = ["=" * 78]
+    rate = (
+        f"({review.retraction_rate:.0%})"
+        if review.retraction_rate is not None
+        else "(no proposals, so no retraction rate)"
+    )
     out.append(
         f"  {review.confirmed} finding(s) to report  -  "
-        f"{review.retracted} of {review.proposed} proposals retracted "
-        f"({review.retraction_rate:.0%})"
+        f"{review.retracted} of {review.proposed} proposals retracted {rate}"
     )
     out.append("=" * 78)
 

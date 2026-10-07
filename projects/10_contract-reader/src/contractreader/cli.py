@@ -78,20 +78,39 @@ def _read_all(root: Path) -> list[Reading]:
 #: falsifies. A mark is a statement about the encoding, so the honest rule is: decode
 #: what declares itself, refuse what has NULs and no mark.
 BOM_ENCODINGS = (
-    (b"\xff\xfe\x00\x00", "utf-32-le"),
-    (b"\x00\x00\xfe\xff", "utf-32-be"),
-    (b"\xff\xfe", "utf-16-le"),
-    (b"\xfe\xff", "utf-16-be"),
+    (b"\xff\xfe\x00\x00", "utf-32"),
+    (b"\x00\x00\xfe\xff", "utf-32"),
+    (b"\xff\xfe", "utf-16"),
+    (b"\xfe\xff", "utf-16"),
     (b"\xef\xbb\xbf", "utf-8-sig"),
 )
 
 
 def declared_encoding(head: bytes) -> str | None:
-    """The encoding a byte-order mark declares, or None if there is no mark."""
+    """The encoding a byte-order mark declares, or None if there is no mark.
+
+    The codec is the BARE `utf-16` / `utf-32`, not `utf-16-le`. Python consumes the
+    mark only for the bare names and for `utf-8-sig`; with an explicit-endian codec
+    the `\ufeff` is decoded as the first CHARACTER of the file. This mapped the
+    little-endian mark to `utf-16-le`, so an Excel "Unicode Text" export was accepted
+    - the refusal was fixed - and then read with an invisible character glued to the
+    front of its first field. Three tools, three different wrong answers on data whose
+    UTF-8 twin was right: a column named `\ufeffqty` that crashed a Windows console,
+    a log line whose date no longer matched the date pattern so the templates and the
+    compression figure both moved, and a citation span off by one.
+
+    The bare names infer the endianness from the mark, which is what the mark is for.
+    `_strip_mark` is belt and braces for a file whose mark survives anyway.
+    """
     for mark, encoding in BOM_ENCODINGS:
         if head.startswith(mark):
             return encoding
     return None
+
+
+def _strip_mark(text: str) -> str:
+    """Any leftover byte-order mark, removed. Only ever the first character."""
+    return text.removeprefix("\ufeff")
 
 
 #: How much of a file to look at before deciding it is not text. A NUL in the first
@@ -138,7 +157,9 @@ def _read_command(args: argparse.Namespace) -> int:
         return 2
     with path.open("rb") as handle:
         declared = declared_encoding(handle.read(4))
-    reading = read(str(path), path.read_text(encoding=declared or "utf-8", errors="replace"))
+    reading = read(
+        str(path), _strip_mark(path.read_text(encoding=declared or "utf-8", errors="replace"))
+    )
 
     # A file this reader recognised nothing in is not a licence it read. Printing an
     # empty obligations table under "family: unknown" and exiting 0 made a `.csv`
@@ -178,9 +199,19 @@ def _read_command(args: argparse.Namespace) -> int:
 
 def _survey_command(args: argparse.Namespace) -> int:
     root = Path(args.path).resolve()
+    # "no licence files found" is a claim about a directory, and it was made about
+    # directories that are not there. The exit code was right and the sentence was
+    # not: a typo and an empty folder are different answers, and only one of them is
+    # about the folder the reader meant.
+    if not root.exists():
+        print(f"no such directory: {args.path}", file=sys.stderr)
+        return 2
+    if not root.is_dir():
+        print(f"not a directory: {args.path}", file=sys.stderr)
+        return 2
     readings = _read_all(root)
     if not readings:
-        print("no licence files found", file=sys.stderr)
+        print(f"no licence files found under {root}", file=sys.stderr)
         return 2
 
     families = Counter(r.family for r in readings)

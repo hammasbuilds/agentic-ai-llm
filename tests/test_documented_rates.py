@@ -529,3 +529,89 @@ def test_the_root_readme_states_the_confound_too():
     assert "upper bound" in bullet
     assert "76.0%" in bullet and "48.0%" in bullet
     assert "direct_with_test" in bullet
+
+
+# -- a rate has to be reachable over the population it is quoted over ---------
+
+#: "18.0% of 4,055 mutants", "48.0% on 200 MBPP tasks": a percentage and, beside it,
+#: the population it is over. Deliberately adjacent-only. Reading the population from
+#: the enclosing sentence instead reaches three more apps and is wrong twice:
+#: `01_localizer` writes "55.8% on that hard half" in a sentence that opens with 51
+#: instances, and `06_kill_rate` quotes 93.4% over the valid suites in a sentence
+#: about 150 tasks. A check that flags a correct figure teaches a reader to ignore it.
+RATE_OVER_POPULATION = re.compile(
+    r"(\d+\.\d|\d+)%\s*(?:of|on|over)\s+(?:the\s+)?([\d,]+)\s+"
+    r"(?:MBPP\s+)?(tasks|mutants|problems|rows|instances|suites)"
+)
+
+#: The prose quotes one decimal, so a stated rate may sit this far from the truth.
+QUOTED_PRECISION = 0.0005
+
+
+def _reachable(pct: float, population: int) -> tuple[bool, float, int]:
+    """Is `pct`% of `population` a rate `population` items can produce?
+
+    Returns (reachable, distance to the nearest achievable rate, that numerator).
+    A population of N can only produce k/N, so a quoted rate further than half a
+    quoted decimal from every k/N is a rate no run of that size produced.
+    """
+    target = pct / 100
+    numerator = round(target * population)
+    return (
+        abs(numerator / population - target) <= QUOTED_PRECISION + 1e-12,
+        abs(numerator / population - target),
+        numerator,
+    )
+
+
+def _rate_claims(app: Path) -> list[tuple[float, int, str]]:
+    text = " ".join(prose(app).split())
+    return [
+        (float(pct), int(n.replace(",", "")), unit)
+        for pct, n, unit in RATE_OVER_POPULATION.findall(text)
+    ]
+
+
+@pytest.mark.parametrize("app", APPS, ids=[p.name for p in APPS])
+def test_every_rate_quoted_over_a_population_is_one_that_population_can_produce(app: Path):
+    """Arithmetic, so it holds for the eight apps nothing offline can re-measure."""
+    for pct, population, unit in _rate_claims(app):
+        ok, distance, numerator = _reachable(pct, population)
+        assert ok, (
+            f"{app.name}: {pct}% of {population} {unit} is not a rate {population} "
+            f"items can produce - the nearest is {numerator}/{population} = "
+            f"{numerator / population * 100:.3f}%, {distance * 100:.3f} points away"
+        )
+
+
+def test_how_many_of_those_rates_the_arithmetic_can_actually_falsify():
+    """A population finer than the quoted precision makes the check unfalsifiable.
+
+    At 4,055 mutants every one-decimal percentage is reachable, and so it is at
+    1,553: two of the four pairs cannot fail and two can. Printed rather than averaged into a
+    coverage number, because "six rates checked" would read as six rates tested.
+    """
+    discriminating, total = [], 0
+    for app in APPS:
+        for pct, population, _unit in _rate_claims(app):
+            total += 1
+            # Can any one-decimal value over this population be rejected? Only if a
+            # step between achievable rates is wider than the quoted precision.
+            if 1 / population > 2 * QUOTED_PRECISION:
+                discriminating.append(f"{app.name}:{pct}%/{population}")
+    assert total == 4, total
+    assert sorted(discriminating) == [
+        "01_localizer:74.5%/51",
+        "10_roundtrip:48.0%/200",
+    ], sorted(discriminating)
+
+
+def test_an_impossible_rate_is_rejected():
+    """The check above passes on the repository as it stands, so it is also run
+    against a figure that cannot be true: 60.1% of 250 tasks is 150.25 items."""
+    assert _reachable(60.0, 250)[0]
+    assert not _reachable(60.1, 250)[0]
+    # And the unfalsifiable end, stated as a fact about the method rather than a
+    # weakness to be worked around: at this population every value is reachable.
+    assert _reachable(18.0, 4055)[0]
+    assert _reachable(18.1, 4055)[0]

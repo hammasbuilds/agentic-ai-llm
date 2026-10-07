@@ -351,7 +351,14 @@ def parse_module(path: Path, root: Path, internal_prefixes: frozenset[str]) -> P
     except (UnicodeDecodeError, OSError) as exc:
         return ParsedModule(module=module, path=rel, parse_error=f"unreadable: {exc}")
 
-    parsed = ParsedModule(module=module, path=rel, loc=source.count("\n") + 1)
+    # `splitlines`, not `count("\n") + 1`. Every file written by an editor ends in a
+    # newline, so the `+ 1` counted an empty final line that is not there: "a\nb\n"
+    # is two lines and came back as three, and an empty file came back as 1. One per
+    # file, always upward, so a repository's total was over by its file count - about
+    # 1,740 lines in the 339,739 this project's README quotes from a sweep of 78
+    # checkouts. `splitlines` also counts the lone final line of a file that does not
+    # end in a newline, which is the case the `+ 1` was there for.
+    parsed = ParsedModule(module=module, path=rel, loc=len(source.splitlines()))
     try:
         tree = ast.parse(source, filename=str(path))
     except SyntaxError as exc:

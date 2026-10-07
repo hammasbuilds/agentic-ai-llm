@@ -225,20 +225,39 @@ class NotDelimitedTextError(ValueError):
 #: CSV contains one", which that file falsifies. A BOM says what the encoding is, so
 #: the honest rule is: decode what declares itself, refuse what has NULs and no BOM.
 BOM_ENCODINGS = (
-    (b"\xff\xfe\x00\x00", "utf-32-le"),
-    (b"\x00\x00\xfe\xff", "utf-32-be"),
-    (b"\xff\xfe", "utf-16-le"),
-    (b"\xfe\xff", "utf-16-be"),
+    (b"\xff\xfe\x00\x00", "utf-32"),
+    (b"\x00\x00\xfe\xff", "utf-32"),
+    (b"\xff\xfe", "utf-16"),
+    (b"\xfe\xff", "utf-16"),
     (b"\xef\xbb\xbf", "utf-8-sig"),
 )
 
 
 def declared_encoding(head: bytes) -> str | None:
-    """The encoding a byte-order mark declares, or None if there is no mark."""
+    """The encoding a byte-order mark declares, or None if there is no mark.
+
+    The codec is the BARE `utf-16` / `utf-32`, not `utf-16-le`. Python consumes the
+    mark only for the bare names and for `utf-8-sig`; with an explicit-endian codec
+    the `\ufeff` is decoded as the first CHARACTER of the file. This mapped the
+    little-endian mark to `utf-16-le`, so an Excel "Unicode Text" export was accepted
+    - the refusal was fixed - and then read with an invisible character glued to the
+    front of its first field. Three tools, three different wrong answers on data whose
+    UTF-8 twin was right: a column named `\ufeffqty` that crashed a Windows console,
+    a log line whose date no longer matched the date pattern so the templates and the
+    compression figure both moved, and a citation span off by one.
+
+    The bare names infer the endianness from the mark, which is what the mark is for.
+    `_strip_mark` is belt and braces for a file whose mark survives anyway.
+    """
     for mark, encoding in BOM_ENCODINGS:
         if head.startswith(mark):
             return encoding
     return None
+
+
+def _strip_mark(text: str) -> str:
+    """Any leftover byte-order mark, removed. Only ever the first character."""
+    return text.removeprefix("\ufeff")
 
 
 #: How much of the file to look at before deciding it is not text. A NUL in a header
@@ -247,14 +266,27 @@ def declared_encoding(head: bytes) -> str | None:
 BINARY_SNIFF = 65_536
 
 
-def _read(path: Path, limit: int | None) -> tuple[list[str], list[list[str]], str, str]:
-    """Read a CSV, trying utf-8 then falling back.
+def decode(path: Path) -> tuple[str, str]:
+    """The file's text and the encoding it was read with. The ONLY reader here.
 
-    Real files are not always utf-8. Failing on a byte in row 40,000 after a
-    minute of work is worse than decoding it approximately and saying so.
+    Four different readers existed. `profile_csv` went through this logic; `charts`,
+    `impact`, `coercion` and `execute.load` each did their own
+    `read_text(encoding="utf-8", errors="replace")` or utf-8-then-latin-1, consulting
+    no byte-order mark at all. So one file gave different answers in different
+    subcommands:
 
-    What that tolerance must not extend to is a file that is not text at all - see
-    `NotDelimitedTextError`.
+        csv-analyst report   num16.csv  ->  3 rows and 2 columns ... read as utf-16
+        csv-analyst coercion num16.csv  ->  (empty table), exit 0
+
+    The second is the worst outcome this tool has: a well-formed answer, exit 0, and
+    the numeric column silently absent - from a UTF-16 export whose UTF-8 twin
+    reports it. `charts` put the mark into a column name and `report`'s narration
+    then crashed a Windows console on it.
+
+    Real files are not always utf-8, and failing on a byte in row 40,000 after a
+    minute of work is worse than decoding approximately and saying so - which is what
+    the latin-1 fallback is for. What that tolerance must not extend to is a file that
+    is not text at all; see `NotDelimitedTextError`.
     """
     with path.open("rb") as handle:
         head = handle.read(BINARY_SNIFF)
@@ -271,15 +303,16 @@ def _read(path: Path, limit: int | None) -> tuple[list[str], list[list[str]], st
         # A mark is a statement about the encoding, so take it. Excel's "Unicode Text"
         # export is UTF-16LE: full of NUL bytes and a perfectly ordinary CSV, which
         # the refusal above used to turn away with "No CSV contains one".
-        encoding = declared
-        text = path.read_text(encoding=declared)
-    else:
-        encoding = "utf-8"
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            encoding = "latin-1"
-            text = path.read_text(encoding="latin-1")
+        return _strip_mark(path.read_text(encoding=declared)), declared
+    try:
+        return path.read_text(encoding="utf-8"), "utf-8"
+    except UnicodeDecodeError:
+        return path.read_text(encoding="latin-1"), "latin-1"
+
+
+def _read(path: Path, limit: int | None) -> tuple[list[str], list[list[str]], str, str]:
+    """Header, rows, delimiter and encoding. Decoding is `decode`'s job."""
+    text, encoding = decode(path)
 
     delimiter = _sniff(text[:8192])
     reader = csv.reader(text.splitlines(), delimiter=delimiter)

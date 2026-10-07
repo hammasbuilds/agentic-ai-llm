@@ -1,10 +1,16 @@
 """Every product subclasses the shared conformance tests, and sets all four fields.
 
 The six end-to-end tests used to be pasted into nineteen `tests/test_graph.py` files -
-same six names, same bodies, around 2,400 lines of which maybe 200 said anything about
-a particular product. They now live in `agentplatform.conformance` and each product
+same six names, same bodies, 2,746 lines of which maybe 200 said anything about a
+particular product. They now live in `agentplatform.conformance` and each product
 declares what differs: the payload a caller sends, the override that lets the graph
 finish without generating, and the name that result carries.
+
+The numbers are measured below rather than recalled. "Around 2,400" here and "800
+lines in total" in the commit message were both estimates written as counts: the
+nineteen copies were 2,746 lines, the nineteen subclasses that replaced them are 819,
+and `conformance.py` is 177. `git show 6b9940c^:products/02_ward-sync/tests/test_graph.py`
+is where the before side comes from.
 
 Consolidating moves the risk rather than removing it. The nineteen copies could drift
 apart; one shared base can instead be *not inherited from*, or inherited from with a
@@ -128,6 +134,47 @@ def test_the_shared_base_holds_the_six_tests_the_copies_held():
         "test_an_unreceipted_claim_never_reaches_the_approver",
         "test_the_authority_table_is_default_deny",
     }, sorted(tests)
+
+
+#: The line counts this file's docstring quotes. The before figure is pinned to a
+#: commit because the working tree cannot produce it; the two after figures are
+#: measured here, so a subclass growing back into a copy of the base shows up as this
+#: test failing rather than as a sentence quietly becoming wrong.
+LINES_AFTER = {"nineteen subclasses": 819, "conformance.py": 177}
+BEFORE = ("6b9940c^", 2_746)
+
+
+def test_the_quoted_line_counts_are_the_counts_on_disk():
+    """Both numbers in the docstring used to be estimates stated as measurements."""
+    subclasses = sum(
+        len((package / "tests" / "test_graph.py").read_text(encoding="utf-8").splitlines())
+        for package in PACKAGES
+        if package.name not in BY_HAND
+    )
+    base = len(
+        (PRODUCTS / "platform/src/agentplatform/conformance.py")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    )
+    assert subclasses == LINES_AFTER["nineteen subclasses"], subclasses
+    assert base == LINES_AFTER["conformance.py"], base
+
+    docstring = Path(__file__).read_text(encoding="utf-8").split('"""')[1]
+    for what, count in sorted(LINES_AFTER.items()):
+        assert str(count) in docstring, what
+    assert f"{BEFORE[1]:,}" in docstring, "the before figure left the docstring"
+    assert BEFORE[0] in docstring, "nothing says where the before figure is checked"
+
+
+def test_consolidating_actually_removed_lines():
+    """The claim the refactor rests on, as a comparison rather than two numbers.
+
+    A base class plus nineteen subclasses that together weigh more than the copies
+    did would be a worse arrangement described in the language of a better one.
+    """
+    before = BEFORE[1]
+    after = sum(LINES_AFTER.values())
+    assert after < before / 2, (after, before)
 
 
 def test_the_runtime_is_wrapped_in_staticmethod():

@@ -53,8 +53,11 @@ class RepoReport:
     total_calls: int
     in_scope_calls: int
     resolved_calls: int
-    resolution_rate: float
-    repo_resolution_rate: float
+    # None when there is nothing to compute them over, which the JSON used to emit as
+    # 0.0 - a rate of zero and no rate at all read identically as a number, and the
+    # first is a claim that nothing resolved.
+    resolution_rate: float | None
+    repo_resolution_rate: float | None
     excluded_projects: list[str]
     parse_errors: list[tuple[str, str]]
     #: The commit the repository was at when this map was taken, when it is a git
@@ -150,8 +153,10 @@ def report_from_graph(graph: RepoGraph, top: int = 12) -> RepoReport:
         total_calls=res.total_calls,
         in_scope_calls=res.in_scope_calls,
         resolved_calls=res.resolved_count,
-        resolution_rate=round(res.resolution_rate, 4),
-        repo_resolution_rate=round(res.repo_resolution_rate, 4),
+        resolution_rate=round(res.resolution_rate, 4) if res.total_calls else None,
+        repo_resolution_rate=(
+            round(res.repo_resolution_rate, 4) if res.in_scope_calls else None
+        ),
         excluded_projects=repo.excluded_projects,
         parse_errors=repo.parse_errors,
         at_commit=_head_commit(repo.root),
@@ -216,10 +221,21 @@ def render_text(report: RepoReport) -> str:
 
     add("")
     add("  CALL RESOLUTION")
-    add(
-        f"    {report.resolved_calls} of {report.in_scope_calls} repo-internal calls "
-        f"resolved  ({report.repo_resolution_rate:.0%})"
-    )
+    if report.in_scope_calls:
+        add(
+            f"    {report.resolved_calls} of {report.in_scope_calls} repo-internal calls "
+            f"resolved  ({report.repo_resolution_rate:.0%})"
+        )
+    else:
+        # `0 of 0 ... (0%)` is this tool's worst possible reading of a repository, and
+        # it was printed for a tree with modules but no calls between them. The guard
+        # in the CLI was on `report.modules`, which is a different population from the
+        # rate's denominator - so two modules of bare assignments still produced it.
+        #
+        # The rule is the one `apps/_platform/cache.py` states: a measurement nobody
+        # could take has no rate, and printing zero is a different claim from having
+        # none.
+        add("    no repo-internal calls, so there is no resolution rate to report")
     add(f"    {report.total_calls} call sites in total; the rest are builtins,")
     add("    the standard library, or methods on third-party objects.")
 

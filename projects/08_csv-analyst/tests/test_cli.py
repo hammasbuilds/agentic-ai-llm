@@ -139,3 +139,138 @@ def test_a_markless_wide_file_is_refused(tmp_path: Path, capsys):
     bare.write_bytes("a,b\n1,2\n".encode("utf-16-le"))
     assert main(["report", str(bare)]) == 2
     assert "no byte-order mark" in capsys.readouterr().err
+
+
+# -- the same data, two encodings, one answer --------------------------------------
+#
+# Four readers existed. `profile_csv` consulted the byte-order mark; `charts`,
+# `impact`, `coercion` and `execute.load` each did their own
+# `read_text(encoding="utf-8", errors="replace")` or utf-8-then-latin-1 and consulted
+# nothing. So one file gave different answers in different subcommands, and the worst
+# of them was `coercion`: a well-formed table, exit 0, and the numeric column silently
+# absent from a UTF-16 export whose UTF-8 twin reported it.
+#
+# The test that was supposed to cover the UTF-16 case asserted only that the file was
+# not REFUSED, with columns named `a,b` - and the column name is exactly where the
+# byte-order mark landed.
+
+DATA = "qty,name\n5,alpha\n7,beta\n9,gamma\n"
+
+
+def _twins(tmp_path: Path, encoding: str) -> tuple[Path, Path]:
+    """The same rows as utf-8 and as `encoding`."""
+    plain = tmp_path / "plain.csv"
+    plain.write_text(DATA, encoding="utf-8")
+    wide = tmp_path / "wide.csv"
+    wide.write_bytes(DATA.encode(encoding))
+    return plain, wide
+
+
+@pytest.mark.parametrize("encoding", ["utf-16", "utf-32", "utf-8-sig"])
+@pytest.mark.parametrize("command", ["report", "coercion", "impact", "charts"])
+def test_a_marked_file_answers_the_same_as_its_utf8_twin(
+    tmp_path: Path, capsys, command: str, encoding: str
+):
+    """Byte-identical rows, so every figure has to match.
+
+    The encoding line is the one permitted difference - it says what was read, which
+    is the point of it.
+    """
+    plain, wide = _twins(tmp_path, encoding)
+    extra: list[str] = []
+    if command == "impact":
+        extra = ["--coerce", "qty", "--quantity", "qty", "--price", "qty"]
+    if command == "charts":
+        extra = ["--out", str(tmp_path / "charts")]
+
+    outputs = []
+    for path in (plain, wide):
+        if command == "charts":
+            extra = ["--out", str(tmp_path / f"charts_{path.stem}")]
+        assert main([command, str(path), *extra]) == 0, (command, encoding, path.name)
+        text = capsys.readouterr().out
+        # The filename, the output directory and the encoding differ by design -
+        # they are this test's own scaffolding or a statement of what was read.
+        # Nothing else may.
+        for noise in (
+            str(tmp_path / f"charts_{path.stem}"),
+            path.name,
+            str(path),
+            path.stem,
+            encoding,
+            "utf-8",
+            "utf-16",
+            "utf-32",
+        ):
+            text = text.replace(noise, "")
+        outputs.append(text)
+
+    assert outputs[0] == outputs[1], (
+        f"{command} gives a different answer for {encoding} than for utf-8:\n"
+        f"--- utf-8\n{outputs[0]}\n--- {encoding}\n{outputs[1]}"
+    )
+
+
+@pytest.mark.parametrize("encoding", ["utf-16", "utf-32", "utf-8-sig"])
+def test_the_mark_is_not_part_of_the_first_column_name(tmp_path: Path, encoding: str):
+    """Where the defect actually showed. The column was named `\ufeffqty`, which
+    `narrate` then tried to print to a Windows console and raised
+    `UnicodeEncodeError: 'charmap' codec can't encode character '\ufeff'`."""
+    from csvanalyst.profile import profile_csv
+
+    _, wide = _twins(tmp_path, encoding)
+    profile = profile_csv(wide)
+    assert [c.name for c in profile.columns] == ["qty", "name"], [
+        c.name for c in profile.columns
+    ]
+    for column in profile.columns:
+        assert "\ufeff" not in column.name
+
+
+@pytest.mark.parametrize("encoding", ["utf-16", "utf-32", "utf-8-sig"])
+def test_the_numeric_column_survives_into_the_rows(tmp_path: Path, capsys, encoding: str):
+    """`coercion` reads the ROWS, not the profile, and it printed an empty table.
+
+    Named separately from the twin comparison above because an empty table matching
+    an empty table would satisfy that one.
+    """
+    _, wide = _twins(tmp_path, encoding)
+    assert main(["coercion", str(wide)]) == 0
+    out = capsys.readouterr().out
+    assert "qty" in out, out
+    assert "7.000" in out, out
+
+
+# -- charts answers a bad argument the way its siblings do --------------------------
+
+
+@pytest.mark.parametrize("command", ["report", "charts", "coercion"])
+def test_the_subcommands_agree_about_a_directory(tmp_path: Path, capsys, command: str):
+    """`charts` checked existence but not `is_file()`, so a directory reached
+    `read_text` and came back as `PermissionError: [Errno 13] Permission denied` - a
+    raw traceback naming the OS rather than the argument, where `report` and
+    `coercion` both say "not a file"."""
+    folder = tmp_path / "adir"
+    folder.mkdir()
+    extra = ["--out", str(tmp_path / "out")] if command == "charts" else []
+    assert main([command, str(folder), *extra]) == 2, command
+    assert "not a file" in capsys.readouterr().err.lower(), command
+
+
+@pytest.mark.parametrize("command", ["report", "charts", "coercion"])
+def test_the_subcommands_agree_about_an_empty_file(tmp_path: Path, capsys, command: str):
+    """`charts` printed "wrote 0 chart(s)" and exit 0 for the 0-byte file that
+    `report` refuses, and `coercion` printed a table for it. One file, three
+    verdicts - which is why the check is now in one place, `_csv_argument`."""
+    empty = tmp_path / "empty.csv"
+    empty.write_text("", encoding="utf-8")
+    extra = ["--out", str(tmp_path / "out")] if command == "charts" else []
+    assert main([command, str(empty), *extra]) == 2, command
+    assert "is empty, so it has no header row" in capsys.readouterr().err, command
+
+
+@pytest.mark.parametrize("command", ["report", "charts", "coercion"])
+def test_the_subcommands_agree_about_a_missing_file(tmp_path: Path, capsys, command: str):
+    extra = ["--out", str(tmp_path / "out")] if command == "charts" else []
+    assert main([command, str(tmp_path / "nope.csv"), *extra]) == 2, command
+    assert "no such file" in capsys.readouterr().err.lower(), command

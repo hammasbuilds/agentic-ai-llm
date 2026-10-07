@@ -69,7 +69,12 @@
   </p>
 </div>
 
-{% if result.witnesses %}
+{# `.get`, not `result.witnesses`: the environment is StrictUndefined, so a
+   missing key raises rather than rendering blank. Witnesses are per-mutant
+   rows and `apps/results/` commits counts only, so a result read from the
+   committed summary genuinely has no `witnesses` - that is optional, and a
+   template reading an optional field has to say so. #}
+{% if result.get('witnesses') %}
 <div class="card">
   <h2>Separating inputs</h2>
   <table>

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from ..ports import Message
 from .probe import Probe
@@ -213,3 +214,13 @@ class KafkaBus:
     def reachable(self) -> bool:
         """Kept for callers that only want the boolean."""
         return bool(self.probe())
+
+
+if TYPE_CHECKING:  # pragma: no cover - checked by a type checker, not at runtime
+    # `KafkaBus` satisfies `Bus` structurally, which is why nothing said so
+    # until this line: the port was named in this file's docstring and in no
+    # code anywhere. A method added to `Bus` and not here is now a type
+    # error rather than an `AttributeError` on the deployed path.
+    from ..ports import Bus
+
+    _satisfies: Bus = KafkaBus()

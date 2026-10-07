@@ -60,6 +60,87 @@ def _tree_rows() -> list[tuple[str, str, str, int]]:
     return rows
 
 
+def _all_paths() -> list[str]:
+    """Every path in every committed listing, occurrences and not a set.
+
+    Occurrences, because the figures quoted about these listings are about how often
+    a shape turns up across them, and three Django listings holding the same file is
+    three chances for a parser to meet it.
+    """
+    out: list[str] = []
+    for path in sorted((DATA / "trees").glob("*.json.gz")):
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            out.extend(json.load(handle)["paths"])
+    return out
+
+
+#: What a comment says about these listings, how to count it, and the sentence that
+#: says it. Each is a figure the path parser's design is argued from, written into a
+#: comment where nothing could check it: `apps/_engine/locate_prompts.py` said "9 of
+#: the 66,895 paths in `data/trees` are dot-prefixed Python files" and the number is
+#: 14 occurrences of 5 distinct files. Every other figure in the same two comments was
+#: right, which is the point - one of them was wrong and reading could not tell which.
+#:
+#: The sentence is part of the table because a figure corrected here and left wrong
+#: where it is argued from is the same defect with a passing test over it. It is
+#: matched as a phrase rather than as a bare number: "5" occurs in these files for
+#: dozens of unrelated reasons, so `str(n) in source` would be an assertion that
+#: cannot fail.
+QUOTED_FIGURES = {
+    "total paths": (
+        lambda ps: len(ps),
+        66_895,
+        "`.py` is 35,339 of 66,895 paths",
+    ),
+    "`.py` paths": (
+        lambda ps: sum(p.endswith(".py") for p in ps),
+        35_339,
+        "`.py` is 35,339 of 66,895 paths",
+    ),
+    "dot-prefixed paths": (
+        lambda ps: sum(p.startswith(".") for p in ps),
+        463,
+        "463 of the 66,895 paths in",
+    ),
+    "dot-prefixed `.py` paths": (
+        lambda ps: sum(p.startswith(".") and p.endswith(".py") for p in ps),
+        14,
+        "14 of the 66,895 paths in `data/trees` are dot-prefixed Python",
+    ),
+    "distinct dot-prefixed `.py` paths": (
+        lambda ps: len({p for p in ps if p.startswith(".") and p.endswith(".py")}),
+        5,
+        "5 distinct ones",
+    ),
+    "`.rst` paths": (
+        lambda ps: sum(p.endswith(".rst") for p in ps),
+        6_002,
+        "`.rst` is 6,002 paths",
+    ),
+    "`.po` paths": (
+        lambda ps: sum(p.endswith(".po") for p in ps),
+        3_646,
+        "`.po` 3,646",
+    ),
+}
+
+#: The two files whose comments argue from the figures above.
+FIGURE_SOURCES = ("apps/_engine/locate_prompts.py", "tests/test_localize_eval.py")
+
+
+@pytest.mark.parametrize("what", sorted(QUOTED_FIGURES))
+def test_a_figure_quoted_about_the_listings_is_the_figure_in_them(what):
+    count, stated, _sentence = QUOTED_FIGURES[what]
+    assert count(_all_paths()) == stated, what
+
+
+@pytest.mark.parametrize("what", sorted(QUOTED_FIGURES))
+def test_the_sentence_that_argues_from_the_figure_still_says_it(what):
+    _count, _stated, sentence = QUOTED_FIGURES[what]
+    sources = "".join((ROOT / rel).read_text(encoding="utf-8") for rel in FIGURE_SOURCES)
+    assert sentence in sources, f"{what}: no comment says {sentence!r} any more"
+
+
 def _documented_trees() -> dict[str, tuple[int, int, str]]:
     """Repository -> (listings, paths, licence), from the table in the note."""
     text = (DATA / "trees" / "README.md").read_text(encoding="utf-8")

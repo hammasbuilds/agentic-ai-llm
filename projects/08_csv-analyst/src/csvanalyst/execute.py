@@ -17,7 +17,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .profile import ColumnProfile, TableProfile, parse_number
+from .profile import ColumnProfile, TableProfile, decode, parse_number
 
 TABLE = "data"
 
@@ -112,10 +112,12 @@ def load(path: Path, profile: TableProfile, limit: int | None = None) -> sqlite3
     placeholders = ", ".join("?" for _ in profile.columns)
     insert = f"INSERT INTO {TABLE} VALUES ({placeholders})"
 
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        text = Path(path).read_text(encoding="latin-1")
+    # `decode`, which is the one reader. This did utf-8-then-latin-1 and
+    # consulted no byte-order mark, so the rows loaded into sqlite were decoded
+    # differently from the profile describing them: a UTF-16 export's numeric
+    # column profiled as numeric and arrived as mojibake, and `coercion` printed
+    # an empty table with exit 0.
+    text, _ = decode(Path(path))
 
     reader = csv.reader(text.splitlines(), delimiter=profile.delimiter)
     next(reader, None)

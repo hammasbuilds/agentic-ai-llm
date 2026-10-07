@@ -230,3 +230,21 @@ def test_the_folder_table_marks_which_rows_are_measurements():
     # form that went stale.
     for row in rows:
         assert "339,739" not in row and "32,527" not in row and "1,740" not in row, row
+
+
+def test_the_headline_does_not_print_a_count_the_table_refuses_to():
+    """The guard above covers the table, and the headline carried the same figures.
+
+    "1,740 modules, 339,739 lines" stood four sections higher for as long as the
+    table did without them: a rule applied to the place the finding named rather
+    than to the claim it was about. The two figures survive on the page only in the
+    paragraph that exists to say they moved.
+    """
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    headline = readme.split("## Results", 1)[1].split("## ", 1)[0]
+    for stale in ("339,739", "1,740", "32,527"):
+        assert stale not in headline, f"{stale} is back in the headline"
+
+    drift = readme.split("**The rates are the measurement", 1)[1].split("\n\n##", 1)[0]
+    for quoted in ("339,739", "1,740"):
+        assert quoted in drift, f"{quoted} left the paragraph that explains it"

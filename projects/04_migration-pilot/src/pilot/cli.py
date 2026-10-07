@@ -190,6 +190,8 @@ def _apply_command(args: argparse.Namespace) -> int:
     rules = {r for r in _selected_rules(args) if RULE_KIND[r] == MECHANICAL}
     changed = 0
     edits = 0
+    scanned = 0
+    unreadable: list[str] = []
     rejected: list[tuple[str, str]] = []
 
     with warnings.catch_warnings():
@@ -197,8 +199,15 @@ def _apply_command(args: argparse.Namespace) -> int:
         for path in _python_files(target):
             try:
                 source = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+            except (OSError, UnicodeDecodeError) as exc:
+                # Named, not skipped. This is the command that REWRITES source, and a
+                # file it could not read is one it did not modernise - a reader told
+                # "rewrote 11 file(s)" over a tree of fourteen has been told the tree
+                # is done. `scan` counted these; `apply`, where it matters more,
+                # discarded them with a bare `continue`.
+                unreadable.append(f"{path}: {type(exc).__name__}")
                 continue
+            scanned += 1
             result, applied, rejections = modernise_until_stable(str(path), source, rules)
             for reason in rejections:
                 rejected.append((str(path), reason))
@@ -220,7 +229,13 @@ def _apply_command(args: argparse.Namespace) -> int:
 
     print()
     verb = "rewrote" if args.write else "would rewrite"
-    print(f"  {verb} {changed} file(s), {edits} edit(s)")
+    print(f"  {verb} {changed} of {scanned} file(s) read, {edits} edit(s)")
+    if unreadable:
+        print(f"  {len(unreadable)} file(s) could not be read and were NOT rewritten:")
+        for entry in unreadable[:5]:
+            print(f"      {entry}")
+        if len(unreadable) > 5:
+            print(f"      and {len(unreadable) - 5} more")
     if not args.write:
         print("  dry run - pass --write to apply")
     for path, reason in rejected:

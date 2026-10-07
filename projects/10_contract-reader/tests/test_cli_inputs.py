@@ -137,3 +137,34 @@ def test_a_markless_wide_licence_is_refused(tmp_path: Path, capsys):
     bare.write_bytes(MIT.encode("utf-16-le"))
     assert main(["read", str(bare)]) == 2
     assert "no byte-order mark" in capsys.readouterr().err
+
+
+# -- survey answers a path that is not there ----------------------------------------
+
+
+def test_survey_names_a_missing_directory_rather_than_describing_it(tmp_path: Path, capsys):
+    """It printed "no licence files found" - a claim about a directory, made about a
+    directory that is not there. The exit code was right and the sentence was not: a
+    typo and an empty folder are different answers and only one is about the folder
+    the reader meant."""
+    assert main(["survey", str(tmp_path / "nosuchdir")]) == 2
+    err = capsys.readouterr().err
+    assert "no such directory" in err, err
+    assert "no licence files found" not in err
+
+
+def test_survey_given_a_file_says_so(tmp_path: Path, capsys):
+    a_file = tmp_path / "LICENSE"
+    a_file.write_text(MIT, encoding="utf-8")
+    assert main(["survey", str(a_file)]) == 2
+    assert "not a directory" in capsys.readouterr().err
+
+
+def test_survey_of_an_empty_directory_names_it(tmp_path: Path, capsys):
+    """Still a refusal, and now it says which directory held nothing."""
+    empty = tmp_path / "nothing"
+    empty.mkdir()
+    assert main(["survey", str(empty)]) == 2
+    err = capsys.readouterr().err
+    assert "no licence files found under" in err, err
+    assert empty.name in err

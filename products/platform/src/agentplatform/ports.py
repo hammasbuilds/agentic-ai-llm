@@ -14,7 +14,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from . import topics as _topics
 
@@ -251,3 +251,21 @@ class InMemoryCache:
     def _has_expired(self, key: str) -> bool:
         deadline = self._expiry.get(key)
         return deadline is not None and self._clock() >= deadline
+
+
+if TYPE_CHECKING:  # pragma: no cover - checked by a type checker, not at runtime
+    # The three in-memory implementations, declared against the ports they satisfy.
+    #
+    # A protocol is satisfied structurally, so until this block existed no code in the
+    # repository named `Bus`, `Store` or `Cache` at all - they appeared in prose and
+    # nowhere else, and `tests/test_ports_are_satisfied.py` was written because of it.
+    # `Store.delete` was added to the protocol and to both implementations in one
+    # change; had it gone into one, every test would still have passed and the
+    # deployed path would have raised `AttributeError`.
+    #
+    # Under `TYPE_CHECKING` because the claim is static. Instantiating these at import
+    # time to assert the same thing would build three objects every process start to
+    # answer a question that does not depend on any of their state.
+    _bus: Bus = InMemoryBus()
+    _store: Store = InMemoryStore()
+    _cache: Cache = InMemoryCache()

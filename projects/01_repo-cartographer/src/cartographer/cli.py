@@ -138,9 +138,20 @@ def _compare_command(args: argparse.Namespace) -> int:
             )
             continue
         core = rep.core_modules[0].module if rep.core_modules else "-"
+        # A dash, not 0%. A checkout with modules and no calls between them has no
+        # resolution rate, and printing zero puts it in the table as this tool's worst
+        # possible reading of a repository.
+        every = (
+            f"{rep.resolution_rate:9.0%}" if rep.resolution_rate is not None else f"{'-':>9s}"
+        )
+        internal = (
+            f"{rep.repo_resolution_rate:10.0%}"
+            if rep.repo_resolution_rate is not None
+            else f"{'-':>10s}"
+        )
         print(
             f"{name:28s} {rep.modules:5d} {rep.symbols:6d} {rep.loc:8,d} "
-            f"{rep.resolution_rate:9.0%} {rep.repo_resolution_rate:10.0%} "
+            f"{every} {internal} "
             f"{rep.in_scope_calls:7,d}  {core}"
         )
 
@@ -149,14 +160,29 @@ def _compare_command(args: argparse.Namespace) -> int:
     # source in the tool that was supposed to produce it. Empty checkouts were skipped
     # silently and never counted, which is the denominator doing quiet work.
     measured = [rep for _, rep, err in rows if rep is not None and err is None]
-    rates = sorted(rep.repo_resolution_rate for rep in measured)
+    # A checkout with no calls has no rate, so it is not in the median's population -
+    # and the count below says how many those were, because a median over 70 of 78 is
+    # a different claim from a median over 78.
+    rateless = [rep for rep in measured if rep.repo_resolution_rate is None]
+    rates = sorted(
+        rep.repo_resolution_rate for rep in measured if rep.repo_resolution_rate is not None
+    )
     failed = [name for name, rep, err in rows if err]
     empty = len(repos) - len(measured) - len(failed)
     print("-" * 104)
+    if rateless:
+        # Named, because a median over 70 of 78 is a different claim from a median
+        # over 78 and the two read identically without this line.
+        print(
+            f"  {len(rateless)} checkout(s) have modules but no calls between them, "
+            "so they have no resolution rate and are not in the median below"
+        )
     if rates:
         middle = len(rates) // 2
         median = rates[middle] if len(rates) % 2 else (rates[middle - 1] + rates[middle]) / 2
-        all_rates = sorted(rep.resolution_rate for rep in measured)
+        all_rates = sorted(
+            rep.resolution_rate for rep in measured if rep.resolution_rate is not None
+        )
         a_mid = len(all_rates) // 2
         all_median = (
             all_rates[a_mid]
@@ -164,7 +190,7 @@ def _compare_command(args: argparse.Namespace) -> int:
             else (all_rates[a_mid - 1] + all_rates[a_mid]) / 2
         )
         print(
-            f"{len(measured)} repositories measured, "
+            f"{len(rates)} of {len(measured)} repositories have a rate, "
             f"{sum(1 for r in rates if r >= 0.90)} at or above 90%, "
             f"median {median:.0%} repo-internal against {all_median:.0%} over all call sites"
         )
@@ -184,6 +210,21 @@ def _compare_command(args: argparse.Namespace) -> int:
         print(
             f"  {thin} of {len(measured)} repositories have fewer than 50 internal call "
             f"sites, where a rate is not yet a measurement"
+        )
+        print(
+            f"{sum(rep.modules for rep in measured):,} modules, "
+            f"{sum(rep.loc for rep in measured):,} lines, "
+            f"{sum(len(rep.parse_errors) for rep in measured)} file(s) that did not parse"
+        )
+    elif measured:
+        # Every checkout read and not one with a rate. The whole summary used to sit
+        # inside `if rates:`, so this printed the table and then nothing - no pooled
+        # figure, no count of what was measured, and no statement that there was
+        # nothing to average.
+        print("  no repo-internal call sites to pool")
+        print(
+            f"  {len(measured)} of {len(measured)} repositories have fewer than 50 "
+            "internal call sites, where a rate is not yet a measurement"
         )
         print(
             f"{sum(rep.modules for rep in measured):,} modules, "

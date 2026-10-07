@@ -54,7 +54,6 @@ CANDIDATES:
 #: all the same. What stays out is the binary and generated end of the list
 #: (`.png`, `.mo`, `.pdf`, `.gz`) and extensionless files, which no bug report
 #: names as the file to edit.
-#: because an unanchored "has a slash in it" matches prose like "and/or".
 PATH = re.compile(
     r"""
     (?:^|[\s"'`(\[*/])                        # start, or an opening delimiter
@@ -123,9 +122,11 @@ def parse_paths(text: str, k: int = 10) -> list[str]:
             # invented file. That is the exact failure this parser was rewritten to
             # stop: the model named a real path and the harness mangled it.
             #
-            # 9 of the 66,895 paths in `data/trees` are dot-prefixed Python files,
-            # so the effect on a re-run is small and in the one direction a
-            # fabrication figure must not have.
+            # 14 of the 66,895 paths in `data/trees` are dot-prefixed Python
+            # files, 5 distinct ones, so the effect on a re-run is small and in the
+            # one direction a fabrication figure must not have.
+            # `tests/test_dataset_provenance.py` measures all of these over the
+            # listings, because the first version of this comment said 9.
             path = found.removeprefix("./").removeprefix("/")
             if path and path not in paths:
                 paths.append(path)

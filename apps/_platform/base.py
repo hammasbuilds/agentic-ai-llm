@@ -25,6 +25,7 @@ from typing import Any
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from jinja2 import StrictUndefined
 from sse_starlette.sse import EventSourceResponse
 
 from . import bus, cache
@@ -95,6 +96,21 @@ def create_app(
 
     # App templates first so a per-app `result.html` wins, then the shared shell.
     tpl = Jinja2Templates(directory=[str(templates_dir), str(HERE / "templates")])
+    # A field the result does not carry is an error, not an empty string.
+    #
+    # Jinja's default renders `{{ result.beats_baseline }}` as "" when the key is
+    # gone, which is exactly what app 03 shipped: the runner split that field into
+    # `vs_always_safe` and `vs_majority`, the template kept four references to the old
+    # name, and every run of it rendered a page with holes and returned 200.
+    # `StrictUndefined` raises, and `job_result` turns that into the fragment that
+    # names the keys the result does have - so the same mistake is visible on the page
+    # instead of being a blank where a number should be.
+    tpl.env.undefined = StrictUndefined
+    # Reachable from the app object, for the same reason `fields` and `runner` are:
+    # a setting nothing can read from outside this function is a setting no test can
+    # assert, and this one is the difference between a missing field raising and
+    # rendering as a blank.
+    app.state.templates = tpl
 
     async def health() -> dict:
         redis_ok = await cache.ping()

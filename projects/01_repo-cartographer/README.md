@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-44%20%2B%2013%20skipped-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-53%20%2B%2013%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/median%20resolution-81%25-orange" alt="resolution">
   <img src="https://img.shields.io/badge/pooled%20resolution-75%25-orange" alt="pooled">
 </p>
@@ -14,7 +14,7 @@
 ## Results
 
 **A plain `ast` walk binds 81% of a repository's internal calls to their definitions
-(median across 78 real checkouts, 1,740 modules, 339,739 lines) - and 75% when every
+(median across 78 real checkouts, ~1,800 modules, ~350,000 lines) - and 75% when every
 call site in all of them is pooled into one fraction. No embeddings, no model, no index.**
 
 The usual approach to "explain this codebase" is to embed every chunk and retrieve by
@@ -83,6 +83,14 @@ raw count moved — 1,740 modules to 1,768, 339,739 lines to 349,104, 32,527 cal
 33,110, 26 skipped checkouts to 27 — because several of those repositories are worked on
 daily. A table printed as verbatim command output was wrong in four of eight rows within
 a day of being recorded, and nothing here checked it.
+
+The line counter has also changed since those two runs. It was
+`source.count("\n") + 1`, which counts an empty final line in every file that ends in
+a newline, so both totals were high by roughly one per module - about 1,740 of the
+339,739. It is `len(source.splitlines())` now, which is what `wc -l` reports, and
+`tests/test_parse.py` asserts it over six shapes of file including an empty one. The
+figures above are left as they were measured; the share they are quoted for is
+unaffected, because a line count appears in no rate on this page.
 
 So the counts below are given as the order of magnitude they are stable at, and the
 measurement is the share. What a reader wants from this table is whether an AST resolver
@@ -180,7 +188,7 @@ questions this tool exists for.
 ## Run it
 
 ```bash
-uv run pytest -q                      # 44 passed, 13 skipped
+uv run pytest -q                      # 53 passed, 13 skipped
 uv run cartographer map <repo>
 uv run cartographer compare <folder>  # every checkout under it
 ```

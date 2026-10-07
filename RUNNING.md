@@ -11,9 +11,18 @@ Verified 2026-09-17. Every command below was run on this PC.
 
 ## The short answer
 
-**All eleven ship a `ui/`. Seven run from the standard library with nothing to install;
-four are written against a framework and need `npm install` first.** Every project's CLI
-is complete without its UI.
+**All eleven ship a `ui/`. Three run from the standard library with nothing to
+install; four need `npm install`; four need a Python UI framework from their own `ui`
+extra.** Every project's CLI is complete without its UI.
+
+The middle number used to be seven, counted as "eleven minus the four with a
+`package.json`" - which put `02_test-smith` (nicegui), `08_csv-analyst` (marimo),
+`09_log-detective` (panel) and `11_study-tutor` (reflex) in the "nothing to install"
+column, each of them listed four lines down in this file's own table as
+`uv run --extra ui …`. A split into two is the wrong shape: "needs npm" and "needs
+nothing" are not the only options, and the test guarding the sentence classified by
+`package.json` alone and then closed the arithmetic with `stdlib + npm == total`,
+which is how the subtraction defined itself.
 
 This said "nine of eleven need no UI at all", then "three have a UI that earns its
 place", then "four need npm" - sixteen across eleven projects, while

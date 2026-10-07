@@ -15,7 +15,7 @@
   "note": "What every suite really did on a fresh clone, recorded by scripts/test_all.py --write-counts with the variables in 'fresh' pointed at an empty directory. The READMEs quote these, so they are the numbers a reader reproduces rather than the ones this machine happens to produce - 20_driftwatch ran 21 more tests here than anywhere else, and its README said so.",
   "suites": {
     "(root)": {
-      "passed": 977,
+      "passed": 1075,
       "skipped": 94,
       "outcome": "ok"
     },
@@ -125,7 +125,7 @@
       "outcome": "ok"
     },
     "projects/01_repo-cartographer": {
-      "passed": 44,
+      "passed": 53,
       "skipped": 13,
       "outcome": "ok"
     },
@@ -135,7 +135,7 @@
       "outcome": "ok"
     },
     "projects/03_review-bot": {
-      "passed": 46,
+      "passed": 47,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -160,7 +160,7 @@
       "outcome": "ok"
     },
     "projects/08_csv-analyst": {
-      "passed": 61,
+      "passed": 88,
       "skipped": 9,
       "outcome": "ok"
     },
@@ -170,7 +170,7 @@
       "outcome": "ok"
     },
     "projects/10_contract-reader": {
-      "passed": 46,
+      "passed": 49,
       "skipped": 0,
       "outcome": "ok"
     },

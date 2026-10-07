@@ -292,7 +292,7 @@ SHAPES = {
 #: `".github/scripts/x.py".lstrip("./")` was `"github/scripts/x.py"` - a path in no
 #: listing, which `resolve` cannot recover (it matches on "/" + p) and
 #: `fabrication_rate` then counts as an invented file. 463 of the 66,895 paths in
-#: `data/trees` are dot-prefixed and 9 of those are Python.
+#: `data/trees` are dot-prefixed and 14 of those are Python (5 distinct files).
 #:
 #: The second is the extension list, which was closed around source files: a Django
 #: template or a translation catalogue named by a model fell out as unparsed - honestly

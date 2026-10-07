@@ -68,7 +68,11 @@ def test_generated_files_are_most_of_the_edits_and_nearly_all_the_reverts(frozen
     generated_reverts = (reverts - sum(r["authored_reverts"] for r in frozen)) / reverts
     assert generated_edits == pytest.approx(0.632, abs=0.005)
     assert generated_reverts == pytest.approx(0.925, abs=0.005)
-    assert generated_reverts > generated_edits * 1.4
+    # The asymmetry, as a ratio with two sides. It was `generated_reverts >
+    # generated_edits * 1.4`, which cannot fail unless one of the two lines above
+    # already has - and a floor is the wrong shape for a claim that the two rates are
+    # far apart in a particular direction by a particular amount.
+    assert 1.4 < generated_reverts / generated_edits < 1.55
 
 
 #: The rate over source lines. Frozen reading: 46 reverts / 372,794 code edits.
@@ -108,7 +112,11 @@ def test_authored_was_not_a_fine_enough_cut(frozen):
     prose_edits = sum(r["authored_edits"] - r["code_edits"] for r in frozen)
     prose = prose_reverts / prose_edits
     assert prose == pytest.approx(0.000425, abs=0.00002)
-    assert prose > code * 3
+    # Both operands are pinned above, so `prose > code * 3` was a floor that could
+    # not fail on its own. The ratio is 3.46, and what the section argues is that
+    # prose reverts at several times the rate of code - bounded above as well,
+    # because a tenfold gap would mean the prose cut was doing something else.
+    assert 3 < prose / code < 4
 
 
 def test_a_convenience_cut_has_no_reliable_direction(frozen):

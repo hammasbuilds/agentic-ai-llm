@@ -45,8 +45,16 @@ def test_a_wide_change_outranks_a_voluminous_one():
         "rename across the package",
         [(f"src/pkg/m{i}.py", 8, 8) for i in range(60)] + [("tests/test_all.py", 5, 5)],
     )
+    # The first line is the premise - the dump really is the bigger change by lines,
+    # 50,000 against 970 - and the second is the finding. Both are stated because a
+    # premise that stopped holding would leave the finding true of nothing: if the
+    # two fixtures ever became comparable in churn, "ranked by lines alone the dump
+    # wins" would no longer be what this fixture pair demonstrates.
     assert dump.churn > refactor.churn * 5
     assert score_commit(refactor, BASE).score() > score_commit(dump, BASE).score()
+    # And by a margin worth ranking on. A hair's difference between the two would
+    # order them correctly and tell a reviewer nothing.
+    assert score_commit(refactor, BASE).score() - score_commit(dump, BASE).score() > 5
 
 
 def test_untested_source_scores_higher_than_the_same_change_with_tests():
@@ -65,7 +73,15 @@ def test_an_untested_tiny_change_is_not_ranked_like_an_untested_large_one():
     large = make("b", "rewrite", [("src/pkg/core.py", 800, 300)])
     tiny_untested = score_commit(tiny, BASE).untested
     large_untested = score_commit(large, BASE).untested
-    assert large_untested > tiny_untested * 2
+
+    # A band, not a floor. `large > tiny * 2` holds for any positive `large` the
+    # moment `tiny` is 0 - and 0 is what the version this test was written against
+    # returned, because it ignored how much source had changed. So the small side is
+    # asserted to be a real number first: a one-line untested fix is still untested,
+    # and a scorer answering 0 there would satisfy any multiple of it.
+    assert 0.05 < tiny_untested < 0.2, tiny_untested
+    assert 0.6 < large_untested < 0.9, large_untested
+    assert 4 < large_untested / tiny_untested < 10, large_untested / tiny_untested
 
 
 def test_docs_only_commits_score_low():
@@ -317,11 +333,24 @@ def test_the_readme_quotes_the_pairs_the_command_prints():
     measured = _measured_agreement()
     if measured is None:
         pytest.skip("no folder of checkouts here; REPOS_ROOT names one")
+
+    # Within 3 points, not exactly. The corpus is live checkouts and one of them is
+    # this repository, so an exact integer fails on the next commit made here - it did,
+    # twice: +33 became +34 and +41 became +43 within a day, with nothing in `risk.py`
+    # changed. Three points is narrow enough to catch the drift the key-only check
+    # could not see at all (a +41 silently becoming +99) and wide enough that the test
+    # is about the code.
+    tolerance = 3
     for pair, stated in quoted.items():
         assert pair in measured, (pair, sorted(measured))
-        assert int(stated) == measured[pair], (
-            f"the README says {pair} +{stated}%; `captain compare` measures +{measured[pair]}%"
+        assert abs(int(stated) - measured[pair]) <= tolerance, (
+            f"the README says {pair} +{stated}%; `captain compare` measures "
+            f"+{measured[pair]}%, more than {tolerance} points apart"
         )
+    # And the claim the section rests on, which does not drift: every pair agrees well
+    # above chance. A tolerance band would otherwise let all three decay together.
+    assert all(value >= 25 for value in measured.values()), measured
+    assert "Measured 2026-" in readme, "the table has no measurement date"
 
 
 def _measured_agreement() -> dict[str, int] | None:

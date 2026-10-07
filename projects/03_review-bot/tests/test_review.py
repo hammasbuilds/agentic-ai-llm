@@ -251,10 +251,39 @@ def test_render_names_the_retraction_rate():
     assert "retracted" in text
 
 
-def test_an_empty_review_does_not_divide_by_zero():
+def test_an_empty_review_has_no_rate_rather_than_a_rate_of_zero():
+    """This asserted `== 0.0`, and 0.0 was the wrong answer.
+
+    A retraction rate of zero means every proposal survived disproof, which is this
+    tool's best possible result - and it was printed for a scan that proposed nothing
+    at all, in two places. `cli.py`'s own comment names
+    `files=0 proposed=0 confirmed=0 retracted=0 (0%)` as the defect, and only the
+    `files=0` half had been fixed; this test was holding the other half in place.
+    """
     from reviewbot.review import Review
 
-    assert Review().retraction_rate == 0.0
+    empty = Review()
+    assert empty.proposed == 0
+    assert empty.retraction_rate is None
+
+    # And a real one still has a rate, so the None is about having nothing to divide.
+    from reviewbot.review import review_source
+
+    found = review_source("m.py", "def f(x=[]):" + chr(10) + "    return x" + chr(10))
+    whole = Review()
+    whole.files.append(found)
+    assert whole.proposed >= 1
+    assert whole.retraction_rate is not None
+
+
+def test_neither_printer_shows_a_rate_for_an_empty_review(capsys):
+    """Both sites, because the rate was printed twice and fixing one is half a fix."""
+    from reviewbot.review import Review, render
+
+    text = render(Review())
+    assert "(0%)" not in text, text
+    assert "no proposals" in text, text
+    del capsys
 
 
 # -- against a real repository -------------------------------------------

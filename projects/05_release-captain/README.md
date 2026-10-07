@@ -60,8 +60,13 @@ false.** Ranked top-5 overlap between metrics, as `captain compare <folder>` pri
 | Pair | Mean excess over chance |
 |---|---|
 | churn vs files | **+42%** |
-| churn vs spread | **+33%** |
-| files vs spread | **+41%** |
+| churn vs spread | **+34%** |
+| files vs spread | **+43%** |
+
+Measured 2026-10-07. These three move by a point or two whenever anyone commits to a
+checkout in the folder, this one included - they were +42/+33/+41 the day before. What
+the section claims is the sign and the size of the gap, which has not moved; the test
+beside it allows 3 points and fails on more.
 
 The metrics *agree*, well above chance. On ordinary commits, any one of them would do.
 The composite earns its place only on the tail — generated-data commits and broad
@@ -73,8 +78,9 @@ Five repositories fall at or below chance on churn-versus-spread: `agentic-ai-la
 
 The first of those five is this repository, and the sentence used to say four and leave
 it out - a survey excluding its own checkout, which is choosing the population. It is
-also the second-largest history in the folder at 61 commits, so it is not a marginal
-omission. This section used to name `mcp-lab` as "the one
+also one of the two longest histories in the folder, so it is not a marginal omission.
+(It said "at 61 commits", which was true for about a day: the count is this project's
+own commit count and every commit here moved it.) This section used to name `mcp-lab` as "the one
 repository" where they overlap below chance, "20% observed against 28% expected", and
 called it "the repo with the most history". Three of those four claims are wrong:
 `mcp-lab`'s chance is 19% and its overlap 20%, which is *above* it; the repository with

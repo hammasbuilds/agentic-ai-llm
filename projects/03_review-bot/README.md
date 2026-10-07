@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-46-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-47-success" alt="tests">
   <img src="https://img.shields.io/badge/files%20measured-2%2C110-orange" alt="files">
 </p>
 
@@ -181,7 +181,7 @@ findings it had not checked, which is the failure this project is built to avoid
 ## Run it
 
 ```bash
-uv run pytest -q                              # 46 tests
+uv run pytest -q                              # 47 tests
 uv run review-bot scan <path> --show-retracted
 uv run review-bot diff <repo> --ref HEAD~1
 uv run python ui/server.py                    # then: cd ui && npm install && npm run dev

@@ -56,17 +56,30 @@ interchangeable — the API truncates a very large tree and says so, a walk does
 
 ## Regenerating
 
-There is no separate script. `apps/_engine/trees.py` writes a listing the first time
-one is asked for and not already here — `fetch(repo, ref)` for a branch and
-`fetch_at_commit(repo, commit)` for an instance — so running the localisation
-evaluation against an instance whose tree is missing fetches and commits it:
+`scripts/fetch_trees.py`, and nothing else:
 
 ```bash
-python -m apps._engine.localize_eval --limit 5     # fetches any listing it needs
+python scripts/fetch_trees.py --repo django/django
+python scripts/fetch_trees.py --repo astropy/astropy --commit 1e8a5b833d1b
+python scripts/fetch_trees.py --missing      # every listing a scored instance needs and lacks
 ```
 
-Both write into this directory and both record `how`, so a listing is never silently
-replaced by one obtained a different way.
+It writes into this directory and records `how`, so a listing is never silently
+replaced by one obtained a different way. `--missing` reads the committed benchmark
+slice, so it says what is absent without fetching anything first.
+
+This section used to say there was no script: that `apps/_engine/trees.py` wrote a
+listing "the first time one is asked for and not already here", and that running
+`python -m apps._engine.localize_eval` against an instance whose tree was missing
+would fetch and commit it. `fetch` and `fetch_at_commit` had no caller anywhere in the
+repository — that is how a check resolving references through the import graph found
+them — so nothing fetched on demand, and the command named here would have reported
+the instance as unlistable instead.
+
+Fetching is deliberately not on the evaluation path. It needs the GitHub API, and a
+measurement that reaches the network when a file is missing is a measurement whose
+result depends on whether the network was up; the listings are committed so that it
+cannot. A listing is refreshed on purpose, by running the script.
 
 `tests/test_hermetic.py` asserts these load with `HF_HOME` and `HF_HUB_CACHE` pointed at
 an empty directory, and `tests/test_dataset_provenance.py` asserts every repository with

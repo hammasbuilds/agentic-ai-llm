@@ -2,8 +2,10 @@
 
 The root README says what this repository can show you offline is "the measurement
 code". Every piece of it was here and nothing composed them: `evaluate.print_report`,
-`trees.commit_listings`, `trees.listing_for`, `trees.fetch_at_commit` and
-`differential.find_many` had no callers anywhere in the repository. The pieces were the
+`trees.commit_listings`, `trees.listing_for` and `differential.find_many` had no
+callers anywhere in the repository. (This sentence listed `trees.fetch_at_commit`
+among them and this module does not call it: fetching is not on the evaluation path,
+deliberately, and `scripts/fetch_trees.py` is what calls it.) The pieces were the
 fingerprint of a driver that had been run on this machine and never committed, so the
 headline - BM25 collapsing from 38/51 to 13/154 depending only on whether the issue
 quotes the file path - could not be reproduced from the repository that states it.

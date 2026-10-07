@@ -232,32 +232,99 @@ def test_a_per_package_count_in_an_index_is_the_one_pytest_collects(index: Path)
 RUNNING = ROOT / "RUNNING.md"
 
 
-def test_running_md_counts_the_uis_that_exist():
-    """It said nine, then three, then four - sixteen across eleven projects.
+#: Python UI frameworks a `ui/` can be written against. Each is declared as that
+#: package's own `ui` extra, so needing one is not "nothing to install".
+UI_FRAMEWORKS = ("nicegui", "marimo", "panel", "reflex", "streamlit", "gradio", "dash")
 
-    All eleven ship a `ui/`; four carry a `package.json`. The sentence was a
-    judgement about whether a browser adds anything, written as a count of what is
-    there, under a line reading "Verified 2026-09-17. Every command below was run on
-    this PC."
+
+def _ui_kinds() -> dict[str, list[str]]:
+    """Each `projects/*/ui` by what it needs: npm, a Python framework, or nothing.
+
+    Classified by what the directory CONTAINS - a `package.json`, or a Python file
+    importing a framework - rather than by subtraction. The guard this replaces
+    counted `package.json` and called everything else stdlib, which is how
+    `02_test-smith` (nicegui), `08_csv-analyst` (marimo), `09_log-detective` (panel)
+    and `11_study-tutor` (reflex) were counted as needing nothing, each of them
+    listed in RUNNING.md's own table as `uv run --extra ui …`.
+    """
+    import re as _re
+
+    kinds: dict[str, list[str]] = {"npm": [], "framework": [], "stdlib": []}
+    for ui in sorted(p for p in (ROOT / "projects").glob("*/ui") if p.is_dir()):
+        name = ui.parent.name
+        if (ui / "package.json").exists():
+            kinds["npm"].append(name)
+            continue
+        source = "\n".join(
+            f.read_text(encoding="utf-8", errors="replace") for f in ui.rglob("*.py")
+        )
+        imported = [
+            fw
+            for fw in UI_FRAMEWORKS
+            if _re.search(rf"^\s*(?:import|from)\s+{fw}\b", source, _re.MULTILINE)
+        ]
+        kinds["framework" if imported else "stdlib"].append(name)
+    return kinds
+
+
+def test_running_md_counts_the_uis_that_exist():
+    """It said nine, then three, then four, then seven.
+
+    Seven was "eleven minus the four with a `package.json`", and this test closed that
+    arithmetic with `assert stdlib + len(npm) == len(uis)` - a restatement of the
+    subtraction that produced the numbers, so it could not fail. The sentence it
+    guarded put four projects that need a Python UI framework in the "nothing to
+    install" column.
+
+    Three counts, each measured independently, and no closing identity.
     """
     import re
 
-    uis = sorted(p for p in (ROOT / "projects").glob("*/ui") if p.is_dir())
-    npm = sorted(p for p in uis if (p / "package.json").exists())
-    stdlib = len(uis) - len(npm)
+    kinds = _ui_kinds()
+    uis = sum(len(v) for v in kinds.values())
+    assert uis == 11, kinds
 
     text = RUNNING.read_text(encoding="utf-8")
-    words = {"seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "four": 4}
+    words = {
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+    }
     stated = re.search(
-        r"All (\w+) ship a `ui/`\.\s*(\w+) run from the standard library[^;]*;\s*(\w+) are",
+        r"All (\w+) ship a `ui/`\.\s*(\w+) run from the standard library[^;]*;\s*"
+        r"(\w+) need `npm install`;\s*(\w+) need a Python UI framework",
         text,
     )
-    assert stated, "the short answer no longer states the three counts"
+    assert stated, "the short answer no longer states the four counts"
 
-    assert words[stated.group(1).lower()] == len(uis), f"{len(uis)} ui directories"
-    assert words[stated.group(2).lower()] == stdlib, f"{stdlib} stdlib"
-    assert words[stated.group(3).lower()] == len(npm), f"{len(npm)} with package.json"
-    assert stdlib + len(npm) == len(uis), "the three numbers have to close"
+    assert words[stated.group(1).lower()] == uis, kinds
+    assert words[stated.group(2).lower()] == len(kinds["stdlib"]), kinds["stdlib"]
+    assert words[stated.group(3).lower()] == len(kinds["npm"]), kinds["npm"]
+    assert words[stated.group(4).lower()] == len(kinds["framework"]), kinds["framework"]
+
+
+def test_every_framework_ui_declares_the_extra_it_needs():
+    """A UI needing a framework is only honest if the package says how to get it.
+
+    This is what makes "needs a Python UI framework" actionable rather than a label:
+    each of the four is listed in RUNNING.md as `uv run --extra ui …`, so each has to
+    have that extra.
+    """
+    kinds = _ui_kinds()
+    assert kinds["framework"], kinds
+    for name in kinds["framework"]:
+        pyproject = (ROOT / "projects" / name / "pyproject.toml").read_text(encoding="utf-8")
+        assert "[project.optional-dependencies]" in pyproject, name
+        assert "ui" in pyproject, name
+        assert "--extra ui" in RUNNING.read_text(encoding="utf-8"), name
 
 
 def test_running_mds_test_everything_loop_names_real_directories():

@@ -8,6 +8,7 @@ writing it.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .probe import Probe
 from .probe import probe as probe_target
@@ -48,3 +49,13 @@ class RedisCache:
 
     def ping(self) -> bool:
         return bool(self.probe())
+
+
+if TYPE_CHECKING:  # pragma: no cover - checked by a type checker, not at runtime
+    # `RedisCache` satisfies `Cache` structurally, which is why nothing said so
+    # until this line: the port was named in this file's docstring and in no
+    # code anywhere. A method added to `Cache` and not here is now a type
+    # error rather than an `AttributeError` on the deployed path.
+    from ..ports import Cache
+
+    _satisfies: Cache = RedisCache()

@@ -148,10 +148,57 @@ def test_the_implementation_takes_the_arguments_the_port_declares(port: type, im
     assert not wrong, wrong
 
 
-def test_the_ports_module_is_now_referenced_by_this_file():
-    """The dead-code check reads uses from code with prose stripped, so this file is
-    what makes the three protocol names referenced at all. Stated outright, because a
-    test whose only purpose a reader cannot see is the next thing to be deleted."""
-    source = Path(__file__).read_text(encoding="utf-8")
-    for port in IMPLEMENTATIONS:
-        assert f"ports.{port.__name__}" in source, port.__name__
+#: Files a reference does not count from: prose about the ports, and this file's own
+#: table. Excluded so the check below measures the repository rather than itself.
+_NOT_A_CALLER = ("tests/test_ports_are_satisfied.py",)
+
+
+def _files_referencing(name: str) -> list[str]:
+    """Every Python file that names `name` as code: a bare name or an attribute.
+
+    `ast`, not text search, because the state this is here to detect is a protocol
+    named only in prose - `kafka_bus.py`'s "Kafka, behind the Bus port" - and a
+    docstring is text in the file. A parsed tree holds no comments and holds a
+    docstring as a string constant, which is neither a `Name` nor an `Attribute`.
+    """
+    import ast
+
+    out = []
+    skip = {".venv", "__pycache__", ".git", "node_modules", "build", "dist"}
+    for path in sorted(ROOT.rglob("*.py")):
+        if skip & set(path.parts):
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        if rel in _NOT_A_CALLER:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Name) and node.id == name) or (
+                isinstance(node, ast.Attribute) and node.attr == name
+            ):
+                out.append(rel)
+                break
+    return out
+
+
+@pytest.mark.parametrize(
+    "port", sorted(IMPLEMENTATIONS, key=lambda p: p.__name__), ids=lambda p: p.__name__
+)
+def test_the_port_is_named_as_code_somewhere_that_is_not_this_file(port):
+    """A protocol nobody references is a comment with a class statement in front of it.
+
+    This replaces `assert f"ports.{port.__name__}" in source` over this file, which
+    searched the file holding the dict literal `ports.Bus: (...)` for the string
+    "ports.Bus". The question is whether the repository uses these names, and the
+    answer when the dead-code check first asked was no - all three appeared only in
+    prose, which is why `ast` is what reads them here.
+    """
+    callers = _files_referencing(port.__name__)
+    assert callers, (
+        f"{port.__name__} is named in no code outside this file's own table. "
+        "Structural typing means an adapter satisfies a port without naming it, so "
+        "this goes unnoticed: annotate the adapters, or delete the protocol."
+    )

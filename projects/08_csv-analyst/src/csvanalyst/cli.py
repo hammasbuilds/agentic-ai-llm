@@ -20,6 +20,7 @@ from .execute import (
 from .narrate import narrate
 from .profile import (
     NotDelimitedTextError,
+    decode,
     honest_mean,
     naive_mean,
     parse_number,
@@ -122,7 +123,9 @@ def _sweep_command(args: argparse.Namespace) -> int:
 
 
 def _report_command(args: argparse.Namespace) -> int:
-    path = Path(args.csv)
+    path = _csv_argument(args.csv)
+    if isinstance(path, int):
+        return path
     if not path.is_file():
         print(f"not a file: {path}", file=sys.stderr)
         return 2
@@ -147,15 +150,48 @@ def _report_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _csv_argument(raw: str) -> Path | int:
+    """The path, or an exit code and a message on stderr.
+
+    One place, because four subcommands take this argument and gave four answers to
+    it. A missing file was "not a file" in `report` and "no such file" in `coercion`
+    and `impact`; a directory reached `read_text` in `charts` and `coercion` and came
+    back as `PermissionError: [Errno 13]`, a traceback naming the OS rather than the
+    argument; and the 0-byte file `report` refuses with "has no header row" made
+    `coercion` print a table and exit 0.
+
+    The empty-file case is checked here rather than per command because it is the same
+    question - is there a CSV at this path - and answering it differently in different
+    subcommands is what made one file have two verdicts.
+    """
+    path = Path(raw)
+    if not path.exists():
+        print(f"no such file: {raw}", file=sys.stderr)
+        return 2
+    if not path.is_file():
+        print(f"not a file: {raw}", file=sys.stderr)
+        return 2
+    if path.stat().st_size == 0:
+        print(f"{path.name} is empty, so it has no header row", file=sys.stderr)
+        return 2
+    return path
+
+
 def _charts_command(args: argparse.Namespace) -> int:
-    path = Path(args.csv)
+    path = _csv_argument(args.csv)
+    if isinstance(path, int):
+        return path
     profile = profile_csv(path, limit=args.limit)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     import csv as _csv
 
-    text = path.read_text(encoding="utf-8", errors="replace")
+    # `decode`, not a fourth reader. This did its own
+    # `read_text(encoding="utf-8", errors="replace")` and consulted no byte-order
+    # mark, so a UTF-16 export's profile and its rows disagreed - see
+    # `profile.decode`.
+    text, _ = decode(path)
     reader = _csv.reader(text.splitlines(), delimiter=profile.delimiter)
     next(reader, [])  # advance past the header row; its contents are not used here
     rows = list(reader)[: args.limit] if args.limit else list(reader)
@@ -212,7 +248,9 @@ def _impact_command(args: argparse.Namespace) -> int:
     Generic rather than hardcoded to this dataset: name the column a loader would
     coerce and the two columns whose product is the total.
     """
-    path = Path(args.csv)
+    path = _csv_argument(args.csv)
+    if isinstance(path, int):
+        return path
     profile = profile_csv(path, limit=args.limit)
     index = {column.name: column.index for column in profile.columns}
 
@@ -225,7 +263,7 @@ def _impact_command(args: argparse.Namespace) -> int:
             return 2
 
     reader = _csv.reader(
-        path.read_text(encoding="utf-8", errors="replace").splitlines(),
+        decode(path)[0].splitlines(),
         delimiter=profile.delimiter,
     )
     next(reader, [])
@@ -300,12 +338,18 @@ def _coercion_command(args: argparse.Namespace) -> int:
     This is the demonstration the project is built around: the difference
     between a mean and the same mean with its denominator stated.
     """
-    path = Path(args.csv)
+    path = _csv_argument(args.csv)
+    if isinstance(path, int):
+        return path
     profile = profile_csv(path, limit=args.limit)
 
     import csv as _csv
 
-    text = path.read_text(encoding="utf-8", errors="replace")
+    # `decode`, not a fourth reader. This did its own
+    # `read_text(encoding="utf-8", errors="replace")` and consulted no byte-order
+    # mark, so a UTF-16 export's profile and its rows disagreed - see
+    # `profile.decode`.
+    text, _ = decode(path)
     reader = _csv.reader(text.splitlines(), delimiter=profile.delimiter)
     next(reader, None)
     rows = list(reader)[: args.limit] if args.limit else list(reader)

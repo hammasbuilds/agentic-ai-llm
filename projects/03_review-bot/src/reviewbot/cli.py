@@ -118,10 +118,17 @@ def _scan_command(args: argparse.Namespace) -> int:
     # and the file count, which is what makes a retraction rate readable, was not
     # available at all.
     scope = "ALL FILES" if args.include_tests else "SOURCE FILES ONLY"
+    # The rate as a fragment, so the conditional cannot swallow the line it belongs
+    # to - which it did on the first attempt, printing "(no proposals to retract)"
+    # with the counts gone.
+    rate = (
+        f"({review.retraction_rate:.0%})"
+        if review.retraction_rate is not None
+        else "(no proposals, so no retraction rate)"
+    )
     print(
         f"  {scope}: files={reviewed:,}  proposed={review.proposed}  "
-        f"confirmed={review.confirmed}  retracted={review.retracted} "
-        f"({review.retraction_rate:.0%})"
+        f"confirmed={review.confirmed}  retracted={review.retracted} {rate}"
     )
     if unreadable:
         print(f"  {unreadable} file(s) could not be read and are not in that count")
@@ -142,7 +149,11 @@ def _scan_command(args: argparse.Namespace) -> int:
                     "proposed": review.proposed,
                     "confirmed": review.confirmed,
                     "retracted": review.retracted,
-                    "retraction_rate": round(review.retraction_rate, 4),
+                    "retraction_rate": (
+                        round(review.retraction_rate, 4)
+                        if review.retraction_rate is not None
+                        else None
+                    ),
                     "files_reviewed": reviewed,
                     "test_files_skipped": skipped_tests,
                     "files_unreadable": unreadable,

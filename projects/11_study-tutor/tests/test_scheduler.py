@@ -98,9 +98,29 @@ def test_sm2_discards_the_whole_history_on_one_lapse():
 
 
 def test_fsrs_keeps_most_of_the_stability_through_a_lapse():
-    fsrs_first = lapse_recovery("fsrs")[0]
-    assert fsrs_first > 10
-    assert fsrs_first > lapse_recovery("sm2")[0] * 10
+    """Bounded on both sides, and over the whole recovery rather than its first step.
+
+    This was `fsrs_first > 10` and `fsrs_first > sm2_first * 10`, where the test above
+    asserts the SM-2 figure is exactly 1 - so the second line restated the first, and
+    nothing bounded the interval from above. "Keeps most of the stability" is a claim
+    about a quantity, and a scheduler answering 10,000 days satisfied both lines while
+    scheduling a just-forgotten card for 27 years' time.
+    """
+    fsrs_curve = lapse_recovery("fsrs")[:4]
+    sm2_curve = lapse_recovery("sm2")[:4]
+
+    # The card was established before the lapse, so the first interval after it is
+    # weeks rather than days - and weeks rather than years.
+    assert 14 <= fsrs_curve[0] <= 25, fsrs_curve
+
+    # Monotone, and growing: a recovery that stalls is not a recovery.
+    assert fsrs_curve == sorted(fsrs_curve), fsrs_curve
+    assert fsrs_curve[-1] > 4 * fsrs_curve[0], fsrs_curve
+
+    # And ahead of SM-2 at every step, which is the comparison the section is for.
+    for mine, theirs in zip(fsrs_curve, sm2_curve, strict=True):
+        assert mine > theirs, (fsrs_curve, sm2_curve)
+    assert sum(fsrs_curve) > 10 * sum(sm2_curve), (fsrs_curve, sm2_curve)
 
 
 def test_a_lapse_reduces_stability_rather_than_deleting_it():

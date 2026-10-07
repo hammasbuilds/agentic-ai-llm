@@ -246,3 +246,53 @@ def test_internal_prefixes_exclude_stdlib(repo: Path):
     prefixes = detect_internal_prefixes(repo, files)
     assert "demo" in prefixes
     assert "json" not in prefixes
+
+
+# -- the line counter -----------------------------------------------------
+
+
+#: Source, and the number of lines it has. Written out because `loc` was
+#: `source.count("\n") + 1` and nothing asserted it: a file ending in a newline had
+#: its last line counted twice, and an empty file reported 1. The error was one per
+#: file and always upward, so a repository's total was over by its file count and the
+#: shape of the mistake - every row slightly high - is one no comparison between rows
+#: would reveal.
+LINE_COUNTS = {
+    "one line, newline-terminated": ("x = 1\n", 1),
+    "two lines, newline-terminated": ("x = 1\ny = 2\n", 2),
+    "no trailing newline": ("x = 1\ny = 2", 2),
+    "a blank line in the middle": ("x = 1\n\ny = 2\n", 3),
+    "a trailing blank line": ("x = 1\n\n", 2),
+    "empty file": ("", 0),
+}
+
+
+@pytest.mark.parametrize("what", sorted(LINE_COUNTS))
+def test_a_module_is_as_many_lines_as_it_has(tmp_path: Path, what: str):
+    source, expected = LINE_COUNTS[what]
+    (tmp_path / "m.py").write_text(source, encoding="utf-8")
+    parsed = parse_repo(tmp_path)
+    assert [m.loc for m in parsed.modules] == [expected], what
+
+
+def test_a_repository_is_the_sum_of_its_files_and_not_one_more_per_file(tmp_path: Path):
+    """The total is where the off-by-one was visible, and it was not looked at.
+
+    `cartographer compare` prints a line count per checkout and a total across them;
+    with `+ 1` per file, a repository of 300 modules read 300 lines larger than it is,
+    which is the figure this project's README quotes from a sweep of 78 checkouts.
+    """
+    for i in range(7):
+        (tmp_path / f"m{i}.py").write_text("x = 1\ny = 2\nz = 3\n", encoding="utf-8")
+    parsed = parse_repo(tmp_path)
+    assert len(parsed.modules) == 7
+    assert sum(m.loc for m in parsed.modules) == 21
+
+
+def test_an_unparsable_file_still_has_its_lines_counted(tmp_path: Path):
+    """`loc` is set before `ast.parse`, deliberately: a Python 2 leftover is still
+    lines of the repository, and a count that drops it would disagree with `wc`."""
+    (tmp_path / "broken.py").write_text("def f(:\n    pass\n", encoding="utf-8")
+    parsed = parse_repo(tmp_path)
+    assert [m.loc for m in parsed.modules] == [2]
+    assert parsed.modules[0].parse_error

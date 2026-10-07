@@ -443,3 +443,80 @@ def test_no_never_cell_names_a_field_the_same_agent_may_write(product, package):
             assert ref not in writable.get(agent, set()), (
                 f"{product}: {agent} may never write {ref}, and is granted it"
             )
+
+
+#: What a cell says before this marker is written outright; what comes after it is
+#: proposed for a human to commit. Five grants across three products are PROPOSE.
+PROPOSE_MARKER = "propose only:"
+
+
+def _cell_halves(cell: str) -> tuple[str, str]:
+    """(written outright, proposed). A cell with no marker proposes nothing."""
+    written, _, proposed = cell.partition(PROPOSE_MARKER)
+    return written, proposed
+
+
+@pytest.mark.parametrize("product,package", sorted(PRODUCTS.items()))
+def test_the_column_says_which_fields_are_proposed_and_which_are_written(product, package):
+    """A level, not just a name.
+
+    The two tests above compare the set of field names in the cell against the set in
+    the table; neither reads the level. `writer` may write `draft.*` and may only
+    propose `message.send`, and a cell listing both without the distinction reads as
+    authority to send - which is the exact claim the authority table exists to deny.
+    """
+    table = table_for(package)
+    documented = _documented_table(ROOT / "products" / product)
+    for (agent, field_name), level in sorted(table._grants.items()):  # noqa: SLF001
+        if level is Level.NEVER:
+            continue
+        written, proposed = _cell_halves(documented.get(agent, ("", ""))[0])
+        ticked = f"`{field_name}`"
+        if level is Level.PROPOSE:
+            assert ticked in proposed, (
+                f"{product}: {agent} may only PROPOSE {field_name}, and the README "
+                f"prints it as a field it writes: {documented.get(agent, ('', ''))[0]!r}"
+            )
+        else:
+            assert ticked in written, (
+                f"{product}: {agent} may WRITE {field_name}, and the README prints it "
+                f"as proposed only: {documented.get(agent, ('', ''))[0]!r}"
+            )
+
+
+def test_a_product_with_a_propose_grant_exists_to_check():
+    """Both branches above have to be reachable, or half of this is untested.
+
+    Five of the 107 grants are PROPOSE, in revenue-desk, ward-sync and bid-desk. A
+    repository with none would pass the test above over the WRITE branch alone and
+    say nothing about the distinction it is named for.
+    """
+    levels = {}
+    for name, package in sorted(PRODUCTS.items()):
+        for key, level in table_for(package)._grants.items():  # noqa: SLF001
+            levels.setdefault(level, []).append((name, *key))
+    assert len(levels[Level.PROPOSE]) == 5, levels[Level.PROPOSE]
+    assert {p for p, _a, _f in levels[Level.PROPOSE]} == {
+        "01_revenue-desk",
+        "02_ward-sync",
+        "08_bid-desk",
+    }, levels[Level.PROPOSE]
+    assert len(levels[Level.WRITE]) > 50, len(levels[Level.WRITE])
+
+
+@pytest.mark.parametrize("product,package", sorted(PRODUCTS.items()))
+def test_the_propose_half_of_a_cell_names_nothing_ungranted(product, package):
+    """ "propose only: `x`" where `x` is granted to nobody is the same defect as the
+    thirty-two documented agents with no grant, one column further in."""
+    table = table_for(package)
+    grants = {}
+    for (agent, field_name), level in table._grants.items():  # noqa: SLF001
+        grants.setdefault(agent, {})[field_name] = level
+    documented = _documented_table(ROOT / "products" / product)
+    for agent, (may_write, _never) in documented.items():
+        _written, proposed = _cell_halves(may_write)
+        for ref in TICKED_FIELD.findall(proposed):
+            assert grants.get(agent, {}).get(ref) is Level.PROPOSE, (
+                f"{product}: {agent} is said to propose {ref}; the code says "
+                f"{grants.get(agent, {}).get(ref)}"
+            )

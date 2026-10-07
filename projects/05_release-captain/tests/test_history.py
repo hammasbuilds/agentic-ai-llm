@@ -176,7 +176,13 @@ def test_co_change_pairs_files_that_move_together(repo: Path):
 
 
 def checkout(parent: Path, name: str, message: str, files: dict[str, str]) -> Path:
-    """A real one-commit git repository, because sweep reads git and not a fixture."""
+    """A real one-commit git repository, because sweep reads git and not a fixture.
+
+    `repo` is a fixture and gives one repository; sweep needs a folder of several, so
+    this takes the parent. It was defined here and called nowhere: the sweep test
+    below open-coded both of its repositories, five lines each, and a check that
+    resolves references through the import graph found the definition unused.
+    """
     root = parent / name
     root.mkdir()
     git(root, "init", "-q")
@@ -201,23 +207,15 @@ def test_sweep_counts_verdicts_and_the_ones_that_measured_nothing(tmp_path, caps
     them how many clean GO verdicts rest on a check that had nothing to look at -
     which over the real folder is 6 of 17.
     """
-    from captain.cli import main
+    checkout(tmp_path, "docs-only", "write the guide", {"README.md": "# guide\n"})
+    checkout(
+        tmp_path,
+        "untested",
+        "add a parser",
+        {"src/pkg/parse.py": "def f():\n    return 1\n"},
+    )
 
-    docs = tmp_path / "docs-only"
-    docs.mkdir()
-    git(docs, "init", "-q")
-    git(docs, "config", "user.email", "t@example.com")
-    git(docs, "config", "user.name", "Tester")
-    commit(docs, "write the guide", {"README.md": "# guide\n"})
-
-    untested = tmp_path / "untested"
-    untested.mkdir()
-    git(untested, "init", "-q")
-    git(untested, "config", "user.email", "t@example.com")
-    git(untested, "config", "user.name", "Tester")
-    commit(untested, "add a parser", {"src/pkg/parse.py": "def f():\n    return 1\n"})
-
-    assert main(["sweep", str(tmp_path)]) == 0
+    assert sweep(tmp_path) == 0
     out = capsys.readouterr().out
 
     assert "measured                        2" in out
