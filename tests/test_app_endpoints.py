@@ -356,6 +356,55 @@ def test_the_two_apps_with_a_committed_run_are_the_ones_named():
     """A sweep whose every case skips passes. This says which two do not."""
     renderable = [slug for slug in COMMITTED_RUNS if _committed(slug) is not None]
     assert renderable == ["02_false_accepts"], renderable
-    # And the one that is excluded is excluded for a stated reason, not by omission.
-    assert (ROOT / "apps" / "results" / "03_vuln_baseline.json").is_file()
-    assert COMMITTED_RUNS["03_vuln_baseline"] is None
+
+
+def test_the_committed_file_that_is_not_a_run_is_not_one():
+    """App 03 has a committed summary and is excluded, which needs to be a fact.
+
+    This asserted `COMMITTED_RUNS["03_vuln_baseline"] is None` - a read of the dict
+    literal four screens up, in the file that defines it. It cannot fail, and an
+    exclusion asserted from the table that performs it is indistinguishable from an
+    oversight.
+
+    The claim is that the file is dataset facts rather than a run, so that is what is
+    checked: its keys are not the keys `runner` returns, which is what makes feeding it
+    to the result template a type error rather than a test.
+    """
+    import ast
+    import json
+
+    path = ROOT / "apps" / "results" / "03_vuln_baseline.json"
+    assert path.is_file(), "the file the exclusion is about is gone"
+    committed = set(json.loads(path.read_text(encoding="utf-8")))
+    assert committed, path
+
+    tree = ast.parse((ROOT / "apps" / "03_vuln_baseline" / "app.py").read_text(encoding="utf-8"))
+    runners = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "runner"
+    ]
+    assert len(runners) == 1
+    returned = {
+        key.value
+        for node in ast.walk(runners[0])
+        if isinstance(node, ast.Return) and isinstance(node.value, ast.Dict)
+        for key in node.value.keys
+        if isinstance(key, ast.Constant) and isinstance(key.value, str)
+    }
+    assert returned, "the runner's return is no longer a dict literal"
+    # Not "shares no keys": `rows` and `label_noise` are facts about the dataset and
+    # appear in both. What makes it not a run is that most of what the runner produces
+    # is absent from it - the model-answer blocks the template is built around.
+    missing = returned - committed
+    assert len(missing) > len(returned) / 2, (
+        "the committed file now holds most of what `runner` returns, so it may be a run "
+        f"after all; it is missing only {sorted(missing)}"
+    )
+    assert {"full", "parsed"} <= missing, sorted(missing)
+
+    # And the reason is where a reader looking at the table will find it.
+    source = Path(__file__).read_text(encoding="utf-8")
+    table = source[: source.index("COMMITTED_RUNS = {")]
+    assert "03_vuln_baseline.json` is deliberately not here" in table
+    assert "apps/results/README.md" in table

@@ -81,9 +81,9 @@ The columns these apps read are committed under
 [`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
 `data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
 guarantee by pointing both variables at an empty directory, and the suite gives the same
-result either way: **1,169 tests collected**. Measured 2026-10-07 on a fresh clone - the figure a
-reader reproduces - **1,075 pass and 94 skip**. On this machine, where the checkouts and the
-Hugging Face cache those suites read are present, it is 1,121 passing and 48 skipping:
+result either way: **1,170 tests collected**. Measured 2026-10-07 on a fresh clone - the figure a
+reader reproduces - **1,076 pass and 94 skip**. On this machine, where the checkouts and the
+Hugging Face cache those suites read are present, it is 1,122 passing and 48 skipping:
 the split moves because three suites read data that is not in the repository, and the
 collected total does not.
 
