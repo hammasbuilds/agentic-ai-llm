@@ -12,6 +12,12 @@ UI says so, because a demo that only works with the full stack up is a demo nobo
 
 from __future__ import annotations
 
+from datetime import datetime
+
+import time
+
+import os
+
 import asyncio
 import html
 import json
@@ -74,6 +80,63 @@ async def _lifespan(app: FastAPI):
     await bus.close()
 
 
+def _as_epoch(value: object) -> float | None:
+    """A float, or None for anything that is not a usable timestamp.
+
+    Job fields arrive from Redis as strings, and a hash written halfway is a state this
+    platform already handles elsewhere, so a bad value here renders as a dash rather than
+    raising out of a template on the index page.
+    """
+    try:
+        seconds = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    # Zero is the default `cache.recent_jobs` substitutes for a missing key, not a time.
+    return seconds if seconds > 0 else None
+
+
+def format_when(value: object) -> str:
+    """An absolute local time, as short as the distance from now allows.
+
+    The column heading says "When" and the cell used to say `1760012345`.
+    """
+    seconds = _as_epoch(value)
+    if seconds is None:
+        return "—"
+    moment = datetime.fromtimestamp(seconds)
+    now = datetime.now()
+    if moment.date() == now.date():
+        return moment.strftime("%H:%M")
+    if (now - moment).days < 7:
+        return moment.strftime("%a %H:%M")
+    if moment.year == now.year:
+        return moment.strftime("%-d %b %H:%M") if os.name != "nt" else moment.strftime("%d %b %H:%M")
+    return moment.strftime("%d %b %Y")
+
+
+def format_stamp(value: object) -> str:
+    """The full local timestamp, for the `title` on a shortened cell."""
+    seconds = _as_epoch(value)
+    if seconds is None:
+        return "no timestamp recorded"
+    return datetime.fromtimestamp(seconds).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_ago(value: object) -> str:
+    """How long ago, in the largest unit that still says something."""
+    seconds = _as_epoch(value)
+    if seconds is None:
+        return "—"
+    gap = max(0.0, time.time() - seconds)
+    if gap < 45:
+        return "just now"
+    if gap < 3600:
+        return f"{int(gap // 60)} min ago"
+    if gap < 86400:
+        return f"{int(gap // 3600)} h ago"
+    return f"{int(gap // 86400)} d ago"
+
+
 def create_app(
     *,
     slug: str,
@@ -106,6 +169,13 @@ def create_app(
     # names the keys the result does have - so the same mistake is visible on the page
     # instead of being a blank where a number should be.
     tpl.env.undefined = StrictUndefined
+
+    # A "When" column was printing `1760012345`, on the one list whose whole purpose is
+    # to say whether a run is from this afternoon. Registered on the shared environment,
+    # so both tables and any later one get them.
+    tpl.env.filters["when"] = format_when
+    tpl.env.filters["stamp"] = format_stamp
+    tpl.env.filters["ago"] = format_ago
     # Reachable from the app object, for the same reason `fields` and `runner` are:
     # a setting nothing can read from outside this function is a setting no test can
     # assert, and this one is the difference between a missing field raising and
@@ -130,7 +200,17 @@ def create_app(
         }
 
     def ctx(request: Request, **extra) -> dict:
-        return {"request": request, "theme": theme, "icon": icon, **extra}
+        # `nav_path` so the masthead can mark the page you are on. Three identical links
+        # on all three pages said nothing about which one you were looking at. The path
+        # comes from the request rather than from a flag each route passes, so a page
+        # added later is marked without anyone remembering to.
+        return {
+            "request": request,
+            "theme": theme,
+            "icon": icon,
+            "nav_path": request.url.path,
+            **extra,
+        }
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
@@ -186,8 +266,19 @@ def create_app(
 
         async def gen():
             job = await cache.get_job(job_id)
-            if job and job.get("status") == "done":
-                yield {"event": "done", "data": json.dumps({"job_id": job_id})}
+            # Any TERMINAL status, not just "done". The loop below already treats both
+            # "done" and "error" as the end of the stream; this pre-check - for a job that
+            # finished before the browser opened the stream - checked only "done". So a run
+            # that failed fell through to `subscribe_progress` and waited for a message
+            # that was never coming: the run was over, so nothing would ever publish
+            # again. The connection stayed open and the progress bar never finished, on
+            # the one outcome where the reader most needs to be told it is over.
+            #
+            # Found by a sweep that drove /stream on ten apps with no model running - so
+            # every job ended in "error" - and blocked for forty minutes on three seconds
+            # of CPU.
+            if job and job.get("status") in ("done", "error"):
+                yield {"event": "done", "data": json.dumps({"job_id": job_id, **job})}
                 return
             try:
                 async for payload in cache.subscribe_progress(job_id):
@@ -202,11 +293,11 @@ def create_app(
 
     @app.get("/job/{job_id}/result", response_class=HTMLResponse)
     async def job_result(request: Request, job_id: str):
-        """The rendered result fragment; HTMX swaps this in when the stream ends.
+        """The rendered result fragment; job.html fetches this when the stream ends.
 
         A result whose shape the template does not expect used to raise out of Jinja
-        and come back as a 500, which HTMX swaps in as nothing at all - the page sits
-        on "Still running…" for a job that finished. Any of these produced it:
+        and come back as a 500. The page then showed nothing at all and sat on
+        "Still running…" for a job that had finished. Any of these produced it:
 
           * a result cached by an older version of the app, which is the ordinary case
             because job state outlives a deploy in Redis;

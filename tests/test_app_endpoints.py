@@ -20,10 +20,12 @@ with one that records having been scheduled.
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import importlib.util
 import json
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -175,7 +177,7 @@ def test_a_run_with_no_bus_is_recorded_as_having_run_inline(path, monkeypatch):
 
 @pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
 def test_the_result_fragment_says_still_running_rather_than_failing(path, monkeypatch):
-    """HTMX swaps this in, so a 500 here is a broken page rather than a blank one."""
+    """job.html fetches this, so a 500 here is a broken page rather than a blank one."""
     module = load(path)
 
     async def fake_inline(slug, job_id, params, runner):
@@ -224,7 +226,7 @@ def test_a_submitted_run_shows_up_on_the_history_page(path, monkeypatch):
 
 # -- a finished job whose result the template cannot render -------------------------
 #
-# It raised out of Jinja and came back as a 500, which HTMX swaps in as nothing. The
+# It raised out of Jinja and came back as a 500, and the page showed nothing. The
 # page then sits on "Still running…" for a job that finished - the worst of the
 # available outcomes, because the only thing the reader can tell is the one thing that
 # is false. Every path into it is ordinary: a result cached by an earlier version of
@@ -272,6 +274,97 @@ def test_a_job_that_has_not_finished_still_says_so(path):
         response = client.get("/job/j/result")
     assert response.status_code == 200
     assert "Still running" in response.text
+
+
+# -- the stream's terminal condition -----------------------------------------------
+#
+# `gen()` has a fast path for a job that finished before the browser opened the stream,
+# and it asked `status == "done"` while the loop below it ends on `"done"` or `"error"`.
+
+@pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
+def test_the_stream_ends_for_a_job_that_failed(path, monkeypatch):
+    """A failed job must close the stream, not wait for a message that cannot come.
+
+    `gen()`'s pre-check - for a job that finished before the browser opened the stream -
+    asked `status == "done"`, while the loop under it ends on `"done"` or `"error"`. On
+    that asymmetry a FAILED job fell through to `subscribe_progress`.
+
+    With Redis reachable, that subscribes to the job's channel and iterates
+    `pubsub.listen()`, waiting to be published to. A run that has already ended will never
+    publish again, so the connection stays open for ever and the page's progress never
+    resolves - on the one outcome the reader most needs to be told about.
+
+    `subscribe_progress` is replaced with one that never yields, because that is what
+    `pubsub.listen()` IS for an ended job. Without the substitution this test passes in
+    both directions: with no Redis the real one falls to `_local_progress`, which reads
+    the job out of this process and ends the stream by itself, so the pre-check's decision
+    makes no difference and the test is measuring the fallback instead of the fix.
+
+    The read is in a daemon thread with a join deadline, because the defect IS a stream
+    that never ends: read inline, this would hang rather than fail, which is the same
+    observable outcome as the bug.
+    """
+    module = load(path)
+
+    async def never_yields(job_id):
+        # What `pubsub.listen()` does for a job whose run is over: waits.
+        await asyncio.sleep(3600)
+        yield {}  # pragma: no cover - never reached
+
+    monkeypatch.setattr(cache, "subscribe_progress", never_yields)
+    cache._LOCAL_JOBS["failed"] = {
+        "status": "error",
+        "slug": module.app.title,
+        "note": "ollama is not reachable",
+    }
+
+    lines: list[str] = []
+
+    def read() -> None:
+        with TestClient(module.app) as client:
+            with client.stream("GET", "/job/failed/stream") as response:
+                assert response.status_code == 200
+                for line in response.iter_lines():
+                    lines.append(line)
+                    if len(lines) >= 6:
+                        break
+
+    reader = threading.Thread(target=read, daemon=True)
+    reader.start()
+    reader.join(timeout=30)
+    assert not reader.is_alive(), (
+        "the stream for a failed job did not end within 30s: it fell through to "
+        "subscribe_progress and is waiting for a message the finished run will never send"
+    )
+    body = "\n".join(lines)
+    assert "event: done" in body, f"the stream never ended: {body!r}"
+
+
+@pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
+def test_the_terminal_event_carries_the_status(path):
+    """`job.html` reads `d.status` and `d.note` off this event.
+
+    The fast path used to send `{"job_id": ...}` alone, so `d.status` was undefined and
+    the handler took its `else` branch - "complete", in green - for any job that had
+    finished before the stream opened, whatever the outcome was.
+    """
+    module = load(path)
+    cache._LOCAL_JOBS["failed2"] = {
+        "status": "error",
+        "slug": module.app.title,
+        "note": "a stated reason",
+    }
+    with TestClient(module.app) as client:
+        with client.stream("GET", "/job/failed2/stream") as response:
+            payload = ""
+            for line in response.iter_lines():
+                if line.startswith("data:"):
+                    payload = line[len("data:"):].strip()
+                    break
+    sent = json.loads(payload)
+    assert sent.get("status") == "error", sent
+    assert sent.get("note") == "a stated reason", sent
+    assert sent.get("job_id") == "failed2", sent
 
 
 # -- the result template on a result that is the right shape -----------------------

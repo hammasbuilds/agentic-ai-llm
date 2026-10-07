@@ -44,26 +44,47 @@
     {% if recent %}
     <div class="card">
       <h2>Recent runs</h2>
-      <table>
-        <thead><tr><th>When</th><th>Status</th><th class="num">Size</th><th></th></tr></thead>
-        <tbody>
-        {% for j in recent %}
-          <tr>
-            <td class="mono muted">{{ j.created | float | round(0) | int }}</td>
-            <td>
-              {% if j.status == 'done' %}<span class="good">done</span>
-              {% elif j.status == 'error' %}<span class="bad">error</span>
-              {% else %}<span class="warn">{{ j.status }}</span>{% endif %}
-            </td>
-            <td class="num">{{ j.total or '—' }}</td>
-            <td><a href="/job/{{ j.job_id }}">open</a></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+      <div class="scroll-x" tabindex="0" role="region" aria-label="Recent runs">
+        <table>
+          <thead><tr><th>When</th><th>Status</th><th class="num">Size</th><th></th></tr></thead>
+          <tbody>
+          {% for j in recent %}
+            <tr>
+              <td class="muted" title="{{ j.created | stamp }}">{{ j.created | when }}
+                <span class="hint">{{ j.created | ago }}</span></td>
+              <td>
+                {% if j.status == 'done' %}<span class="good">done</span>
+                {% elif j.status == 'error' %}<span class="bad">error</span>
+                {% else %}<span class="warn">{{ j.status }}</span>{% endif %}
+              </td>
+              <td class="num">{{ j.total or '—' }}</td>
+              <td><a href="/job/{{ j.job_id }}">open</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
     {% endif %}
   </div>
 
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Pressing Run POSTs and redirects, and on a cold app that takes a moment during which
+  // the page looked untouched - so the obvious thing to do was press it again, which
+  // starts a second measurement. On `submit` rather than `click`, so the browser's own
+  // validation still gets to stop the submission first; a button disabled on click would
+  // have left an invalid form with a dead button.
+  const form = document.querySelector('form[action="/run"]');
+  if (form) {
+    form.addEventListener('submit', () => {
+      const button = form.querySelector('button[type=submit]');
+      if (!button || button.disabled) { return; }
+      button.disabled = true;
+      button.textContent = 'Starting the run…';
+    });
+  }
+</script>
 {% endblock %}

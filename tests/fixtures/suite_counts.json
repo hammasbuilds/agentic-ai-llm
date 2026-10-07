@@ -1,5 +1,5 @@
 {
-  "measured": "2026-10-07",
+  "measured": "2026-10-08",
   "fresh": [
     "CSV_CORPUS",
     "HF_DATASETS_CACHE",
@@ -15,7 +15,7 @@
   "note": "What every suite really did on a fresh clone, recorded by scripts/test_all.py --write-counts with the variables in 'fresh' pointed at an empty directory. The READMEs quote these, so they are the numbers a reader reproduces rather than the ones this machine happens to produce - 20_driftwatch ran 21 more tests here than anywhere else, and its README said so.",
   "suites": {
     "(root)": {
-      "passed": 1230,
+      "passed": 1250,
       "skipped": 95,
       "outcome": "ok"
     },

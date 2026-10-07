@@ -5,22 +5,25 @@
 <div class="card">
   <h2>Runs in Redis</h2>
   {% if jobs %}
-  <table>
-    <thead><tr><th>Job</th><th>Status</th><th>Transport</th><th class="num">Size</th><th></th></tr></thead>
-    <tbody>
-    {% for j in jobs %}
-      <tr>
-        <td class="mono">{{ j.job_id }}</td>
-        <td>{% if j.status == 'done' %}<span class="good">done</span>
-            {% elif j.status == 'error' %}<span class="bad">error</span>
-            {% else %}<span class="warn">{{ j.status }}</span>{% endif %}</td>
-        <td class="muted">{{ j.transport or 'inline' }}</td>
-        <td class="num">{{ j.total or '—' }}</td>
-        <td><a href="/job/{{ j.job_id }}">open</a></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  <div class="scroll-x" tabindex="0" role="region" aria-label="Runs in Redis">
+    <table>
+      <thead><tr><th>Job</th><th>When</th><th>Status</th><th>Transport</th><th class="num">Size</th><th></th></tr></thead>
+      <tbody>
+      {% for j in jobs %}
+        <tr>
+          <td class="mono">{{ j.job_id }}</td>
+          <td class="muted" title="{{ j.created | stamp }}">{{ j.created | when }}</td>
+          <td>{% if j.status == 'done' %}<span class="good">done</span>
+              {% elif j.status == 'error' %}<span class="bad">error</span>
+              {% else %}<span class="warn">{{ j.status }}</span>{% endif %}</td>
+          <td class="muted">{{ j.transport or 'inline' }}</td>
+          <td class="num">{{ j.total or '—' }}</td>
+          <td><a href="/job/{{ j.job_id }}">open</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}<p class="muted">Nothing yet.</p>{% endif %}
 </div>
 
@@ -31,14 +34,16 @@
     flushed; this topic is the durable record, and rebuilding from it costs no GPU time.
   </p>
   {% if replayed %}
-  <table>
-    <thead><tr><th>Job</th><th class="num">At</th></tr></thead>
-    <tbody>
-    {% for r in replayed %}
-      <tr><td class="mono">{{ r.job_id }}</td><td class="num muted">{{ r.at | round(0) | int }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  <div class="scroll-x" tabindex="0" role="region" aria-label="Replayed from the Kafka log">
+    <table>
+      <thead><tr><th>Job</th><th>At</th></tr></thead>
+      <tbody>
+      {% for r in replayed %}
+        <tr><td class="mono">{{ r.job_id }}</td><td class="muted" title="{{ r.at | stamp }}">{{ r.at | when }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
   <p class="muted">No completed events on the topic yet{{ '' if health.kafka else ' (Kafka is down)' }}.</p>
   {% endif %}
