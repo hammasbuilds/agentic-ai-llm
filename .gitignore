@@ -11,3 +11,7 @@ __pycache__/
 test_all.log
 run_tests.bat
 .test_all_fresh/
+
+# `csv-analyst charts` defaults --out to a relative "out/charts", so running it
+# from a checkout leaves charts here. They are output, not source.
+out/

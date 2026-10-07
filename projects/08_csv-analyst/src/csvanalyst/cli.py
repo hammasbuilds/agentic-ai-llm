@@ -192,7 +192,12 @@ def _charts_command(args: argparse.Namespace) -> int:
         (out_dir / f"{safe}.svg").write_text(svg, encoding="utf-8")
         written += 1
 
-    print(f"wrote {written} chart(s) to {out_dir}")
+    # The RESOLVED path. `--out` defaults to a relative "out/charts", so this said
+    # "wrote 9 chart(s) to out/charts" and left a reader to work out which directory
+    # that was relative to - and running the command from a git checkout leaves
+    # untracked files there. An independent reviewer did exactly that and the stray
+    # `out/` turned up in `git status`.
+    print(f"wrote {written} chart(s) to {out_dir.resolve()}")
     return 0
 
 
