@@ -256,5 +256,5 @@ src/captain/
 ui/serve.py      http.server + Alpine.js, no dependency
 tests/
     test_history.py  20 tests against real git repositories
-    test_risk.py     25 tests
+    test_risk.py     30 tests
 ```

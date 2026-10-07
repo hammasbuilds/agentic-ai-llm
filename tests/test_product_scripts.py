@@ -123,8 +123,15 @@ def test_smoke_serve_reproduces_the_artefact_it_published():
     recording it made the file differ on every run for a reason that says nothing, and
     a committed file that cannot reproduce is one nobody can check.
     """
+    # BYTES, both ways. This read and restored with `read_text`/`write_text`, so the
+    # comparison below was newline-blind - two universal-newline reads are equal
+    # whatever the file's line endings - and the restore itself translated the file it
+    # was restoring. `git ls-files --eol products/scripts/served.json` already read
+    # `i/lf w/crlf`, which is that restore, and the assertion that says "byte for byte"
+    # could not see it. `tests/test_captured_runs.py` was written earlier for the same
+    # reason and does it this way.
     artefact = SCRIPTS / "served.json"
-    before = artefact.read_text(encoding="utf-8")
+    before = artefact.read_bytes()
     done = subprocess.run(
         [sys.executable, "scripts/smoke_serve.py"],
         cwd=str(ROOT / "products"),
@@ -133,8 +140,10 @@ def test_smoke_serve_reproduces_the_artefact_it_published():
         errors="replace",
         timeout=1200,
     )
-    after = artefact.read_text(encoding="utf-8")
-    artefact.write_text(before, encoding="utf-8")
+    after = artefact.read_bytes()
+    # Only when it differs, so a passing run does not touch the file at all.
+    if after != before:
+        artefact.write_bytes(before)
 
     assert done.returncode == 0, done.stdout[-3000:] + done.stderr[-2000:]
     assert "20/20 products served over HTTP" in done.stdout, done.stdout[-3000:]

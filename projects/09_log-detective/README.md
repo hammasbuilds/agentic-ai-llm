@@ -117,5 +117,6 @@ src/detective/
     cli.py        argparse
 data/             1,005 real log lines captured from this machine
 ui/app.py         Panel dashboard (optional extra)
-tests/test_templates.py   35 tests
+tests/test_templates.py    39 tests
+tests/test_cli_inputs.py   12 tests
 ```

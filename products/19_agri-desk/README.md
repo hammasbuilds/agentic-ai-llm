@@ -19,11 +19,12 @@ every DNA-A genome of the cotton leaf curl complex between 2,600 and 2,820 nt, a
 | Distinct observations after collapsing clonal duplicates | **795** |
 | Records that were a sequence already seen at that site | 103 |
 | Clonal groups | **64** — largest is `ON312781`–`ON312788`, eight genomes, one submission |
-| Variants that look like they are emerging | **422** |
+| Distinct sequences in the window | **436** — the denominator of the rate below |
+| Of those, seen at one site or more | **422** — a stricter query than the rate uses |
 | Variants still emerging once a variant must appear at more than one site | **2** |
-| **False-alarm rate** | **0.9954** |
+| **False-alarm rate** | **434 of 436 — 99.5%** |
 
-**425 of 427 emergence calls are spurious.** The signal is the same isolate sequenced
+**434 of the 436 sequences in the window are spurious emergence calls.** The signal is the same isolate sequenced
 repeatedly and submitted as a batch: `CLCMV/S2-1` through `CLCMV/S2-8` are eight genomes
 from one field, one submission and one haplotype, and a neighbouring batch
 (`CLCMV/NIA-*`, 5 records) is identical to itself as well. There are 64 such groups.

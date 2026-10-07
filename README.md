@@ -81,11 +81,29 @@ The columns these apps read are committed under
 [`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
 `data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
 guarantee by pointing both variables at an empty directory, and the suite gives the same
-result either way: **1,208 tests collected**. Measured 2026-10-07 on a fresh clone - the figure a
-reader reproduces - **1,114 pass and 94 skip**. On this machine, where the checkouts and the
-Hugging Face cache those suites read are present, it is 1,160 passing and 48 skipping:
-the split moves because three suites read data that is not in the repository, and the
-collected total does not.
+result either way: **1,325 tests collected**. Measured 2026-10-07: a plain
+`python -m pytest tests/ -q` gives **1,277 pass and 48 skip**, and gives it on a fresh
+clone and on this machine alike - the root suite's own claims do not read the optional
+data, so nothing here moves with it.
+
+`scripts/test_all.py` prints a lower line for this suite, **1,230 and 95**, and the
+difference is not the data: `--write-counts` sets `AAL_COUNTING_SWEEP`, which suppresses
+the **47** tests that read `tests/fixtures/suite_counts.json` so they do not compare
+against the fixture the sweep is in the middle of writing. No reader sets it.
+
+Measured four ways, because the two figures this paragraph used to carry were labelled
+with the wrong cause - "the figure a reader reproduces" was attached to the one figure a
+reader cannot reproduce:
+
+| run | pass | skip |
+|---|---:|---:|
+| fresh data paths + the counting marker (the sweep's line) | 1,230 | 95 |
+| the counting marker alone | 1,230 | 95 |
+| fresh data paths alone | 1,277 | 48 |
+| neither - a plain `pytest tests/` | 1,277 | 48 |
+
+The data those suites read does move a split, in `projects/`: 25 of its 606 tests skip
+on a fresh clone, and `projects/README.md` says which.
 
 That figure said "317 passed, 38 skipped" for a long time, against a suite that was
 already collecting more than twice that. Nothing checked it:

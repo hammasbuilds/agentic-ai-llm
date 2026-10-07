@@ -253,6 +253,8 @@ src/cartographer/
     report.py   the four questions a newcomer asks
     cli.py      argparse, because the core has no dependencies
 tests/
-    test_parse.py   18 tests
-    test_graph.py   14 tests
+    test_parse.py            26 tests
+    test_graph.py            17 tests
+    test_readme_numbers.py   18 tests
+    test_report.py           5 tests
 ```

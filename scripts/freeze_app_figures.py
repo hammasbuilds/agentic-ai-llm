@@ -7,7 +7,7 @@ Not a test. `tests/test_documented_rates.py` compares every app's prose against
 `tests/fixtures/app_figures.json`, so a figure that changes fails there with the old
 and new values in the message. Run this when the change was deliberate.
 
-Why a set and not a count. The fixture used to be `{"05_debug_ceiling": 11}` - the
+Why counts per figure. The fixture used to be `{"05_debug_ceiling": 11}` - the
 number of distinct figures in the prose - on the stated grounds that "every number in
 every app's prose is pinned by count, so changing one is a deliberate edit to this
 table". It is not: a value can change without the count moving. An independent review
@@ -33,14 +33,38 @@ NOTE = (
     "stayed green. Only apps 02 and 03 have a committed run to check values against, "
     "which left 56 of these 104 figures with no value-level protection at all. The set "
     "is pinned instead of its size, so a changed value is a figure appearing and a "
-    "figure vanishing, and both fail."
+    "figure vanishing. That still missed a value swapped for one ALREADY in the set, "
+    "which is the common case: each app quotes its run in three regions, so rewriting "
+    "one `76.0` to `75.8` in app 04's ABOUT panel moved neither the size nor the "
+    "membership. These are counts per figure, so that edit takes `76.0` from twice to "
+    "once and `75.8` from once to twice, and either movement fails."
 )
 
 
-def collect() -> dict[str, list[str]]:
+def collect() -> dict[str, dict[str, int]]:
     import test_documented_rates as rates  # noqa: PLC0415
 
-    return {app.name: sorted(rates.figures(app), key=lambda s: (len(s), s)) for app in rates.APPS}
+    return {
+        app.name: {
+            figure: count
+            for figure, count in sorted(
+                rates.figures(app).items(), key=lambda kv: (len(kv[0]), kv[0])
+            )
+        }
+        for app in rates.APPS
+    }
+
+
+def _counts(held) -> dict[str, int]:
+    """The held figures as counts, whatever shape the fixture is in.
+
+    The fixture has been a count per app, then a list of distinct figures, now a count
+    per figure. A list is read as one statement each so that the first run after the
+    change can report what moved instead of raising on the old shape.
+    """
+    if isinstance(held, dict):
+        return dict(held)
+    return {str(value): 1 for value in held}
 
 
 def main(argv: list[str]) -> int:
@@ -49,8 +73,9 @@ def main(argv: list[str]) -> int:
 
     moved = False
     for app in sorted(set(found) | set(held)):
-        gained = sorted(set(found.get(app, [])) - set(held.get(app, [])))
-        lost = sorted(set(held.get(app, [])) - set(found.get(app, [])))
+        here, there = found.get(app, {}), _counts(held.get(app, {}))
+        gained = sorted(f"{k} x{v}" for k, v in here.items() if there.get(k) != v)
+        lost = sorted(f"{k} x{v}" for k, v in there.items() if here.get(k) != v)
         if gained or lost:
             moved = True
             print(f"  {app}")
@@ -61,7 +86,9 @@ def main(argv: list[str]) -> int:
 
     if not moved:
         print(
-            f"nothing moved; {sum(len(v) for v in found.values())} figures across {len(found)} apps"
+            f"nothing moved; {sum(len(v) for v in found.values())} distinct figures, "
+            f"{sum(sum(v.values()) for v in found.values())} statements of them, "
+            f"across {len(found)} apps"
         )
         return 0
     if "--check" in argv:

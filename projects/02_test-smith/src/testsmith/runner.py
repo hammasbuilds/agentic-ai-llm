@@ -324,16 +324,27 @@ def run(
 
         for i, mutant in enumerate(mutants, 1):
             target = workspace / mutant.path
-            # The BYTES, because these are what go back in the `finally` below. The
-            # decode is for the parser and the bytes are for the file: reading with
-            # `utf-8-sig` consumes a BOM and writing with `utf-8` does not restore it,
-            # so a BOM'd file in the workspace came back without its mark - a permanent
-            # change to a file this tool only ever meant to read, by the command whose
-            # whole promise is that your workspace is as you left it.
+            # The BYTES, because these are what go back in the `finally` below, and
+            # the next mutant is applied to whatever this leaves behind. Reading with
+            # `utf-8-sig` and writing with `utf-8` dropped a BOM: the restore did not
+            # restore, so every later mutant for that file was measured against a file
+            # that differed from the original by its first three bytes.
+            #
+            # This comment used to say the drop was "a permanent change to a file this
+            # tool only ever meant to read, by the command whose whole promise is that
+            # your workspace is as you left it". That was wrong, and wrong in the
+            # direction that overstates: `target` is `workspace / mutant.path`, a
+            # `copytree` of the repo under a temp directory that the outer `finally`
+            # deletes. The caller's own files are never written. The restore matters
+            # between mutants, which is a smaller claim and the true one.
             original = target.read_bytes()
             t0 = time.perf_counter()
             try:
-                target.write_text(mutant.source, encoding="utf-8")
+                # `newline=""`, like the restore below writes bytes: a suite that
+                # reads lines or compares text would see the translation rather than
+                # the mutation, and the mutant is supposed to be the only difference
+                # between this run and the baseline.
+                target.write_text(mutant.source, encoding="utf-8", newline="")
                 code, output = _run_suite(interpreter, workspace, timeout, fail_fast=True)
                 if code == -1:
                     outcome = TIMEOUT

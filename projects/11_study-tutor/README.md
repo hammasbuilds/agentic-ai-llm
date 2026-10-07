@@ -107,5 +107,5 @@ src/tutor/
     simulate.py   identical review histories through both schedulers
     cli.py        argparse
 ui/app.py         Reflex UI (optional extra)
-tests/test_scheduler.py   28 tests
+tests/test_scheduler.py   43 tests
 ```

@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-63-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-64-success" alt="tests">
   <img src="https://img.shields.io/badge/corpus-12%20migrations-orange" alt="corpus">
 </p>
 
@@ -118,7 +118,7 @@ Also:
 
 ```
 $ db-surgeon classify migration.sql   # static reading; runs nothing
-$ db-surgeon corpus                   # the table above
+$ db-surgeon corpus                   # the twelve migrations, one row each
 $ db-surgeon check ... --strict       # exit 1 unless fully reversible, for CI
 $ python ui/server.py                 # API for the SolidJS UI on :8095
 ```
@@ -175,7 +175,7 @@ parsing it. The UI's API is `http.server`; only the SolidJS front end needs npm.
 ## Run it
 
 ```bash
-uv run pytest -q                  # 63 tests
+uv run pytest -q                  # 64 tests
 uv run db-surgeon corpus
 uv run python scripts/sweep.py
 uv run python ui/server.py        # then: cd ui && npm install && npm run dev
@@ -193,6 +193,6 @@ migrations/corpus.py  12 migration pairs that look correct in review
 scripts/sweep.py      produces the table above
 ui/                   SolidJS + Vite front end, http.server API
 tests/
-    test_shadow.py      21 tests
-    test_operations.py  21 tests (parametrised)
+    test_shadow.py      24 tests
+    test_operations.py  40 tests (parametrised)
 ```

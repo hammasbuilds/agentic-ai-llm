@@ -58,7 +58,21 @@ result is written to `scripts/served.json`.
 ## The twenty
 
 Each product reads a real dataset and has produced the number it exists to produce. No
-figure below was typed by hand; each is asserted by a test that runs the code over the data.
+figure below is typed into this file alone: every one also appears in the product's own
+README, and `tests/test_product_index.py` reads the two against each other for all
+twenty. That is weaker than it sounds and is what this file can honestly offer. The
+sentence here used to claim each figure was "asserted by a test that runs the code over
+the data", while nothing read this file but its test counts. **Six** of the twenty have
+a test that opens their README and compares it with a measurement; the rest pin their
+figures in test code instead, which checks the number and not the prose - agri-desk's
+suite asserts 436, 422 and 2 against the corpus and would not have noticed the README
+saying 427.
+
+Three rows were wrong when that claim was checked. bid-desk's corpus had grown from
+seventeen RFCs to twenty-four, so 4,036 and 0.827 were the figures its own README names
+as superseded. watchtower's "15.4%" was 14.2% plus 1.2%, arithmetically right and in no
+file. graph-clinic's "4.5x" and "1 in 1,000" were 75.3/16.7 and 0.1% restated, true and
+unsourced. All three now quote what the product publishes.
 
 | # | Product | Real data | What it measured |
 |---|---|---|---|
@@ -69,18 +83,18 @@ figure below was typed by hand; each is asserted by a test that runs the code ov
 | [05](05_comms-desk) | [**comms-desk**](05_comms-desk) | 104,923 AMI dialogue acts, all 139 meetings | Ignoring who spoke makes 786 merges, **686 of them wrong** |
 | [06](06_oncall-mate) | [**oncall-mate**](06_oncall-mate) | 32,000 Loghub lines, all 16 systems | Compression ratio spans **115x** with the templater fixed; median is **8.5x**, not 11 |
 | [07](07_hire-desk) | [**hire-desk**](07_hire-desk) | 5,882 real conversation turns | After redacting 1,971 names, **"Mel" survives 59 times** |
-| [08](08_bid-desk) | [**bid-desk**](08_bid-desk) | 4,036 RFC 2119 requirements, 17 RFCs | Recall is **1.000**; precision **0.827** — the asymmetry runs the other way |
+| [08](08_bid-desk) | [**bid-desk**](08_bid-desk) | 4,304 RFC 2119 requirements, 24 RFCs | Recall is **1.000**; precision **0.825** — the asymmetry runs the other way |
 | [09](09_hermes-home) | [**hermes-home**](09_hermes-home) | LoCoMo, 1,982 questions | Median answer lives **14 sessions back**; an 8-session window answers **28%** |
 | [10](10_kyc-floor) | [**kyc-floor**](10_kyc-floor) | OFAC 8,650 + UN 2,163 labelled aliases | Skeletons buy **+19.8 points for zero precision cost** — and **+18.6 on a second list** |
-| [11](11_watchtower) | [**watchtower**](11_watchtower) | 30,098 OSV PyPI advisories | "Below the highest fix" is wrong **15.4%** of the time — and **cannot fire at all** on 39% of them |
+| [11](11_watchtower) | [**watchtower**](11_watchtower) | 30,098 OSV PyPI advisories | "Below the highest fix" is wrong **14.2%** of the time, towards false alarms — and **cannot fire at all** on 39% of them |
 | [12](12_powerguard) | [**powerguard**](12_powerguard) | a real process table + 4,000 generated states | **0** actions ever aimed at another session's pid — except hibernate, which reaches everything |
 | [13](13_swarm-lab) | [**swarm-lab**](13_swarm-lab) | N workers, in-memory lock (Redis adapter unused) | Lock contention and partitioning measured; the **1 - 1/N** waste figure is an identity of the uncoordinated topology, not a finding |
-| [14](14_graph-clinic) | [**graph-clinic**](14_graph-clinic) | all 7,405 HotpotQA questions | Graph wins **4.5x** on bridge questions and finds **1 in 1,000** comparison ones |
+| [14](14_graph-clinic) | [**graph-clinic**](14_graph-clinic) | all 7,405 HotpotQA questions | Graph answers **75.3%** of bridge questions against lexical's **16.7%**, and **0.1%** of comparison ones |
 | [15](15_claims-floor) | [**claims-floor**](15_claims-floor) | 6,000 eCFR versions, 6 regulators | Returning the current text is wrong **49%** of the time, by a median of **2.5 years** |
 | [16](16_shelf-ops) | [**shelf-ops**](16_shelf-ops) | 4,501 real products | Compounding two in-policy discounts breaks **one product in five** |
 | [17](17_fleet-desk) | [**fleet-desk**](17_fleet-desk) | 6 TSPLIB instances + proven optima | "Go round the city in a circle" is **92% worse at 52 stops, 181% at 150** |
 | [18](18_campus-ops) | [**campus-ops**](18_campus-ops) | 5,571 scheduled events | A room-only checker misses the **9 overlaps that are physically impossible** |
-| [19](19_agri-desk) | [**agri-desk**](19_agri-desk) | all 898 NCBI GenBank genomes, 23 countries | **422 emerging variants become 2**; false-alarm rate **0.9954** — and the 2 are real |
+| [19](19_agri-desk) | [**agri-desk**](19_agri-desk) | all 898 NCBI GenBank genomes, 23 countries | **436 candidate variants become 2**; false-alarm rate **434 of 436, 99.5%** — and the 2 are real |
 | [20](20_driftwatch) | [**driftwatch**](20_driftwatch) |  76 real repositories | **2.74%** of README sentences are machine-settleable; 5.3% of those are false, and 5 of those 12 are real |
 
 ### Four of them contradicted their own README

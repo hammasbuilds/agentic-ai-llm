@@ -70,12 +70,27 @@ def test_the_largest_clonal_group_is_the_documented_one():
 
 
 def test_almost_every_naive_emergence_call_is_spurious():
-    # THE FINDING. 422 distinct sequences appear in the window and look like
-    # emerging variants. Requiring a variant at more than one site leaves 2.
+    # THE FINDING. 436 distinct sequences appear in the window; requiring a variant at
+    # more than one site leaves 2.
+    #
+    # The denominator is asserted, because the README published three different ones -
+    # 422 from `min_sites=1`, 427 from nowhere, and 436, which is the only one
+    # `false_alarm_rate` actually divides by. 422 is a stricter query than the rate
+    # uses and was printed as though it were the rate's candidate count.
     iso = isolates()
+    naive = {i.sequence for i in iso if i.day >= WINDOW}
+    assert len(naive) == 436, len(naive)
     assert len(emerging(iso, WINDOW, min_sites=1)) == 422
     assert len(emerging(iso, WINDOW, min_sites=2)) == 2
-    assert false_alarm_rate(iso, WINDOW, min_sites=2) == pytest.approx(0.9954, abs=0.002)
+    assert len(naive) - 2 == 434
+
+    # Banded tighter than the digit it guards. `abs=0.002` accepted 0.9934 to 0.9974,
+    # twenty times the resolution of the fourth decimal it was checking, so every
+    # variant of this figure passed. The published rate is 99.5%, which is the one
+    # decimal n=436 supports under `tests/test_rate_precision.py`'s own rule.
+    rate = false_alarm_rate(iso, WINDOW, min_sites=2)
+    assert rate == pytest.approx(434 / 436, abs=1e-9), rate
+    assert f"{rate * 100:.1f}%" == "99.5%", rate
 
 
 def test_and_the_two_that_survive_are_real():

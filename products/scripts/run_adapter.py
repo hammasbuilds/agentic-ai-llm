@@ -110,7 +110,8 @@ def main(limit: int = 12) -> int:
             runs.append({"source": source, "variants": variants, "model": chosen.tag})
             print(f"  {i}/{len(texts)} ok")
 
-    OUT.write_text(json.dumps({"runs": runs}, indent=1), encoding="utf-8")
+    # `newline=""`: tracked artefact, see `smoke_serve.py`.
+    OUT.write_text(json.dumps({"runs": runs}, indent=1), encoding="utf-8", newline="")
     print(f"\nwrote {OUT} - {len(runs)} runs x {len(PLATFORMS)} variants")
     return 0
 

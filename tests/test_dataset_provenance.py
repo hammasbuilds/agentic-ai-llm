@@ -21,6 +21,8 @@ import gzip
 import json
 import re
 from collections import Counter
+import hashlib
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -216,3 +218,76 @@ def test_the_benchmark_note_names_a_licence_for_every_slice():
         assert family.lower() in licences.lower() or source.lower() in licences.lower(), (
             f"{slice_file.name} comes from {source} and no licence names it"
         )
+
+
+# -- the bytes, not just the note ------------------------------------------------------
+#
+# Everything above checks that the committed data is DESCRIBED: a note per directory, a
+# licence per slice, counts that match the listings. Nothing checked that the data is the
+# data. A reviewer replaced every label in `devign_test.parquet` and no test in this
+# repository noticed - the one figure the README offers as model-free was being computed
+# from a summary JSON rather than from the file, and the file had no digest either.
+#
+# The figure is derived from the labels now (see
+# `tests/test_documented_rates.py::test_the_devign_baseline_is_derived_from_the_committed_split`),
+# which closes the half that matters most: a changed file changes the number. This closes
+# the other half, so a changed file is also a failure in its own right rather than a
+# quietly different measurement.
+
+DATA_DIGEST = Path(__file__).resolve().parent / "fixtures" / "data_digest.json"
+
+
+def _digest() -> dict:
+    return json.loads(DATA_DIGEST.read_text(encoding="utf-8"))
+
+
+def test_every_committed_data_file_is_digested():
+    """The manifest covers the tree rather than a chosen part of it.
+
+    Derived from `git ls-files`, so a new slice that nobody adds to the manifest fails
+    here instead of being silently undigested - which is the failure mode a hand-written
+    manifest has.
+    """
+    tracked = {
+        line
+        for line in subprocess.run(
+            ["git", "ls-files", "data/"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()
+        if not line.endswith(".md")
+    }
+    assert tracked, "git ls-files data/ returned nothing; this test is measuring nothing"
+    assert set(_digest()) == tracked, {
+        "missing from the manifest": sorted(tracked - set(_digest())),
+        "in the manifest and not tracked": sorted(set(_digest()) - tracked),
+    }
+
+
+@pytest.mark.parametrize("relative", sorted(_digest()))
+def test_each_committed_data_file_is_the_file_that_was_measured(relative: str):
+    path = ROOT / relative
+    assert path.is_file(), relative
+    recorded = _digest()[relative]
+    assert path.stat().st_size == recorded["bytes"], (
+        f"{relative} is {path.stat().st_size:,} bytes and the manifest says "
+        f"{recorded['bytes']:,}"
+    )
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert actual == recorded["sha256"], (
+        f"{relative} is not the file every published figure over it was measured from. "
+        "If the slice was deliberately replaced, re-measure the figures and rewrite "
+        "tests/fixtures/data_digest.json; the numbers do not carry over."
+    )
+
+
+def test_the_benchmark_slices_are_all_present_and_not_empty():
+    """A zero-byte stand-in passes a digest check only if the digest was taken of the
+    stand-in, so the sizes are asserted as a floor as well."""
+    digest = _digest()
+    benchmarks = {k: v for k, v in digest.items() if k.startswith("data/benchmarks/")}
+    assert len(benchmarks) >= 4, sorted(benchmarks)
+    for relative, recorded in benchmarks.items():
+        assert recorded["bytes"] > 10_000, (relative, recorded["bytes"])

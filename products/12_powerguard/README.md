@@ -147,9 +147,17 @@ PYTHONPATH=src python -m pytest -q
 
 ```bash
 cd 12_powerguard
-python -m pytest -q                      # 48 passed
+python -m pytest -q                      # 48 passed (39 without a readable process table)
 PYTHONPATH="src;../platform/src" python -m powerguard.app    # console on http://127.0.0.1:8000
 ```
+
+**Nine of those forty-eight read this machine** and skip where
+`powershell Get-CimInstance` cannot be run - a container, or a host with no powershell on
+PATH. That is the claim at the top of this file and it is not simulated. The other
+thirty-nine run anywhere, and they used to skip too: a `pytestmark` on the whole file
+gated eleven test functions that touch no machine, four of which monkeypatch every
+reading they use, so a container reported `20 passed, 28 skipped` against a published
+`48 passed, 0 skipped` and the sweep still printed `ok`.
 
 `app.py` picks a model by capability rather than by tag — `models.resolve("general", …)`
 returns the best one installed and records which it was, so a later run on a larger model

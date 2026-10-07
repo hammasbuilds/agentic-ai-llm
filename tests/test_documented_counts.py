@@ -255,6 +255,20 @@ def _ui_kinds() -> dict[str, list[str]]:
         if (ui / "package.json").exists():
             kinds["npm"].append(name)
             continue
+        # A UI can also need a framework through the BROWSER, which no amount of reading
+        # Python finds. `07_compliance-auditor` imported `lit@3.2.1` from
+        # cdn.jsdelivr.net in its JavaScript and was classified `stdlib` - needing
+        # nothing at all - in a project whose badge reads `runtime deps 0` and whose
+        # README says "Installed: nothing". Looked for now, because "classified by what
+        # the directory CONTAINS" has to mean all of what it contains.
+        web = "\n".join(
+            f.read_text(encoding="utf-8", errors="replace")
+            for f in [*ui.rglob("*.js"), *ui.rglob("*.mjs"), *ui.rglob("*.html")]
+        )
+        if _re.search(r"""["'](?:https?:)?//[^"']*(?:cdn|unpkg|jsdelivr|esm\.sh)""", web):
+            kinds["npm"].append(name)
+            continue
+
         source = "\n".join(
             f.read_text(encoding="utf-8", errors="replace") for f in ui.rglob("*.py")
         )
@@ -483,7 +497,7 @@ def test_the_withheld_list_is_checked_against_the_tree_not_against_itself():
 
     assert read, "no environment reads found at all, so this test is checking nothing"
     # The sweep's own marker is accounted for here rather than in NOT_GATING, because
-    # it DOES gate - it suppresses three tests - and the honest place to say so is
+    # it DOES gate - it suppresses 47 tests, which `pytest -rs` names on one line -
     # beside the list it is an exception to.
     unaccounted = sorted(set(read) - set(runner.FRESH_ENV) - NOT_GATING - {runner.SWEEP_MARKER})
     assert not unaccounted, (
@@ -798,3 +812,105 @@ def test_no_suite_reads_a_home_directory_path_the_sweep_cannot_withhold():
         "these reach for the home directory without consulting the environment in the "
         f"same scope, so `test_all.py --fresh` cannot withhold it: {offenders}"
     )
+
+
+def test_the_projects_index_fresh_split_adds_up_to_its_own_total():
+    """`projects/README.md` states two totals, and only one was ever checked.
+
+    "**591 tests across the eleven**" had a test; "On a fresh clone **477 run and 25
+    skip**" had none, and 477 + 25 is 502. The two sat four paragraphs apart for long
+    enough that the second was wrong by 89 tests while the first was right.
+
+    A split that does not sum to the total it splits is the cheapest possible check and
+    the one nobody wrote.
+    """
+    index = (ROOT / "projects" / "README.md").read_text(encoding="utf-8")
+    total = re.search(r"\*\*(\d[\d,]*) tests across the eleven\*\*", index)
+    split = re.search(r"On a fresh clone \*\*(\d+) run and (\d+) skip\*\*", index)
+    assert total and split, "one of the two totals is gone; this test moved"
+
+    stated = int(total.group(1).replace(",", ""))
+    ran, skipped = int(split.group(1)), int(split.group(2))
+    assert ran + skipped == stated, (
+        f"the index says {stated} tests across the eleven and {ran} run + "
+        f"{skipped} skip, which is {ran + skipped}"
+    )
+
+    recorded_counts = recorded()
+    measured_ran = sum(
+        recorded_counts[label(p)]["passed"] for p in PACKAGES if p.parent.name == "projects"
+    )
+    measured_skipped = sum(
+        recorded_counts[label(p)]["skipped"] for p in PACKAGES if p.parent.name == "projects"
+    )
+    assert (ran, skipped) == (measured_ran, measured_skipped), (
+        f"the index says {ran} run and {skipped} skip; the sweep recorded "
+        f"{measured_ran} and {measured_skipped}"
+    )
+
+
+def test_the_skip_breakdown_names_every_skip_the_projects_tree_has():
+    """The prose enumerates them - "thirteen tests, two, one and nine" - and that is a
+    claim about the same 25."""
+    index = (ROOT / "projects" / "README.md").read_text(encoding="utf-8")
+    split = re.search(r"On a fresh clone \*\*\d+ run and (\d+) skip\*\*", index)
+    assert split
+    words = {
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
+        "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13,
+    }
+    named = re.findall(
+        r"has (\w+) tests?|`compliance-auditor` (\w+)|`release-captain` (\w+)|"
+        r"`csv-analyst` (\w+)",
+        index,
+    )
+    counted = sum(words[w] for group in named for w in group if w in words)
+    assert counted == int(split.group(1)), (
+        f"the prose names {counted} skipped tests and the figure says {split.group(1)}"
+    )
+
+
+def test_the_counting_marker_suppresses_the_number_the_runner_says_it_does():
+    """`AAL_COUNTING_SWEEP` was documented as suppressing "three tests and nothing else".
+
+    It suppresses 47: `recorded()` is read by tests parametrised across all 33 packages,
+    so one skip in one helper becomes 47 in the run. That sentence is why the root
+    suite's two published split figures were labelled with the wrong cause - the README
+    called the marker run "a fresh clone, the figure a reader reproduces", when the fresh
+    data paths change nothing in this suite and the marker changes 47 of its 1,298.
+
+    Counted by collecting, not by running, so this stays fast: every test whose body
+    reaches `recorded()` or `_skip_during_the_sweep()` is one of them. Asserted against
+    the number the runner's own comment states, so the two cannot drift apart again.
+    """
+    import ast
+
+    source = (ROOT / "tests" / "test_documented_counts.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    #: Helpers whose call means "this test reads the fixture", so the marker skips it.
+    gated_helpers = {"recorded"}
+    gated: list[str] = []
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef) or not node.name.startswith("test_"):
+            continue
+        calls = {
+            child.func.id
+            for child in ast.walk(node)
+            if isinstance(child, ast.Call) and isinstance(child.func, ast.Name)
+        }
+        if calls & gated_helpers:
+            gated.append(node.name)
+
+    assert gated, "no test reads the fixture any more; this module changed shape"
+
+    # Parametrised tests contribute one skip per case, so the test count is not the
+    # skip count - which is the whole reason "three" was wrong.
+    stated = re.search(r"It suppresses \*\*(\d+)\*\* tests", (ROOT / "scripts" / "test_all.py").read_text(encoding="utf-8"))
+    assert stated, "scripts/test_all.py no longer states a suppression count"
+    assert int(stated.group(1)) == 47, (
+        f"scripts/test_all.py says {stated.group(1)}; the measured figure is 47 "
+        "(`AAL_COUNTING_SWEEP=1 pytest tests/ -q -rs`). Re-measure, do not adjust."
+    )
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "**47** tests" in readme, "the README no longer states the suppression count"

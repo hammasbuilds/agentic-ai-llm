@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-47-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-61-success" alt="tests">
   <img src="https://img.shields.io/badge/files%20measured-2%2C110-orange" alt="files">
 </p>
 
@@ -165,7 +165,7 @@ findings it had not checked, which is the failure this project is built to avoid
 
 ## Scope
 
-- **Seven rules.** This is not a linter and does not want to be. The contribution is the
+- **Eight rules.** This is not a linter and does not want to be. The contribution is the
   verification stage, which any rule set could be dropped into.
 - **It cannot know intent.** Every defeater is a heuristic, and `mutable-default` in
   particular guesses from whether the parameter is mutated *in that function* — a helper
@@ -181,7 +181,7 @@ findings it had not checked, which is the failure this project is built to avoid
 ## Run it
 
 ```bash
-uv run pytest -q                              # 47 tests
+uv run pytest -q                              # 61 tests
 uv run review-bot scan <path> --show-retracted
 uv run review-bot diff <repo> --ref HEAD~1
 uv run python ui/server.py                    # then: cd ui && npm install && npm run dev
@@ -191,10 +191,11 @@ uv run python ui/server.py                    # then: cd ui && npm install && np
 
 ```
 src/reviewbot/
-    checks.py   over-eager proposers, seven rules
+    checks.py   over-eager proposers, eight rules
     verify.py   defeaters, one per rule, plus acknowledgement markers
     review.py   diff parsing, scoping, aggregation, rendering
     cli.py      argparse
 ui/             Remix front end, http.server API
-tests/test_review.py   36 tests, mostly about what it refuses to report
+tests/test_review.py                             47 tests, mostly about what it refuses to report
+tests/test_open_without_with_reads_the_tree.py   14 tests
 ```

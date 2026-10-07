@@ -159,7 +159,11 @@ def main() -> int:
             print(f"  BAD {product.name:18} {type(exc).__name__}: {exc}")
             results[product.name] = {"error": f"{type(exc).__name__}: {exc}"}
 
-    (ROOT / "scripts" / "served.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    # `newline=""`: this file is tracked, and without it every run rewrites all of
+    # its lines on Windows. `git ls-files --eol` already read `i/lf w/crlf` here.
+    (ROOT / "scripts" / "served.json").write_text(
+        json.dumps(results, indent=2), encoding="utf-8", newline=""
+    )
     print(f"\n{len(PRODUCTS) - bad}/{len(PRODUCTS)} products served over HTTP")
     return 1 if bad else 0
 

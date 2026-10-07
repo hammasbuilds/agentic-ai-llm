@@ -22,18 +22,45 @@ from powerguard.domain import (
 )
 from powerguard.machine import Process, gpu, jobs, power, processes
 
+#: This machine's process table, read once. `processes()` shells out to
+#: `powershell Get-CimInstance` and returns `[]` on any `OSError` or a 40-second
+#: timeout, so this is empty on a container, on a host without powershell on PATH, and
+#: on a machine loaded enough to miss the timeout.
 HERE = processes()
-pytestmark = pytest.mark.skipif(not HERE, reason="cannot read processes on this host")
 
 
-def test_the_machine_is_readable():
-    assert len(HERE) > 50
+@pytest.fixture(scope="module")
+def live() -> list[Process]:
+    """The real process table, or a skip.
+
+    Requested by the nine tests that read the machine. It used to be a
+    `pytestmark = pytest.mark.skipif(...)` on the module, which skipped all twenty -
+    eleven of which touch no machine, and four of which monkeypatch every reading they
+    use. On a host that cannot read processes the file reported `20 passed, 28 skipped`
+    while `README.md` and `tests/fixtures/suite_counts.json` published 48 and 0, and
+    the sweep printed `ok`.
+
+    A fixture rather than a marker because the dependency belongs to the tests that
+    have it. The README's "measured against a real process table, not a fixture" is
+    about these nine, and they still refuse to pretend.
+    """
+    if not HERE:
+        pytest.skip(
+            "cannot read this host's process table: `powershell Get-CimInstance` "
+            "failed or timed out. The nine tests that read the machine are the "
+            "product's claim and are not simulated."
+        )
+    return HERE
+
+
+def test_the_machine_is_readable(live):
+    assert len(live) > 50
     # pid 0 is real on Windows: the System Idle Process.
-    assert all(p.pid >= 0 for p in HERE)
-    assert any(p.pid > 0 for p in HERE)
+    assert all(p.pid >= 0 for p in live)
+    assert any(p.pid > 0 for p in live)
 
 
-def test_the_power_state_is_read_not_assumed():
+def test_the_power_state_is_read_not_assumed(live):
     m = power()
     assert isinstance(m, Machine)
     assert 0 <= m.battery_pct <= 100
@@ -41,7 +68,7 @@ def test_the_power_state_is_read_not_assumed():
     # and the honest reading is "on mains", not an error.
 
 
-def test_the_card_is_read_if_there_is_one():
+def test_the_card_is_read_if_there_is_one(live):
     card = gpu()
     if card is None:
         pytest.skip("no nvidia-smi on this host")
@@ -50,7 +77,7 @@ def test_the_card_is_read_if_there_is_one():
     assert card.free_mb == card.total_mb - card.used_mb
 
 
-def test_the_interpreter_install_path_is_not_a_classification_signal():
+def test_the_interpreter_install_path_is_not_a_classification_signal(live):
     # THE BUG THIS CAUGHT. Matching the raw command line classified every Python
     # process here as a download, because the interpreter lives under
     # ...\AppData\Roaming\uv\python\... and "\buv\b" matches inside a path.
@@ -77,12 +104,12 @@ def test_the_signature_discards_the_executable_path():
     assert p.kind == DOWNLOAD
 
 
-def test_expensive_work_is_a_small_fraction_of_what_is_running():
+def test_expensive_work_is_a_small_fraction_of_what_is_running(live):
     found = jobs()
-    assert len(found) < len(HERE) / 10  # most of a machine is not doing work worth saving
+    assert len(found) < len(live) / 10  # most of a machine is not doing work worth saving
 
 
-def test_it_never_plans_an_action_on_a_process_it_does_not_own():
+def test_it_never_plans_an_action_on_a_process_it_does_not_own(live):
     # THE FINDING. On this shared machine the expensive work belongs to other
     # sessions, so the custodian reports it and reaches for none of it.
     #
@@ -102,7 +129,7 @@ def test_it_never_plans_an_action_on_a_process_it_does_not_own():
         assert job.pid not in touched
 
 
-def test_the_ollama_server_is_visible_and_untouchable():
+def test_the_ollama_server_is_visible_and_untouchable(live):
     # Concrete: the model server holding 9 GB of this card was started by
     # another session. It is exactly what an outage would destroy, and exactly
     # what this custodian must not signal.
@@ -111,7 +138,7 @@ def test_the_ollama_server_is_visible_and_untouchable():
     assert any("ollama" in name.lower() or "llama" in name.lower() for name in theirs)
 
 
-def test_it_still_sleeps_what_it_does_own():
+def test_it_still_sleeps_what_it_does_own(live):
     # Displays are not a process. Losing mains always sleeps them.
     actions = plan(Machine(on_mains=False, battery_pct=90, minutes_remaining=60), jobs())
     assert any(a.target == "displays" for a in actions)
@@ -150,7 +177,7 @@ def _states(seed=0, cases=4000):
         yield machine, jobs_
 
 
-def test_no_plan_in_four_thousand_states_signals_an_unowned_process():
+def test_no_plan_in_four_thousand_states_signals_an_unowned_process(live):
     # THE GUARANTEE. Not "on this machine today" — over 4,000 generated states
     # covering both power states, the full battery range and every mix of owned
     # and unowned work, no action is ever aimed at a pid we do not own.

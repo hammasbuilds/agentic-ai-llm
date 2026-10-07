@@ -174,6 +174,7 @@ src/auditor/
     cli.py        argparse
 ui/               Lit web component from a CDN, served by http.server
 tests/
-    test_evidence.py  16 tests
-    test_controls.py  18 tests (parametrised)
+    test_evidence.py       16 tests
+    test_controls.py       22 tests (parametrised)
+    test_readme_block.py   9 tests
 ```

@@ -53,7 +53,11 @@ class _Proposer(ast.NodeVisitor):
                 message=message,
                 severity=severity,
                 snippet=_segment(self.lines, node),
-                evidence=evidence,
+                # The column, so a verifier can identify the NODE rather than the
+                # line. `_defeat_open_without_with` asks the tree whether this
+                # particular `open()` is a `with` statement's context, and two calls
+                # on one line are otherwise indistinguishable to it.
+                evidence={"col": node.col_offset, **evidence},
             )
         )
 

@@ -218,6 +218,8 @@ src/csvanalyst/
     cli.py       argparse
 ui/notebook.py   marimo notebook (optional extra)
 tests/
-    test_profile.py  32 tests (parametrised)
-    test_execute.py  15 tests
+    test_profile.py       36 tests (parametrised)
+    test_execute.py       15 tests
+    test_cli.py           37 tests
+    test_real_corpus.py   9 tests
 ```

@@ -201,5 +201,5 @@ ui/app.py         NiceGUI front end (optional extra)
 scripts/sweep.py  produces every number in this README
 tests/
     test_mutate.py   26 tests (parametrised)
-    test_runner.py   13 tests
+    test_runner.py   20 tests
 ```

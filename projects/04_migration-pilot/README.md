@@ -200,5 +200,5 @@ src/pilot/
     cli.py      argparse
 scripts/prove_utcnow.py   runnable proof that the documented fix breaks code
 ui/                       Vue 3 + Vite, http.server API
-tests/test_rules.py       25 tests, mostly asserting what it refuses to do
+tests/test_rules.py       32 tests, mostly asserting what it refuses to do
 ```

@@ -13,7 +13,7 @@ This replaced a 60-genome subset spanning three countries. That subset did not
 merely make the numbers smaller, it made the headline untestable: with three
 sites and ten candidates, requiring a variant at two sites removed *everything*,
 and a filter that rejects 100% of its input cannot be told apart from a filter
-that is simply broken. On the full corpus, 427 candidates become 2 — and those
+that is simply broken. On the full corpus, 436 candidates become 2 — and those
 2 are real, which is the part the small corpus could never show.
 
 Each branch returns receipt ids that are real accessions, so the grounding gate

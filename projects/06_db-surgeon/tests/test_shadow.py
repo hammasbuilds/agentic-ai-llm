@@ -298,3 +298,50 @@ def test_the_two_schema_properties_are_different_questions():
     assert trip.columns_reordered == ["users"], trip.columns_reordered
     assert trip.schema_restored is False, "so the strict property is false"
     assert trip.data_restored is False
+
+
+def test_the_run_it_annotations_describe_what_the_commands_print():
+    """`corpus` was annotated "# the table above", and the table above it is the
+    `check` output - a round-trip report for one migration, not a table at all.
+
+    `scripts/sweep.py` is what produces the block the README shows, and the Layout
+    section says so 70 lines further down. An annotation that points at the wrong
+    command is the kind of thing a reader finds by running it, which is the one way of
+    reading a README this repository is built around.
+    """
+    import re
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    readme = (root / "README.md").read_text(encoding="utf-8")
+
+    annotation = re.search(r"^\$ db-surgeon corpus\s+#\s*(.+?)\s*$", readme, re.M)
+    assert annotation, "the `corpus` Run-it line is gone; this test moved"
+    assert "the table above" not in annotation.group(1), annotation.group(1)
+
+    done = subprocess.run(
+        [sys.executable, "-m", "dbsurgeon.cli", "corpus"],
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+        errors="replace",
+        env={"PYTHONPATH": "src", "PATH": __import__("os").environ.get("PATH", "")},
+        timeout=300,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    # The migration rows: everything above the `---` rule, minus the header. The
+    # summary lines below the rule are not migrations, and counting them gave 14 where
+    # the corpus holds 12 - the annotation this test replaced said "eleven", which was
+    # my own count and also wrong.
+    lines = done.stdout.splitlines()
+    # Between the two rules. The FIRST `---` is the header's underline, so slicing to
+    # it gave an empty list and the assertion below read `0 == 12`.
+    rules = [i for i, line in enumerate(lines) if line.startswith("---")]
+    assert len(rules) == 2, rules
+    rows = [line for line in lines[rules[0] + 1 : rules[1]] if line.strip()]
+    assert len(rows) == 12, (len(rows), rows)
+    assert "twelve migrations" in annotation.group(1), annotation.group(1)
+    # And the command's own summary agrees with the row count it printed.
+    assert f"{len(rows)} migrations" in done.stdout, done.stdout[-300:]

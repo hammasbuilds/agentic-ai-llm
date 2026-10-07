@@ -17,6 +17,7 @@ why - and the four that read Python source did not.
 
 from __future__ import annotations
 
+import ast
 import subprocess
 import sys
 from pathlib import Path
@@ -43,6 +44,39 @@ AST_READERS = {
 }
 
 
+#: Calls that turn bytes on disk into a `str` this package then parses. The rule is
+#: about DECODING source, so a write is out of scope however it is encoded - a first
+#: version of this flagged `write_text(..., encoding="utf-8")` and
+#: `subprocess.run(..., encoding="utf-8")` in all four packages, which are correct and
+#: have nothing to do with a BOM.
+_DECODERS = frozenset({"read_text", "open", "decode"})
+
+
+def _is_a_decode(call: ast.Call) -> bool:
+    name = call.func.attr if isinstance(call.func, ast.Attribute) else getattr(call.func, "id", "")
+    return name in _DECODERS
+
+
+def _encoding_argument(call: ast.Call) -> str | None:
+    """The literal `encoding=` of a call, or the first argument of `.decode(...)`.
+
+    `None` when the call names no encoding, or names one this cannot read statically -
+    a variable, an f-string - which is not something to fail on and is something a
+    reader should be able to find, so the few that exist are listed in
+    `NOT_PYTHON_SOURCE` by file and line if they ever appear.
+    """
+    for keyword in call.keywords:
+        if keyword.arg == "encoding" and isinstance(keyword.value, ast.Constant):
+            if isinstance(keyword.value.value, str):
+                return keyword.value.value
+    name = call.func.attr if isinstance(call.func, ast.Attribute) else ""
+    if name in ("decode", "encode") and call.args:
+        first = call.args[0]
+        if isinstance(first, ast.Constant) and isinstance(first.value, str):
+            return first.value
+    return None
+
+
 def _package(tmp_path: Path) -> Path:
     """Two modules, one of them BOM'd, with a call from the plain one into it."""
     root = tmp_path / "pkg_root"
@@ -65,18 +99,31 @@ def test_the_premise_holds_for_python_itself():
 def test_no_ast_reader_decodes_source_as_plain_utf8(project: str):
     """The rule, so a fifth reader is covered by existing.
 
-    Read as text rather than run, because the four read in four different places and
-    what they share is the decode. A `utf-8` read of a `.py` file is the defect.
+    Read as code rather than run, because the four read in four different places and
+    what they share is the decode. A `utf-8` decode of a `.py` file is the defect.
+
+    Asked of the AST. This matched the string `read_text(encoding="utf-8"`, so
+    `open(p, encoding="utf-8").read()`, `read_bytes().decode("utf-8")`, the keyword in
+    a different position, or the call wrapped across two lines each passed. No reader
+    here does any of those, which made the rule sufficient by luck rather than by
+    construction.
     """
     src = ROOT / "projects" / project / "src"
-    offenders = [
-        f"{path.relative_to(ROOT).as_posix()}:{n}"
-        for path in src.rglob("*.py")
-        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
-        if 'read_text(encoding="utf-8"' in line
-        and "utf-8-sig" not in line
-        and f"{path.relative_to(ROOT).as_posix()}:{n}" not in NOT_PYTHON_SOURCE
-    ]
+    offenders = []
+    for path in sorted(src.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if not _is_a_decode(node):
+                continue
+            encoding = _encoding_argument(node)
+            if encoding is None or encoding.replace("_", "-").lower() != "utf-8":
+                continue
+            where = f"{path.relative_to(ROOT).as_posix()}:{node.lineno}"
+            if where in NOT_PYTHON_SOURCE:
+                continue
+            offenders.append(where)
     assert offenders == [], (
         f"{offenders} read Python source as plain utf-8, so a file with a BOM is "
         "reported as a syntax error. Use utf-8-sig, which is identical without one."
@@ -144,45 +191,93 @@ def _env(project: str) -> dict:
 #     its mark as a side effect of an unrelated edit.
 
 
-def test_test_smith_restores_a_bom_file_byte_for_byte(tmp_path: Path):
-    """Mutation testing writes a mutant over your source and puts it back.
+def _tiny_repo(root: Path) -> Path:
+    """A repository of one BOM'd module and one passing test.
 
-    "Puts it back" has to mean the bytes. The decode is for the parser; what was on
-    disk is what goes back on disk.
+    Small enough that `runner.run` over it is affordable in a unit test, and real
+    enough that the run copies a tree, runs pytest twice and reaches the `finally`
+    that restores each mutant.
+    """
+    (root / "src" / "tiny").mkdir(parents=True)
+    (root / "tests").mkdir()
+    module = root / "src" / "tiny" / "core.py"
+    module.write_bytes(BOM + b"def add(a, b):\n    return a + b\n")
+    (root / "src" / "tiny" / "__init__.py").write_bytes(b"")
+    (root / "tests" / "test_core.py").write_text(
+        "from tiny.core import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n",
+        encoding="utf-8",
+    )
+    (root / "pyproject.toml").write_text(
+        chr(10).join(
+            [
+                "[build-system]",
+                'requires = ["setuptools"]',
+                "",
+                "[project]",
+                'name = "tiny"',
+                'version = "0"',
+                "",
+                "[tool.pytest.ini_options]",
+                'pythonpath = ["src"]',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return module
+
+
+def test_test_smith_restores_a_bom_file_byte_for_byte(tmp_path: Path):
+    """Through `runner.run`, which is the only thing that reaches the `finally`.
+
+    This used to re-implement the runner's keep/write/restore cycle in the test body
+    and assert that the transcription round-tripped. It did, and the runner was never
+    called: the test and the code only had to agree with each other. A reviewer said
+    so, and the companion test that searched the runner's source for two literals had
+    the same problem one level up.
     """
     sys.path.insert(0, str(ROOT / "projects" / "02_test-smith" / "src"))
-    from testsmith.mutate import generate
+    from testsmith.runner import run
 
-    target = tmp_path / "m.py"
-    target.write_bytes(BOM + b"def add(a, b):\n    return a + b\n")
-    before = target.read_bytes()
+    repo = tmp_path / "tiny"
+    module = _tiny_repo(repo)
+    before = module.read_bytes()
+    assert before.startswith(BOM)
 
-    mutants = generate(target, "m.py")
-    assert mutants, "a BOM'd file produced no mutants, so this proves nothing"
+    report = run(repo, limit=2)
+    assert report.total_mutants > 0, (
+        "the BOM'd file produced no mutants, so the restore was never exercised"
+    )
 
-    # The runner's cycle: keep the original, write a mutant, restore.
-    original = target.read_bytes()
-    target.write_text(mutants[0].source, encoding="utf-8")
-    assert target.read_bytes() != before, "the mutant did not change the file"
-    target.write_bytes(original)
-
-    assert target.read_bytes() == before, "the file came back changed"
-    assert target.read_bytes().startswith(BOM), "the BOM was dropped"
+    after = module.read_bytes()
+    assert after == before, "the file came back changed"
+    assert after.startswith(BOM), "the BOM was dropped"
 
 
-def test_the_runner_restores_bytes_not_text():
-    """Read as code, because reaching the `finally` needs a real suite run.
+def test_the_runner_only_ever_mutates_a_copy(tmp_path: Path):
+    """What the comment in `runner.py` used to claim, corrected and then checked.
 
-    `original = target.read_text(encoding="utf-8-sig")` followed by
-    `target.write_text(original, encoding="utf-8")` is the defect, and it reads as
-    symmetrical.
+    It said a dropped BOM was "a permanent change to a file this tool only ever meant
+    to read, by the command whose whole promise is that your workspace is as you left
+    it". That overstates it: `target` is `workspace / mutant.path`, a `copytree` under
+    a temp directory the outer `finally` deletes, so the caller's files are never
+    written at all. The restore matters because the next mutant is applied to whatever
+    it leaves behind.
+
+    Overstating what a fix prevents leaves a reader with a wrong model of the code, the
+    same as understating it, so the smaller true claim is the one pinned here.
     """
-    source = (
-        ROOT / "projects" / "02_test-smith" / "src" / "testsmith" / "runner.py"
-    ).read_text(encoding="utf-8")
-    assert "original = target.read_bytes()" in source
-    assert "target.write_bytes(original)" in source
-    assert 'original = target.read_text(encoding="utf-8-sig")' not in source
+    sys.path.insert(0, str(ROOT / "projects" / "02_test-smith" / "src"))
+    from testsmith import runner
+
+    repo = tmp_path / "tiny"
+    module = _tiny_repo(repo)
+    stamp = module.stat().st_mtime_ns
+    report = runner.run(repo, limit=1)
+    assert report.total_mutants > 0
+    assert module.stat().st_mtime_ns == stamp, (
+        "the caller's own file was written; the runner is supposed to mutate its copy"
+    )
 
 
 def test_migration_pilot_keeps_the_mark_on_the_file_it_rewrites(tmp_path: Path):

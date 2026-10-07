@@ -191,16 +191,94 @@ def _defeat_eq_none(context: FileContext, proposal: Proposal) -> str | None:
     return None
 
 
+#: Methods whose call closes the handle by dropping the last reference to it, which
+#: CPython does immediately. `open(p).read()` is a widespread idiom and flagging it is
+#: noise.
+_CONSUMES_THE_HANDLE = frozenset({"read", "readline", "readlines", "write", "writelines"})
+
+
+def _open_calls_inside_with(tree: "ast.AST") -> set[tuple[int, int]]:
+    """(line, col) of every `open()` call that is a `with` statement's context.
+
+    Nested, because `with contextlib.closing(open(p)) as fh:` closes the handle just as
+    `with open(p) as fh:` does, and `with ExitStack() as stack: stack.enter_context(...)`
+    does not - the second is not inside a `withitem` at all.
+    """
+    found: set[tuple[int, int]] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.With, ast.AsyncWith)):
+            continue
+        for item in node.items:
+            for inner in ast.walk(item.context_expr):
+                if isinstance(inner, ast.Call) and _callee(inner) == "open":
+                    found.add((inner.lineno, inner.col_offset))
+    return found
+
+
+#: Methods that take ownership of a handle and close it later. `ExitStack` is the
+#: standard way to open a variable number of files, and the handle is not inside a
+#: `withitem` - the `with` holds the stack, not the file - so it needs naming.
+_TAKES_OWNERSHIP = frozenset({"enter_context", "push", "callback"})
+
+
+def _consumed_open_calls(tree: "ast.AST") -> set[tuple[int, int]]:
+    """(line, col) of every `open()` whose result is consumed or handed to an owner."""
+    found: set[tuple[int, int]] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        callee = node.func
+        if not isinstance(callee, ast.Attribute):
+            continue
+        if callee.attr in _CONSUMES_THE_HANDLE:
+            inner = callee.value
+            if isinstance(inner, ast.Call) and _callee(inner) == "open":
+                found.add((inner.lineno, inner.col_offset))
+        elif callee.attr in _TAKES_OWNERSHIP:
+            for argument in node.args:
+                if isinstance(argument, ast.Call) and _callee(argument) == "open":
+                    found.add((argument.lineno, argument.col_offset))
+    return found
+
+
+def _callee(call: "ast.Call") -> str:
+    """The bare name being called, or "" for anything dotted or computed."""
+    return call.func.id if isinstance(call.func, ast.Name) else ""
+
+
 def _defeat_open_without_with(context: FileContext, proposal: Proposal) -> str | None:
-    """Only a smell if the handle actually escapes without being closed."""
-    line = context.line(proposal.line)
-    stripped = line.strip()
-    if stripped.startswith("with ") or " with " in stripped:
-        return "the call is already inside a `with` statement"
-    # `open(...).read()` closes via refcount immediately in CPython and is a
-    # widespread idiom; flagging it is noise.
-    if ").read()" in stripped or ").write(" in stripped or ").readlines()" in stripped:
-        return "the handle is consumed immediately and not retained"
+    """Only a smell if the handle actually escapes without being closed.
+
+    Asked of the TREE. This read `context.line(proposal.line)` and matched `" with "`
+    as a substring, so a comment decided it: `handle = open(path)  # we will deal with
+    it later` was retracted as "already inside a `with` statement" - a leak, dismissed
+    with a false statement about the code - while
+
+        with contextlib.closing(
+                open(path)) as fh:
+
+    was reported, because the `with` is on the line above. One line of text cannot
+    answer either question: a `with` spans lines and a comment is not code.
+    """
+    if context.tree is None:
+        # Unparseable, so there is nothing to ask. Left to stand rather than retracted
+        # on a guess, which is the direction this module errs in everywhere else.
+        return None
+
+    here = (proposal.line, proposal.evidence.get("col", -1))
+    inside = _open_calls_inside_with(context.tree)
+    consumed = _consumed_open_calls(context.tree)
+
+    # Matched on the line when the column was not recorded, which is every proposal
+    # made before `col` was added to the evidence; two `open()` calls on one line is
+    # rare enough that the line alone is a safe fallback and a wrong answer here is a
+    # finding that stands rather than one dismissed.
+    if here in inside or (here[1] < 0 and any(line == proposal.line for line, _ in inside)):
+        return "the call is the context of a `with` statement"
+    if here in consumed or (
+        here[1] < 0 and any(line == proposal.line for line, _ in consumed)
+    ):
+        return "the handle is consumed immediately, or handed to something that closes it"
     return None
 
 

@@ -124,8 +124,14 @@ FRESH_ENV = tuple(FRESH_PATHS) + tuple(FRESH_ENDPOINTS)
 #: unbreakable: the sweep refuses to write from a red run, and the run is red because
 #: the fixture has not been written yet.
 #:
-#: It is a marker, not a gate on data: it suppresses three tests and nothing else, and
-#: `test_documented_counts.py` names it where it skips.
+#: It is a marker, not a gate on data. It suppresses **47** tests, not three: `recorded()`
+#: is read by tests parametrised across all 33 packages, so one skip in one helper
+#: becomes 47 in the run. `pytest -rs` names them on one line.
+#:
+#: This said "three tests and nothing else", and that sentence is why the root suite's
+#: two published split figures were labelled with the wrong cause for so long - the
+#: README called the marker run "a fresh clone, the figure a reader reproduces", when the
+#: fresh data paths change nothing in this suite and the marker changes 47.
 SWEEP_MARKER = "AAL_COUNTING_SWEEP"
 
 

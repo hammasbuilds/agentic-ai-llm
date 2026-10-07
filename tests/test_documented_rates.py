@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import ast
 import json
+from collections import Counter
 import re
 from pathlib import Path
 
@@ -137,18 +138,29 @@ def mutation_summary(app: Path) -> dict | None:
 FIGURES = ROOT / "tests" / "fixtures" / "app_figures.json"
 
 
-def frozen() -> dict[str, set[str]]:
+def frozen() -> dict[str, dict[str, int]]:
+    """Each app's figures and HOW MANY TIMES each is stated.
+
+    A multiset, because the two simpler shapes were each the defect in turn. A table of
+    counts - `{"05_debug_ceiling": 11}` - let a value change while the count stayed 11.
+    A set let a value change into one already in the set, and every app quotes the same
+    run in three regions, so most of its figures appear more than once: rewriting one
+    `76.0` to `75.8` in app 04's ABOUT panel moved neither the size nor the membership.
+    """
     assert FIGURES.is_file(), f"{FIGURES.name} is missing; run scripts/freeze_app_figures.py"
     held = json.loads(FIGURES.read_text(encoding="utf-8"))["apps"]
-    return {app: set(values) for app, values in held.items()}
+    return {app: dict(counts) for app, counts in held.items()}
 
 
 NUMBER = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)%?(?![\w])")
 
 
-def figures(app: Path) -> set[str]:
-    """The distinct numbers an app's prose states, commas stripped."""
-    return {n.replace(",", "") for n in NUMBER.findall(prose(app))}
+def figures(app: Path) -> dict[str, int]:
+    """Every number an app's prose states and how often, commas stripped.
+
+    Counted rather than collected into a set: see `frozen`.
+    """
+    return dict(Counter(n.replace(",", "") for n in NUMBER.findall(prose(app))))
 
 
 def test_the_figure_fixture_covers_every_app():
@@ -159,18 +171,24 @@ def test_the_figure_fixture_covers_every_app():
 def test_the_fixture_holds_every_figure_it_claims_to():
     """A sweep over empty sets passes, and so does a comparison of two of them."""
     held = frozen()
+    # Distinct figures, and the total number of statements of them. Both, because the
+    # first is what the old set-shaped fixture pinned and the second is what it missed.
     assert sum(len(v) for v in held.values()) == 106, {k: len(v) for k, v in held.items()}
+    assert sum(sum(v.values()) for v in held.values()) == 206, {
+        k: sum(v.values()) for k, v in held.items()
+    }
     assert all(held.values()), [k for k, v in held.items() if not v]
 
 
 @pytest.mark.parametrize("app", APPS, ids=[p.name for p in APPS])
 def test_no_figure_in_an_apps_prose_changes_without_the_fixture_changing(app: Path):
     found, held = figures(app), frozen()[app.name]
-    gained, lost = sorted(found - held), sorted(held - found)
+    gained = sorted(f"{k} x{v}" for k, v in found.items() if held.get(k) != v)
+    lost = sorted(f"{k} x{v}" for k, v in held.items() if found.get(k) != v)
     assert not (gained or lost), (
         f"{app.name}'s prose figures moved."
-        + (f" Gone: {', '.join(lost)}." if lost else "")
-        + (f" New: {', '.join(gained)}." if gained else "")
+        + (f" Was: {', '.join(lost)}." if lost else "")
+        + (f" Now: {', '.join(gained)}." if gained else "")
         + " If deliberate, run `python scripts/freeze_app_figures.py`."
     )
 
@@ -706,30 +724,48 @@ def test_every_headline_figure_matches_the_app_that_produced_it(figure: str):
 def test_the_devign_baseline_is_derived_from_the_committed_split():
     """54.1% is the one headline figure that needs no model, so it is computed.
 
-    The always-SAFE baseline is a property of the file: `data/benchmarks/devign_test.parquet`
-    is committed, and the share of its rows labelled safe IS the number. Pinning it
-    beside the others would have been the easy thing and would have left the only
-    checkable figure unchecked.
+    The always-SAFE baseline is a property of the file: the share of
+    `data/benchmarks/devign_test.parquet` rows labelled safe IS the number.
+
+    This used to say that and not do it. It checked the parquet's `PAR1` magic, unpacked
+    the footer length, asserted `len(metadata) == footer_length` - which is true by slice
+    construction - and then divided `summary["safe"]` by `summary["rows"]`, both out of
+    `apps/results/03_vuln_baseline.json`. No label was read, so inverting every `target`
+    in the parquet left all five of this app's tests passing, and the only figure the
+    repository offers as model-free was pinned to the file that states it.
+
+    The labels are read now, and the committed summary is checked AGAINST them rather
+    than used as them.
     """
     import json
-    import struct
+
+    pandas = pytest.importorskip(
+        "pandas",
+        reason="the labels cannot be read without a parquet reader, and asserting the "
+        "summary against itself is what this test was written to stop",
+    )
 
     path = ROOT / "data" / "benchmarks" / "devign_test.parquet"
     assert path.is_file(), path
 
-    raw = path.read_bytes()
-    assert raw[:4] == b"PAR1" and raw[-4:] == b"PAR1", "not a parquet file"
-    footer_length = struct.unpack("<I", raw[-8:-4])[0]
-    metadata = raw[-8 - footer_length : -8]
-    # The row count is in the footer's thrift, and the committed summary carries the
-    # label counts, so the two are compared rather than one being trusted.
+    frame = pandas.read_parquet(path, columns=["target"])
+    rows = len(frame)
+    # `target` is 0/1 in the published dataset and arrives as a boolean here; both are
+    # falsy for safe, which is the only property this depends on.
+    safe = int((~frame["target"].astype(bool)).sum())
+    assert rows > 0, path
+    share = safe / rows
+
     summary = json.loads(
         (ROOT / "apps" / "results" / "03_vuln_baseline.json").read_text(encoding="utf-8")
     )
-    assert summary["rows"] == summary["safe"] + summary["vulnerable"], summary
-    share = summary["safe"] / summary["rows"]
-    assert f"{share * 100:.1f}%" == "54.1%", share
-    assert len(metadata) == footer_length
+    # The committed summary is now the thing being CHECKED, against the file.
+    assert summary["rows"] == rows, (summary["rows"], rows)
+    assert summary["safe"] == safe, (summary["safe"], safe)
+    assert summary["vulnerable"] == rows - safe, summary
+    assert abs(summary["always_safe"] - share) < 1e-9, (summary["always_safe"], share)
 
+    assert f"{share * 100:.1f}%" == "54.1%", share
     readme = _root_findings()
     assert f"{share * 100:.1f}%" in readme, share
+
