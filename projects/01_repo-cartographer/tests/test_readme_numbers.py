@@ -215,16 +215,29 @@ def test_the_folder_table_marks_which_rows_are_measurements():
     A reader cannot tell a figure that is stable from one that moved overnight unless
     the table says so, and a count printed to the unit - "339,739 lines" - reads as
     the more precise of the two when it is the less durable.
+
+    This used to assert that at least six rows carry a durability label and at least
+    three say "moves" - which checks that the column is filled in, not that it is right.
+    A re-run found the repository count, labelled "stable", at 81 against 78, and both
+    rows labelled "the measurement" a point off. Every row carries a label now and the
+    test below checks the ones that claim to be durable.
     """
     readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
-    table = readme.split("## Measured across 78 repositories", 1)[1].split("\n\n")
+    table = readme.split("## Measured across", 1)[1].split("\n\n")
     rows = [line for part in table for line in part.split("\n") if line.startswith("| ")]
     assert rows, "the folder table is gone"
 
-    marked = [r for r in rows if r.rstrip().endswith(("| stable |", "| the measurement |"))]
-    moving = [r for r in rows if "moves" in r.rsplit("|", 2)[-2]]
-    assert len(marked) >= 6, rows
-    assert len(moving) >= 3, rows
+    # Every row says something about its own durability, which is the claim the column
+    # makes. The words are not prescribed - "grows", "moves daily", "within a point or
+    # two" are all answers - but a blank is not.
+    # The header `| | | |` is the table's own blank header row, not a figure.
+    figures = [r for r in rows if r.strip("| ").strip()]
+    unlabelled = [
+        r for r in figures if len(r.rsplit("|", 2)) < 3 or not r.rsplit("|", 2)[-2].strip()
+    ]
+    assert unlabelled == [], unlabelled
+    assert len(figures) >= 9, figures
+    assert "Measured 2026-" in readme, "the table carries no measurement date"
 
     # And no absolute count is printed to the unit any more, because that was the
     # form that went stale.

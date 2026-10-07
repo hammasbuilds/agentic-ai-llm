@@ -53,7 +53,34 @@ SLICES = (
 )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    # Arguments are read, which they were not: `python scripts/slice_benchmarks.py
+    # --help` printed no help and rewrote every file under `data/benchmarks/` instead.
+    # It reproduces the committed data byte for byte, so nothing was lost - but an
+    # unrecognised flag silently writing over tracked data is the kind of sharp edge a
+    # reader finds by being cut.
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="slice_benchmarks",
+        description="Rebuild the committed benchmark slices from the local cache.",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="rebuild into a temporary directory and report whether the committed "
+        "slices match, without writing to data/benchmarks",
+    )
+    args = parser.parse_args(argv)
+
+    global OUT
+    check_only = args.check
+    if check_only:
+        import tempfile
+
+        committed = OUT
+        OUT = Path(tempfile.mkdtemp(prefix="slices-"))
+
     OUT.mkdir(parents=True, exist_ok=True)
     missing = []
     for name, pattern, columns, expected in SLICES:
@@ -98,6 +125,26 @@ def main() -> int:
 
     total = sum(f.stat().st_size for f in OUT.glob("*") if f.suffix != ".md")
     print(f"  {'TOTAL':30} {total / 1e6:5.2f} MB")
+
+    if check_only:
+        import filecmp
+
+        differ = [
+            f.name
+            for f in sorted(OUT.glob("*"))
+            if f.suffix != ".md"
+            and not (
+                (committed / f.name).is_file() and filecmp.cmp(f, committed / f.name, shallow=False)
+            )
+        ]
+        shutil.rmtree(OUT, ignore_errors=True)
+        if differ:
+            print(
+                f"\ncommitted slices differ from a rebuild: {differ}",
+                file=sys.stderr,
+            )
+            return 1
+        print("\ncommitted slices are byte-identical to a rebuild")
     return 0
 
 

@@ -13,6 +13,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from product_spec import spec_for  # noqa: E402
+
 OUT = ROOT / "scripts" / "runs.json"
 
 PRODUCTS = sorted(d for d in ROOT.iterdir() if d.is_dir() and d.name[0].isdigit())
@@ -22,52 +26,6 @@ EXIT_TEST = {
     "01_revenue-desk": "test_an_opt_out_leaves_the_graph_before_anything_is_drafted",
 }
 DEFAULT_EXIT_TEST = "test_the_early_exit_costs_no_generation"
-
-
-class _ModuleSpec:
-    """A product whose test is written out at module level, which is `01` alone.
-
-    The other nineteen declare the same four things as attributes of a
-    `StandardProductTests` subclass, and `_spec` returns the subclass itself. This
-    wrapper lets the loop below read either through one interface.
-    """
-
-    def __init__(self, module):
-        self._m = module
-
-    def payload(self, **extra) -> dict:
-        return self._m.payload(**extra)
-
-    def script(self, for_payload: dict) -> dict:
-        maker = getattr(self._m, "script", None)
-        return maker(for_payload) if maker else self._m.SCRIPT
-
-    def sources(self, **kw):
-        return self._m.sources(**kw)
-
-    def runtime(self, *a, **kw):
-        return self._m.runtime(*a, **kw)
-
-
-def _spec(module):
-    """The product's conformance subclass, or a wrapper over its module.
-
-    Nineteen products' `test_graph.py` used to hold a module-level `payload`,
-    `script` and `sources`, nineteen times over, and this file read them by name.
-    They now subclass `agentplatform.conformance.StandardProductTests` and declare
-    only what differs, so the four things are class attributes - and the early-exit
-    payload no longer has to be recovered by parsing the test that asserts it.
-    """
-    from agentplatform.conformance import StandardProductTests
-
-    for value in vars(module).values():
-        if (
-            isinstance(value, type)
-            and issubclass(value, StandardProductTests)
-            and value is not StandardProductTests
-        ):
-            return value
-    return _ModuleSpec(module)
 
 
 def _exit_payload(product_name: str, module, spec) -> dict:
@@ -151,10 +109,13 @@ def capture(product: Path) -> dict:
 
     try:
         tg = importlib.import_module("test_graph")
-        app = importlib.import_module(tg.runtime.__module__)
+        # The MODULE `runtime` was defined in, not a call of the module-level
+        # shape: a `StandardProductTests` subclass carries the product's own
+        # `runtime` as a staticmethod, so `__module__` is the app module either way.
+        app = importlib.import_module(spec_for(tg).runtime.__module__)
         from agentplatform.llm import Recorded
 
-        spec = _spec(tg)
+        spec = spec_for(tg)
 
         payload = spec.payload()
         model = Recorded(spec.script(payload))

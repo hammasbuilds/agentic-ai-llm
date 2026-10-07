@@ -38,6 +38,16 @@ NAMED_INDIRECTLY: dict[str, str] = {
     "app": "ASGI application object, found by name by uvicorn",
     "runner": "passed to `apps/_platform/base.create_app` by each app module",
     "Handler": "BaseHTTPRequestHandler subclass, instantiated by http.server",
+    # The four hooks `agentplatform.graphs.standard_graph(agents, ...)` reads off a
+    # product's `agents` module, which it is handed and never imports. An attribute on
+    # a passed-in module cannot be resolved through the import graph at all - that is
+    # the honest limit of reading imports - so each one is named here rather than left
+    # to a global "any `.commit` anywhere" escape, which is what let `trees.coverage()`
+    # survive on an unrelated `report.coverage` in another package.
+    "triage": "read as `agents.triage` by `standard_graph`, which is handed the module",
+    "commit": "read as `agents.commit` by `standard_graph`, which is handed the module",
+    "early_exit": "read as `agents.early_exit` by `standard_graph`, same dispatch",
+    "on_exit": "read as `agents.on_exit` by `standard_graph`, same dispatch",
 }
 
 
@@ -53,7 +63,11 @@ def _module_key(path: Path) -> str:
     `src` is on `sys.path`, so a dotted name resolves differently per package. The
     stem is what both `from .trees import coverage` and `trees.coverage` carry.
     """
-    return path.stem
+    # A package is named by its directory, not by `__init__`. `from .web import html`
+    # names `web`, and keying that definition under `__init__` meant no file could be
+    # said to see it - so the import escape, now that it has to resolve, could not
+    # resolve a re-export out of a package.
+    return path.parent.name if path.stem == "__init__" else path.stem
 
 
 def _imported_names(tree: ast.AST) -> set[str]:
@@ -195,13 +209,18 @@ def test_every_definition_has_a_resolvable_reference():
 
     visible = {path: _visible_modules(tree) for path, tree in parsed.items()}
     referenced = {}
-    attributes: set[str] = set()
-    imported: set[str] = set()
+    # Per file, not pooled. These were two global sets - every attribute written
+    # anywhere, every name imported anywhere - under a docstring explaining that
+    # pooling is what the rewrite removed. `trees.coverage()` had no caller and was
+    # kept alive by `report.coverage` in test-smith's runner and by
+    # `from .locomo import coverage as _coverage` in hermes-home.
+    attributes_in: dict[Path, set[str]] = {}
+    imported_in: dict[Path, set[str]] = {}
     for path, tree in parsed.items():
         names, attrs = _referenced_names(tree)
         referenced[path] = names
-        attributes |= attrs
-        imported |= _imported_names(tree)
+        attributes_in[path] = attrs
+        imported_in[path] = _imported_names(tree)
     exported: set[str] = set()
     for tree in parsed.values():
         exported |= _exported(tree)
@@ -209,14 +228,23 @@ def test_every_definition_has_a_resolvable_reference():
     dead = []
     for qualified, where in sorted(defined.items()):
         module, _, name = qualified.partition(".")
-        if name in NAMED_INDIRECTLY or name in exported or name in attributes:
+        if name in NAMED_INDIRECTLY or name in exported:
             continue
-        if name in imported:
+
+        def reaches(path: Path, module: str = module, where: list[Path] = where) -> bool:
+            """Can this file see that definition's module at all?"""
+            return path in where or module in visible[path]
+
+        # An import of the name, from a file that can see the defining module.
+        if any(name in imported_in[path] and reaches(path) for path in parsed):
             continue
-        used = any(
-            name in referenced[path] and (path in where or module in visible[path])
-            for path in parsed
-        )
+        # An attribute, which cannot be resolved the way a bare name can: a product's
+        # `standard_graph(agents, ...)` reads `agents.commit` off a module it never
+        # imports. Still restricted to files that can see the module, so an unrelated
+        # `.coverage` on the far side of the repository no longer counts.
+        if any(name in attributes_in[path] and reaches(path) for path in parsed):
+            continue
+        used = any(name in referenced[path] and reaches(path) for path in parsed)
         if not used:
             dead.append(f"{where[0].relative_to(ROOT).as_posix()}: {name}")
 

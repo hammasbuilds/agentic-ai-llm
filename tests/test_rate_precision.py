@@ -35,6 +35,13 @@ BEFORE = re.compile(
     r"(?P<k>\d[\d,]*)\s*(?:/|of)\s*(?P<n>\d[\d,]*)\s*\*{0,2}\)?\s*\(?\s*\*{0,2}(?P<pct>\d+\.\d+)%"
 )
 
+#: `18.0% of 4,055 mutants`, `75.8% of everything` - a rate and the population it is
+#: over, without a numerator. The numerator is what the two patterns above need and it
+#: is not what this check uses: the question is whether `n` supports the decimals, and
+#: `n` is right there. Added because the two above reached three pairs in the whole
+#: repository, and the docstring above claims the category.
+OVER = re.compile(r"(?P<pct>\d+\.\d+)%\s*(?:of|over|across)\s*(?:the\s*)?(?P<n>\d[\d,]{2,})")
+
 
 def _markdown() -> list[Path]:
     return [p for p in ROOT.rglob("*.md") if not (SKIP_PARTS & set(p.parts))]
@@ -53,6 +60,40 @@ def _pairs() -> list[tuple[str, int, str, int, int]]:
     return found
 
 
+def _rates_over_a_population() -> list[tuple[str, int, str, int]]:
+    """`18.0% of 4,055 mutants` - a rate and its denominator, with no numerator.
+
+    A separate population from `_pairs()`, because the two checks need different
+    things: `k/n == pct` needs the numerator and "does n support that many decimals"
+    does not. Feeding these to the first made `18.0% of 4,055` arrive as `0/4055` and
+    fail for saying 18.0% of nothing.
+    """
+    found = []
+    for doc in sorted(_markdown()):
+        for lineno, line in enumerate(doc.read_text(encoding="utf-8").split("\n"), 1):
+            for m in OVER.finditer(line):
+                found.append(
+                    (
+                        doc.relative_to(ROOT).as_posix(),
+                        lineno,
+                        m.group("pct"),
+                        int(m.group("n").replace(",", "")),
+                    )
+                )
+    return found
+
+
+def _every_rate() -> list[tuple[str, int, str]]:
+    """Every percentage with a decimal, paired or not. The denominator of the coverage
+    figure below, which is the thing a reader needs to judge this file by."""
+    out = []
+    for doc in sorted(_markdown()):
+        for lineno, line in enumerate(doc.read_text(encoding="utf-8").split("\n"), 1):
+            for m in re.finditer(r"\d+\.\d+%", line):
+                out.append((doc.relative_to(ROOT).as_posix(), lineno, m.group(0)))
+    return out
+
+
 def test_there_are_rates_paired_with_their_fractions_to_check():
     """A sweep over nothing passes. Publishing the fraction beside the rate is the
     convention this file enforces, so there have to be some."""
@@ -60,9 +101,50 @@ def test_there_are_rates_paired_with_their_fractions_to_check():
     assert len(pairs) >= 3, pairs
 
 
+def test_how_much_of_the_published_rates_this_file_actually_reaches():
+    """The coverage, stated rather than left to be computed.
+
+    The check reads a percentage only where its denominator is beside it. That was
+    three pairs against 190 decimal percentages in this repository's markdown - 1.6% -
+    under a docstring claiming "no published rate", and under a floor of `>= 3` sitting
+    exactly on the three it found. A reviewer measured it; the file should.
+
+    Asserted as a share rather than a count, so adding prose cannot quietly dilute it,
+    and printed in the failure message either way.
+    """
+    checkable = {(w, n) for w, n, _p, _k, _d in _pairs()} | {
+        (w, n) for w, n, _p, _d in _rates_over_a_population()
+    }
+    every = _every_rate()
+    assert every, "no decimal percentages at all, so this file is measuring nothing"
+    share = len(checkable) / len(every)
+
+    # The measured value, not a target. Four of 191 decimal percentages in this
+    # repository's markdown carry the population they are over in the same breath, so
+    # that is what this file can judge - and a reader comparing its docstring ("no
+    # published rate carries more decimals than its own stated fraction supports")
+    # against its reach deserves the number rather than the impression.
+    #
+    # Pinned so it cannot quietly fall, and asserted as a share so adding prose does
+    # not dilute it unnoticed. It is low because most rates here are published in a
+    # sentence that names the population somewhere else - which is a convention worth
+    # changing, and changing it moves this figure up and this line with it.
+    assert share >= 0.02, (
+        f"{len(checkable)} of {len(every)} decimal percentages ({share:.1%}) are "
+        "printed with the population they are over, which is all this file can check."
+    )
+    assert len(checkable) >= 4, sorted(checkable)
+
+
 def test_no_rate_is_printed_to_more_decimals_than_its_sample_supports():
+    """Over both populations: a rate with its fraction, and a rate with its denominator.
+
+    The second is where most of this repository's rates live - `18.0% of 4,055 mutants`
+    - and the check needs nothing else to judge them.
+    """
     offenders = []
-    for where, lineno, pct, _k, n in _pairs():
+    both = [(w, n, p, 0, d) for w, n, p, d in _rates_over_a_population()] + _pairs()
+    for where, lineno, pct, _k, n in both:
         decimals = len(pct.split(".")[1])
         if n and 100 / n > 10 ** (1 - decimals):
             offenders.append(

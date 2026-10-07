@@ -324,7 +324,10 @@ def run(
 
         for i, mutant in enumerate(mutants, 1):
             target = workspace / mutant.path
-            original = target.read_text(encoding="utf-8")
+            # utf-8-sig, not utf-8: a file beginning with a BOM is a valid Python file -
+            # CPython reads and runs it - and reading it as plain utf-8 keeps the mark as a
+            # character, so `ast.parse` fails and the module is reported as a syntax error.
+            original = target.read_text(encoding="utf-8-sig")
             t0 = time.perf_counter()
             try:
                 target.write_text(mutant.source, encoding="utf-8")

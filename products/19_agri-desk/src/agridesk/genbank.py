@@ -12,7 +12,6 @@ sequence. Everything else in a GenBank record is skipped deliberately.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -112,13 +111,6 @@ def _sequence(lines: list[str]) -> str:
     for line in lines:
         letters.extend(part for part in line.split()[1:])
     return "".join(letters).upper()
-
-
-def parse(text: str) -> Iterator[Record]:
-    """Yield one Record per LOCUS block."""
-    for block in text.split("\nLOCUS")[1:] if text.startswith("LOCUS") else []:
-        yield _record("LOCUS" + block)
-    # The first block loses its marker in the split above, so handle it here.
 
 
 def read(path: str | Path) -> list[Record]:

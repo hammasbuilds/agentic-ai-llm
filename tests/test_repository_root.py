@@ -15,6 +15,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 
 #: Everything tracked directly at the root. Directories are listed by their first
@@ -38,6 +40,14 @@ ALLOWED_DIRECTORIES = {".github", "apps", "data", "products", "projects", "scrip
 
 
 def _tracked() -> list[str]:
+    """Every tracked file, or a skip when there is no git here.
+
+    A ZIP download of this repository is not a git checkout, and these five tests used
+    to FAIL on one - `fatal: not a git repository`, five red tests, in a suite a reader
+    is running to find out whether the repository works. Every other input this suite
+    needs that may be absent skips by name and says so; `scripts/test_all.py` states
+    that rule and this file did not follow it.
+    """
     done = subprocess.run(
         ["git", "ls-files"],
         cwd=str(ROOT),
@@ -45,7 +55,11 @@ def _tracked() -> list[str]:
         text=True,
         timeout=300,
     )
-    assert done.returncode == 0, done.stderr
+    if done.returncode != 0:
+        pytest.skip(
+            "not a git checkout, so the tracked-file list is unavailable: these five "
+            f"tests need `git ls-files` ({done.stderr.strip().splitlines()[:1]})"
+        )
     return [line.strip() for line in done.stdout.splitlines() if line.strip()]
 
 

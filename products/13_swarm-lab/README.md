@@ -34,9 +34,15 @@ already made false.
 | 13 | 520 | 480 | 92.3% | 40 |
 | 21 | 840 | 800 | **95.2%** | 40 |
 
-**Wasted work is exactly `1 - 1/N`.** Not approximately: exactly, at every N, because
-without coordination every agent does every piece of work. At twenty-one agents, 95% of
-everything the swarm does is a repeat of something another agent is already doing.
+**Wasted work is exactly `1 - 1/N`, and that is arithmetic rather than a result.**
+The uncoordinated topology has every agent process every entity by construction, so the
+duplicate count is `entities x (N-1)` whatever the run does — no data could come out
+otherwise, and `tests/test_real_sweep.py` asserting it is checking the simulator rather
+than measuring the world. It is in the table because it is the baseline the other two
+rows are read against: at twenty-one agents, 95% of everything an uncoordinated swarm
+does is a repeat, and that is what coordination has to buy back.
+
+The two findings below are measurements.
 
 **Conflicting writes saturate at two agents.** Every entity collects a conflicting write the
 moment there is more than one worker; going from 2 to 21 does not add conflicts, it makes

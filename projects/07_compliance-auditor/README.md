@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
   <img src="https://img.shields.io/badge/tests-45%20%2B%202%20skipped-success" alt="tests">
-  <img src="https://img.shields.io/badge/repos%20audited-78-orange" alt="repos">
+  <img src="https://img.shields.io/badge/repos%20audited-81-orange" alt="repos">
 </p>
 
 ---
@@ -18,37 +18,40 @@
 
 > *Every README has a "what it does NOT do" section — overclaiming wastes a reader's time.*
 
-Audited across every checkout in one folder — 78 of them, not a chosen subset — it
-holds in **14 of 76** — **18%**.
+Audited across every checkout in one folder — 81 of them, not a chosen subset — it
+holds in **17 of 79** — **22%**.
 
-Measured 2026-10-06 over a folder of live checkouts, so it is a snapshot: committing to any of them moves it. The shape of the finding has survived every re-run; the exact counts have not.
+Measured 2026-10-07 over a folder of live checkouts, so it is a snapshot: committing to
+any of them moves it, and the folder itself grows — it was 78 checkouts and 14 of 76 the
+day before. The shape of the finding is what survives a re-run: about a fifth of
+repositories say what they do not do, and four in five do not.
 
 ```
-  78 repositories  -  464/740 controls passed (63%)
+  81 repositories  -  485/770 controls passed (63%)
 
-  pass 464   fail 276   inconclusive 6   n/a 34
+  pass 485   fail 285   inconclusive 6   n/a 34
   Inconclusive and n/a are excluded from the rate, never counted as passes.
 
   BY CONTROL
-     13/76   17%  readme-problems
+     16/79   20%  readme-problems
                Every README has 'problems hit while building this'.
-     14/76   18%  readme-limits
+     17/79   22%  readme-limits
                Every README has a 'what it does NOT do' section.
-     21/76   28%  readme-io
+     21/79   27%  readme-io
                Every README states what goes in and what comes out.
-     23/64   36%  deps-used
+     24/67   36%  deps-used
                Every declared dependency is actually imported.
-     44/64   69%  imports-declared
+     43/67   64%  imports-declared
                Every third-party import is declared.
-     66/78   85%  licence
+     69/81   85%  licence
                Every repository has a LICENSE.
-     65/76   86%  no-junk
+     68/79   86%  no-junk
                No caches, venvs, logs or secrets are tracked.
-     68/74   92%  tests-exist
+     71/77   92%  tests-exist
                Every repository with source has tests.
-     74/78   95%  backed-up
+     77/81   95%  backed-up
                Every repository has a git remote.
-     76/78   97%  readme-exists
+     79/81   98%  readme-exists
                Every repository has a README of substance.
 
   LOWEST-SCORING REPOSITORIES
@@ -108,14 +111,14 @@ checkouts as the block above. The prose used to be written out by hand and had d
 three to five times low: "four repositories" where the audit finds 20, "fourteen" where
 it finds 41, and "ten of 37 have no remote" where it is four of 78.
 
-**20 repositories import packages they never declare** — code that works on this machine
+**24 repositories import packages they never declare** — code that works on this machine
 and fails on anyone else's. `agent-memory`, `agentic-ai-lab`, `code-llm-lab`,
 `doc-intelligence-api`, `harness-ablation`, `job-radar`, `machine-learning`,
 `mbpp-false-accepts` and twelve more. The pattern the original four were picked for is
 still the commonest one: Streamlit or a plotting library left behind by a deleted
 dashboard.
 
-**41 repositories declare dependencies nothing imports** — more than half of those with a
+**43 repositories declare dependencies nothing imports** — more than half of those with a
 `pyproject.toml` that declares anything. `uvicorn` left behind by a deleted server,
 `ruff` declared as a runtime dependency rather than a dev one, `accelerate` and
 `bitsandbytes` in `qlora-finetune-suite`.

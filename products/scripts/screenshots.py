@@ -18,6 +18,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from product_spec import spec_for  # noqa: E402
+
 SHOTS = ROOT / "docs" / "screenshots"
 
 PKGS = {
@@ -87,9 +91,12 @@ def main(dirname: str = "01_revenue-desk") -> int:
     from agentplatform import api
     from agentplatform.llm import Recorded
 
-    make_script = getattr(tg, "script", None) or (lambda _p: tg.SCRIPT)
-    payload = tg.payload()
-    rt = tg.runtime(Recorded(make_script(payload)), tg.sources())
+    # Same adapter as `capture.py` and `smoke_serve.py`. This read `tg.payload()`,
+    # so the documented `python scripts/screenshots.py 12_powerguard` could not work
+    # for any product but `01`.
+    spec = spec_for(tg)
+    payload = spec.payload()
+    rt = spec.runtime(Recorded(spec.script(payload)), spec.sources())
 
     # Give the console something real to show: one run paused on an approval and
     # one already finished.

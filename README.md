@@ -81,9 +81,9 @@ The columns these apps read are committed under
 [`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
 `data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
 guarantee by pointing both variables at an empty directory, and the suite gives the same
-result either way: **1,170 tests collected**. Measured 2026-10-07 on a fresh clone - the figure a
-reader reproduces - **1,076 pass and 94 skip**. On this machine, where the checkouts and the
-Hugging Face cache those suites read are present, it is 1,122 passing and 48 skipping:
+result either way: **1,204 tests collected**. Measured 2026-10-07 on a fresh clone - the figure a
+reader reproduces - **1,110 pass and 94 skip**. On this machine, where the checkouts and the
+Hugging Face cache those suites read are present, it is 1,156 passing and 48 skipping:
 the split moves because three suites read data that is not in the repository, and the
 collected total does not.
 
@@ -129,7 +129,7 @@ shipped beside it covered five of those rows.
   rewrite.
 - **The 3B already handles 75.8%** of everything either size can solve.
 - **Generated tests beat the benchmark's own** — 93.4% kill rate against 85.0% — but only
-  when written from the implementation. From the task description, just 16% even agree with
+  when written from the implementation. From the task description, just 16.0% even agree with
   the reference.
 - **Describing the reference code and reimplementing from that beats MBPP's own description
   by 32.5 points.** That is a leak, not better documentation — and 32.5 is an upper bound
@@ -247,7 +247,9 @@ duplicates** — a claim this README used to make about itself and which does no
 being checked. They share no module name beyond `__init__.py` and exactly one public symbol
 name, `create_app`, which is the FastAPI convention rather than shared code.
 [`apps/_platform`](apps/_platform) is the substrate the ten measurement apps run on: an async
-Ollama client that keeps one GPU at ~98% utilisation instead of 9%, a Redis generation cache
+Ollama client that keeps one GPU busy instead of idle between requests (measured once on
+this machine at ~98% against ~9%, by watching `nvidia-smi` - nothing in the repository
+produces that figure, and no test can), a Redis generation cache
 shared across apps, a Kafka progress bus and ten themes.
 [`products/platform`](products/platform) is the agent runtime: a graph interpreter, the
 seven-node blueprint, the approval gate, write authority, admission control and gated memory,

@@ -19,6 +19,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from product_spec import spec_for  # noqa: E402
+
 PRODUCTS = sorted(d for d in ROOT.iterdir() if d.is_dir() and d.name[0].isdigit())
 
 PKGS = {
@@ -68,9 +72,14 @@ def serve(product: Path) -> dict:
         from agentplatform import api
         from agentplatform.llm import Recorded
 
-        make_script = getattr(tg, "script", None) or (lambda _p: tg.SCRIPT)
-        payload = tg.payload()
-        rt = tg.runtime(Recorded(make_script(payload)), tg.sources())
+        # Through the shared adapter, which is what `capture.py` has used since
+        # nineteen products moved to a `StandardProductTests` subclass. This read
+        # `tg.payload()` directly, so it raised AttributeError on nineteen of twenty -
+        # after writing the error into `served.json`, the file this script exists to
+        # produce and the README points at.
+        spec = spec_for(tg)
+        payload = spec.payload()
+        rt = spec.runtime(Recorded(spec.script(payload)), spec.sources())
 
         port = free_port()
         config = uvicorn.Config(api.create_app(rt), host="127.0.0.1", port=port, log_level="error")
@@ -99,7 +108,11 @@ def serve(product: Path) -> dict:
                 events = client.get("/events").json()
 
             return {
-                "port": port,
+                # The port is NOT recorded. It is whatever the OS handed out, so
+                # writing it made this artefact differ on every run for a reason
+                # that says nothing about the product - and a committed file that
+                # cannot reproduce is one nobody can check against the command.
+                # `tests/test_product_scripts.py` compares the two now.
                 "console_ok": console.status_code == 200
                 and "agent console" in console.text
                 and "{{" not in console.text,
@@ -136,7 +149,7 @@ def main() -> int:
             bad += 0 if ok else 1
             mark = "ok " if ok else "BAD"
             print(
-                f"  {mark} {product.name:18} :{r['port']} {r['domain']:8} "
+                f"  {mark} {product.name:18} {r['domain']:8} "
                 f"console={r['console_ok']} intake={r['intake']} "
                 f"paused@{r['paused_at']} -> {r['final']} ({r['llm_calls']} calls)"
             )

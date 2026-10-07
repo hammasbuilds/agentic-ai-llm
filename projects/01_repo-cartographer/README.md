@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
   <img src="https://img.shields.io/badge/tests-53%20%2B%2013%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/median%20resolution-81%25-orange" alt="resolution">
-  <img src="https://img.shields.io/badge/pooled%20resolution-75%25-orange" alt="pooled">
+  <img src="https://img.shields.io/badge/pooled%20resolution-74%25-orange" alt="pooled">
 </p>
 
 ---
@@ -14,7 +14,7 @@
 ## Results
 
 **A plain `ast` walk binds 81% of a repository's internal calls to their definitions
-(median across 78 real checkouts, ~1,800 modules, ~350,000 lines) - and 75% when every
+(median across 81 real checkouts, ~1,900 modules, ~370,000 lines) - and 74% when every
 call site in all of them is pooled into one fraction. No embeddings, no model, no index.**
 
 The usual approach to "explain this codebase" is to embed every chunk and retrieve by
@@ -35,7 +35,42 @@ in this tool. Both are reported.
 $ cartographer map ~/code/rag-forge
 
 ==============================================================================
-  rag-forge  -  34 modules, 128 definitions, 2,071 lines
+  rag-forge  -  34 modules, 128 definitions, 2,037 lines
+==============================================================================
+
+  CALL RESOLUTION
+    133 of 159 repo-internal calls resolved  (84%)
+    624 call sites in total; the rest are builtins,
+    the standard library, or methods on third-party objects.
+
+  LOAD-BEARING MODULES  (PageRank over internal imports)
+    0.1609  ragforge.types
+              src/ragforge/types.py  -  46 lines, imported by 11
+    0.1295  ragforge.config
+              src/ragforge/config.py  -  52 lines, imported by 12
+    0.0431  ragforge.ingest.chunker
+              src/ragforge/ingest/chunker.py  -  126 lines, imported by 3
+
+  MOST-CALLED DEFINITIONS
+      13 callers  ragforge.config.get_settings  (src/ragforge/config.py:51)
+      10 callers  ragforge.store.get_store  (src/ragforge/store/__init__.py:12)
+       9 callers  ragforge.db.connection  (src/ragforge/db.py:37)
+       7 callers  ragforge.types.Chunk  (src/ragforge/types.py:6)
+       6 callers  ragforge.generate.citations.verify_quotes  (src/ragforge/generate/citations.py:55)
+       6 callers  ragforge.ingest.chunker.chunk_text  (src/ragforge/ingest/chunker.py:42)
+       6 callers  tests.test_store_sqlite._seed  (tests/test_store_sqlite.py:27)
+       5 callers  ragforge.eval.harness.run_eval.avg  (src/ragforge/eval/harness.py:80)
+
+  ENTRY POINTS  (public, nothing in the repo calls them)
+    ragforge.cli.status  (src/ragforge/cli.py:67)  - Check that every dependency this project needs is actually reachable.
+    ragforge.cli.ask  (src/ragforge/cli.py:25)  - Ask a question against the index.
+    ragforge.store.sqlite.SqliteStore.ensure_schema  (src/ragforge/store/sqlite.py:45)
+    ragforge.api.main.ask  (src/ragforge/api/main.py:57)
+    ragforge.store.postgres.PostgresStore.add_chunks  (src/ragforge/store/postgres.py:37)
+    ragforge.store.sqlite.SqliteStore.add_chunks  (src/ragforge/store/sqlite.py:92)
+    ragforge.llm.HuggingFaceBackend.complete  (src/ragforge/llm.py:92)
+    ragforge.store.sqlite.SqliteStore.sparse  (src/ragforge/store/sqlite.py:129)
+
 ==============================================================================
 
   CALL RESOLUTION
@@ -96,18 +131,26 @@ So the counts below are given as the order of magnitude they are stable at, and 
 measurement is the share. What a reader wants from this table is whether an AST resolver
 binds most of a repository's internal calls, and that answer has not moved.
 
+Measured 2026-10-07 over `D:/github`, a folder of live checkouts that is worked on
+daily and that grows. The right-hand column says how durable each row is, and it was
+wrong in three places before this measurement: it called the repository count "stable"
+(it was 78, it is 81), and the pooled rate and the all-call-site median "the
+measurement" (75% and 21%, now 74% and 20%). A count of checkouts in a folder somebody
+keeps adding to is not stable, and a rate pooled over a corpus that grew by three
+repositories moves a point like anything else.
+
 | | | |
 |---|---|---|
-| Repositories measured | 78 | stable |
-| Modules | ~1,800 | moves daily |
-| Lines | ~350,000 | moves daily |
-| **Median repo-call resolution** | **81%** | the measurement |
-| **Pooled over ~33,000 internal call sites** | **75%** | the measurement |
-| Median over *all* call sites, for contrast | 21% | the measurement |
-| At or above 90% | 18 of 78 | stable |
-| With fewer than 50 internal call sites | 9 of 78 | stable |
-| Parse failures | 1 | stable |
-| Checkouts holding no Python, skipped | 26–27 | moves |
+| Repositories measured | 81 | grows |
+| Modules | ~1,900 | moves daily |
+| Lines | ~370,000 | moves daily |
+| **Median repo-call resolution** | **81%** | low eighties across four months |
+| **Pooled over ~36,000 internal call sites** | **74%** | within a point or two |
+| Median over *all* call sites, for contrast | 20% | within a point or two |
+| At or above 90% | 18 of 81 | moves with the corpus |
+| With fewer than 50 internal call sites | 9 of 81 | moves with the corpus |
+| Parse failures | 1 | moves with the corpus |
+| Checkouts holding no Python, skipped | 28 | grows |
 
 The median and the pooled rate differ by six points, and the row `n` in the table above
 says why: the median weighs a repository with nine internal call sites the same as one

@@ -5,7 +5,11 @@
 **Written for: you, at this machine.** Which of these need a UI, which run on a local
 server, and what each one costs to start.
 
-Verified 2026-09-17. Every command below was run on this PC.
+Verified 2026-10-07. Every command below was run on this PC.
+
+The counts in the table below - "37 repos", "75 licence files" - describe a folder
+of live checkouts on this machine and move with it; the auditor reports 81 today. They
+are there to say what the UI is for, not as measurements.
 
 ---
 
@@ -108,7 +112,7 @@ profile is genuinely nicer than terminal output, and it is one dependency.
 # From the repository root. The directories are numbered, so a loop over bare
 # names fails on the first `cd` - which is what this block used to do, under a
 # line saying every command here was run on this PC.
-python scripts/test_all.py              # all 32 packages, one process each
+python scripts/test_all.py              # all 33 suites, one process each
 
 # Or the eleven tools alone:
 for d in projects/*/; do

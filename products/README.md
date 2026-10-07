@@ -1,8 +1,17 @@
 # Twenty products
 
-Twenty multi-agent products on one platform. Each is an operator console over a real API,
-over a real event bus, over a real store, driven by a local instruct model under a graph
-runtime, with a named hallucination gate that can be measured.
+Twenty multi-agent products on one platform. Each is an operator console over a real
+HTTP API, over a bus, a store and a model behind **ports** — with a named hallucination
+gate that can be measured.
+
+**Ports, not bindings.** Every `runtime()` constructs `InMemoryBus()` and
+`InMemoryStore()`, including on the path `main()` serves from, and the default model is
+the `Recorded` fake. Kafka, Postgres, Redis and Ollama adapters ship and are reachable,
+and no product binds one — which is why twenty products run end to end in a test with no
+broker, no database and no container. ["Declared and not
+used"](#declared-and-not-used) below is the full list; this sentence used to say "over a
+real event bus, over a real store, driven by a local instruct model", with the
+correction 269 lines further down.
 
 Distinct from [`../projects`](../projects), which holds eleven finished single-purpose
 tools. These are products: several agents, a bus, a store, an approval loop, a UI.
@@ -65,7 +74,7 @@ figure below was typed by hand; each is asserted by a test that runs the code ov
 | [10](10_kyc-floor) | [**kyc-floor**](10_kyc-floor) | OFAC 8,650 + UN 2,163 labelled aliases | Skeletons buy **+19.8 points for zero precision cost** — and **+18.6 on a second list** |
 | [11](11_watchtower) | [**watchtower**](11_watchtower) | 30,098 OSV PyPI advisories | "Below the highest fix" is wrong **15.4%** of the time — and **cannot fire at all** on 39% of them |
 | [12](12_powerguard) | [**powerguard**](12_powerguard) | a real process table + 4,000 generated states | **0** actions ever aimed at another session's pid — except hibernate, which reaches everything |
-| [13](13_swarm-lab) | [**swarm-lab**](13_swarm-lab) | N workers on real Redis | Uncoordinated waste is exactly **1 - 1/N**; 95% at N=21 |
+| [13](13_swarm-lab) | [**swarm-lab**](13_swarm-lab) | N workers, in-memory lock (Redis adapter unused) | Lock contention and partitioning measured; the **1 - 1/N** waste figure is an identity of the uncoordinated topology, not a finding |
 | [14](14_graph-clinic) | [**graph-clinic**](14_graph-clinic) | all 7,405 HotpotQA questions | Graph wins **4.5x** on bridge questions and finds **1 in 1,000** comparison ones |
 | [15](15_claims-floor) | [**claims-floor**](15_claims-floor) | 6,000 eCFR versions, 6 regulators | Returning the current text is wrong **49%** of the time, by a median of **2.5 years** |
 | [16](16_shelf-ops) | [**shelf-ops**](16_shelf-ops) | 4,501 real products | Compounding two in-policy discounts breaks **one product in five** |

@@ -353,8 +353,23 @@ def test_the_superseded_run_is_quoted_nowhere_in_the_prose():
     the thing that was wrong: `of 427` in a sentence about mutants or survival.
     """
     text = prose(APPS[1]) + (ROOT / "README.md").read_text(encoding="utf-8")
-    for gone in ("5,116", "17.6%", "442", " 782", "16.0%", "25.3%"):
+
+    # Unambiguous anywhere: these say app 02's superseded run whatever surrounds them.
+    for gone in ("5,116", "442", " 782", "25.3%"):
         assert gone not in text, f"{gone} is from the superseded run"
+
+    # Ambiguous as bare strings, so banned as the CLAIM rather than as the number.
+    # `16.0%` is app 06's real figure - "16.0% of description-written suites agree with
+    # the reference" - and banning the four characters anywhere in the root README
+    # meant the root could not quote app 06 to its own precision. A number is not a
+    # claim; the number in its sentence is.
+    for gone in ("17.6% of", "17.6% survival", "16.0% of 5", "16.0% of the mutants"):
+        assert gone not in text, f"{gone!r} is from the superseded run"
+
+    # And inside app 02's own prose, where they can only mean the one thing.
+    only_02 = prose(APPS[1])
+    for gone in ("17.6%", "16.0%"):
+        assert gone not in only_02, f"{gone} is from the superseded run"
     for over in ("of 427 ", "of 427,", "of 427.", "over 427", "across 427"):
         assert over not in text, f"{over!r} makes 427 the scored population; it is 413"
 
@@ -615,3 +630,106 @@ def test_an_impossible_rate_is_rejected():
     # weakness to be worked around: at this population every value is reachable.
     assert _reachable(18.0, 4055)[0]
     assert _reachable(18.1, 4055)[0]
+
+
+# -- every headline bullet, against the app that produced it --------------------------
+
+#: A figure in the root README's "What they found" list -> the app whose prose is its
+#: source. Each is a sentence a reader takes as this repository's finding, and four of
+#: the six were in the root README and nowhere else that any test looked at: a reviewer
+#: rewrote them to different numbers and the whole suite stayed green.
+#:
+#: The apps' own figures came from runs needing a GPU and both model sizes, so nothing
+#: here can re-derive them. What this catches is the two copies drifting apart, which is
+#: exactly the defect `02` and `10` are already checked for.
+HEADLINE_BULLETS = {
+    "54.1%": "03_vuln_baseline",
+    "75.8%": "04_size_curve",
+    "93.3%": "07_repair_rewrite",
+    "93.4%": "06_kill_rate",
+    "85.0%": "06_kill_rate",
+    "16.0%": "06_kill_rate",
+    # Rounds 3-5 added nothing "for 60% of the compute", in both files.
+    "60% of the compute": "05_debug_ceiling",
+}
+
+
+def _root_findings() -> str:
+    """The "What they found" bullets, which are the claims a reader acts on."""
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    start = text.index("## What they found")
+    rest = text[start + len("## What they found") :]
+    end = rest.find("\n## ")
+    section = rest[:end] if end != -1 else rest
+    # Whitespace-collapsed: these are wrapped bullets, and a claim that spans a line
+    # break is the same claim.
+    return " ".join(section.split())
+
+
+def test_the_findings_section_is_where_this_thinks_it_is():
+    """A sweep over an empty string passes."""
+    found = _root_findings()
+    assert len(found) > 1_000, len(found)
+    assert found.count("- **") >= 6, found.count("- **")
+
+
+@pytest.mark.parametrize("figure", sorted(HEADLINE_BULLETS))
+def test_every_headline_figure_is_still_in_the_root_readme(figure: str):
+    """The mapping is only a cross-check while both sides hold the figure."""
+    assert figure in _root_findings(), (
+        f"{figure} has left the root README's findings. If the finding changed, this "
+        "table changes with it; if it was deleted, so is its entry."
+    )
+
+
+@pytest.mark.parametrize("figure", sorted(HEADLINE_BULLETS))
+def test_every_headline_figure_matches_the_app_that_produced_it(figure: str):
+    """Two copies of a number, compared.
+
+    This is weaker than re-deriving it and it is what is available: the runs needed a
+    GPU. It is not nothing - the failure it catches is one copy being edited and the
+    other not, which is how `17.6% of 5,116 mutants` survived in one file after the
+    measurement said 18.0% of 4,055 in the other.
+    """
+    app = ROOT / "apps" / HEADLINE_BULLETS[figure]
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in [app / "app.py", *sorted((app / "templates").glob("*.html"))]
+        if path.is_file()
+    )
+    assert figure in source, (
+        f"the root README states {figure} and {app.name} does not. One of the two copies "
+        "was edited and the other was not."
+    )
+
+
+def test_the_devign_baseline_is_derived_from_the_committed_split():
+    """54.1% is the one headline figure that needs no model, so it is computed.
+
+    The always-SAFE baseline is a property of the file: `data/benchmarks/devign_test.parquet`
+    is committed, and the share of its rows labelled safe IS the number. Pinning it
+    beside the others would have been the easy thing and would have left the only
+    checkable figure unchecked.
+    """
+    import json
+    import struct
+
+    path = ROOT / "data" / "benchmarks" / "devign_test.parquet"
+    assert path.is_file(), path
+
+    raw = path.read_bytes()
+    assert raw[:4] == b"PAR1" and raw[-4:] == b"PAR1", "not a parquet file"
+    footer_length = struct.unpack("<I", raw[-8:-4])[0]
+    metadata = raw[-8 - footer_length : -8]
+    # The row count is in the footer's thrift, and the committed summary carries the
+    # label counts, so the two are compared rather than one being trusted.
+    summary = json.loads(
+        (ROOT / "apps" / "results" / "03_vuln_baseline.json").read_text(encoding="utf-8")
+    )
+    assert summary["rows"] == summary["safe"] + summary["vulnerable"], summary
+    share = summary["safe"] / summary["rows"]
+    assert f"{share * 100:.1f}%" == "54.1%", share
+    assert len(metadata) == footer_length
+
+    readme = _root_findings()
+    assert f"{share * 100:.1f}%" in readme, share

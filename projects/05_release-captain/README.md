@@ -12,7 +12,7 @@
 
 ## Results
 
-**Across 75 repositories with history, the commit that changed the most lines changed
+**Across 78 repositories with history, the commit that changed the most lines changed
 215,924 of them across 240 files. The commit that reached the most files changed 510
 lines across 1,809. Ranked by lines the first is 423 times the second; ranked by breadth
 the second is 8 times the first. They are opposite kinds of risk and every single-number
@@ -21,7 +21,7 @@ metric ranks one of them wrongly.**
 ```
 $ captain extremes <folder of checkouts>
 
-75 repositories with history under D:\github
+78 repositories with history under D:\github
 
   most lines   215,924 lines     240 files  agentic-ai-lab/3f0bcd6a  products: twenty multi-agent products, each
   most files       510 lines   1,809 files  visual-analytics/58e644f0  embedding-atlas: how far apart the translati

@@ -1,6 +1,5 @@
 {
   "01_revenue-desk": {
-    "port": 51831,
     "console_ok": true,
     "domain": "crm",
     "topics": 5,
@@ -13,7 +12,6 @@
     "events": 2
   },
   "02_ward-sync": {
-    "port": 51837,
     "console_ok": true,
     "domain": "ward",
     "topics": 5,
@@ -26,7 +24,6 @@
     "events": 2
   },
   "03_one-desk": {
-    "port": 51841,
     "console_ok": true,
     "domain": "social",
     "topics": 5,
@@ -39,7 +36,6 @@
     "events": 2
   },
   "04_ledger-brain": {
-    "port": 51845,
     "console_ok": true,
     "domain": "fin",
     "topics": 5,
@@ -52,7 +48,6 @@
     "events": 2
   },
   "05_comms-desk": {
-    "port": 51850,
     "console_ok": true,
     "domain": "comms",
     "topics": 5,
@@ -65,7 +60,6 @@
     "events": 2
   },
   "06_oncall-mate": {
-    "port": 51854,
     "console_ok": true,
     "domain": "ops",
     "topics": 5,
@@ -78,7 +72,6 @@
     "events": 2
   },
   "07_hire-desk": {
-    "port": 51858,
     "console_ok": true,
     "domain": "hire",
     "topics": 5,
@@ -91,7 +84,6 @@
     "events": 2
   },
   "08_bid-desk": {
-    "port": 51862,
     "console_ok": true,
     "domain": "bid",
     "topics": 5,
@@ -104,7 +96,6 @@
     "events": 2
   },
   "09_hermes-home": {
-    "port": 51866,
     "console_ok": true,
     "domain": "home",
     "topics": 5,
@@ -117,7 +108,6 @@
     "events": 2
   },
   "10_kyc-floor": {
-    "port": 51872,
     "console_ok": true,
     "domain": "kyc",
     "topics": 5,
@@ -130,7 +120,6 @@
     "events": 2
   },
   "11_watchtower": {
-    "port": 51876,
     "console_ok": true,
     "domain": "sec",
     "topics": 5,
@@ -143,7 +132,6 @@
     "events": 2
   },
   "12_powerguard": {
-    "port": 51880,
     "console_ok": true,
     "domain": "power",
     "topics": 5,
@@ -156,7 +144,6 @@
     "events": 2
   },
   "13_swarm-lab": {
-    "port": 51887,
     "console_ok": true,
     "domain": "swarm",
     "topics": 5,
@@ -169,7 +156,6 @@
     "events": 2
   },
   "14_graph-clinic": {
-    "port": 51892,
     "console_ok": true,
     "domain": "graph",
     "topics": 5,
@@ -182,7 +168,6 @@
     "events": 2
   },
   "15_claims-floor": {
-    "port": 51896,
     "console_ok": true,
     "domain": "claims",
     "topics": 5,
@@ -195,7 +180,6 @@
     "events": 2
   },
   "16_shelf-ops": {
-    "port": 51900,
     "console_ok": true,
     "domain": "shelf",
     "topics": 5,
@@ -208,7 +192,6 @@
     "events": 2
   },
   "17_fleet-desk": {
-    "port": 51904,
     "console_ok": true,
     "domain": "fleet",
     "topics": 5,
@@ -221,7 +204,6 @@
     "events": 2
   },
   "18_campus-ops": {
-    "port": 51909,
     "console_ok": true,
     "domain": "campus",
     "topics": 5,
@@ -234,7 +216,6 @@
     "events": 2
   },
   "19_agri-desk": {
-    "port": 51914,
     "console_ok": true,
     "domain": "agri",
     "topics": 5,
@@ -247,7 +228,6 @@
     "events": 2
   },
   "20_driftwatch": {
-    "port": 51918,
     "console_ok": true,
     "domain": "drift",
     "topics": 5,

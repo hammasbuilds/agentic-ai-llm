@@ -166,7 +166,10 @@ def review_diff(repo: Path, ref: str = "HEAD~1") -> Review:
         if not path.is_file():
             continue  # deleted in the working tree
         try:
-            source = path.read_text(encoding="utf-8", errors="replace")
+            # utf-8-sig, not utf-8: a file beginning with a BOM is a valid Python file -
+            # CPython reads and runs it - and reading it as plain utf-8 keeps the mark as a
+            # character, so `ast.parse` fails and the module is reported as a syntax error.
+            source = path.read_text(encoding="utf-8-sig", errors="replace")
         except OSError:
             continue
         file_review = review_source(rel, source, lines)

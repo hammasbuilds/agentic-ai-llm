@@ -347,7 +347,13 @@ def parse_module(path: Path, root: Path, internal_prefixes: frozenset[str]) -> P
     module = module_name_for(path, root)
     rel = path.relative_to(root).as_posix()
     try:
-        source = path.read_text(encoding="utf-8")
+        # utf-8-sig, not utf-8: a file beginning with a BOM is a valid Python file -
+        # CPython reads and runs it - and reading it as plain utf-8 keeps the mark as a
+        # character, so `ast.parse` fails and the module is reported as a syntax error.
+        # Worse than a wrong message here: every call INTO that module counts as
+        # unresolved and its definitions vanish, so a BOM lowers this project's
+        # headline resolution rate without appearing anywhere as a cause.
+        source = path.read_text(encoding="utf-8-sig")
     except (UnicodeDecodeError, OSError) as exc:
         return ParsedModule(module=module, path=rel, parse_error=f"unreadable: {exc}")
 

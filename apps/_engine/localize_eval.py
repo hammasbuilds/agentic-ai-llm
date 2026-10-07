@@ -62,6 +62,7 @@ from apps._engine.swebench_data import Instance, load  # noqa: E402
 from apps._engine.trees import (  # noqa: E402
     cached_repos,
     commit_listings,
+    coverage,
     listing_for,
     source_files,
 )
@@ -178,6 +179,10 @@ def run(
         "scored": len(scored),
         "no_cached_listing": len(no_listing),
         "gold_file_not_in_listing": len(gold_absent),
+        # The approximation's cost, over the instances that were scored. Computed
+        # here rather than inferred from the two counts above: an instance can be
+        # missing a listing and have a gold file that would not have been in it.
+        "listing_coverage": coverage(instances, repos),
         "per_commit_listings_used": sum(
             1 for i in scored if (i.repo, i.base_commit[:12]) in at_commit
         ),
@@ -298,7 +303,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
 
-    summary = run(args.limit, embed=args.embed, model_arms=args.model_arms, quiet=args.quiet)
+    try:
+        summary = run(args.limit, embed=args.embed, model_arms=args.model_arms, quiet=args.quiet)
+    except RuntimeError as exc:
+        # One line and exit 2, like every CLI in `projects/`. The lexical arm needs
+        # nothing but the committed data; `--embed` and `--model-arms` need a model, and
+        # a model that is not up is the caller's situation rather than a bug - it came
+        # back as a full traceback from the repository's flagship reproducible command.
+        print(f"{exc}", file=sys.stderr)
+        return 2
     print_report(summary["recall"], KS)
 
     population = summary["population"]
@@ -308,6 +321,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"    no cached listing             {population['no_cached_listing']}")
     print(f"    gold file not in the listing  {population['gold_file_not_in_listing']}")
     print(f"    scored from a per-commit listing  {population['per_commit_listings_used']}")
+    # What the one-tree-per-repository approximation costs, which is the ceiling every
+    # rate above is measured against. `trees.py`'s overview argues from this figure and
+    # nothing computed it: the two symptoms were printed - instances with no listing,
+    # instances whose gold file is absent from one - without the number they come to.
+    reach = population["listing_coverage"]
+    if reach["rate"] is None:
+        print(f"    listing coverage              not measured ({reach['unlistable']} unlistable)")
+    else:
+        print(
+            f"    listing coverage              {reach['covered']}/{reach['total']} "
+            f"({reach['rate']:.1%}) - the ceiling every rate above is measured against"
+        )
     if population["scored"] != population["instances_loaded"]:
         print("    Every rate above is over `scored`, never over `instances loaded`.")
 
