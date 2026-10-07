@@ -15,9 +15,21 @@ provably wrong. 326 of the 971 usable problems accept at least one. The hand-ver
 "sanitized" split is no better - 16.5% of 1,553 - because reviewing an assert cannot add the
 fourth assert that would pin down a boundary.
 
-Every rate here is over the problems whose reference passes its own tests: 971 of MBPP's 972
-and all 413 of the sanitized split. One reference does not, and a mutant of a solution that
-is already failing says nothing about the suite.
+Every rate here is over the problems whose reference passes its own tests and whose tests
+name a function to run it against: 971 of MBPP's 974 rows and 413 of the sanitized split's
+427. Three numbers, not one, and they were being published as one:
+
+  * 974 and 427 are what the committed slices hold;
+  * 972 and 413 are what `load_mbpp` can use - it skips a row whose tests never call a
+    function by name, because there is then nothing to run the reference against. Two
+    rows and fourteen rows, named in `data/benchmarks/README.md`;
+  * 971 is the full split's usable rows minus the one whose reference fails its own
+    tests, and a mutant of a solution that is already failing says nothing about the
+    suite.
+
+The denominator every rate below is over is the last of those. It used to be written as
+"971 of MBPP's 972 and all 413 of the sanitized split", which named one exclusion and
+inherited sixteen.
 """
 
 from __future__ import annotations
@@ -159,7 +171,8 @@ problem: <b>326 of 971 (33.6%)</b> accept at least one survivor.</p>
 comparison mutations (<code>&lt;</code> to <code>&lt;=</code>) 25.9%, against 6.8% for a
 swapped arithmetic operator and 4.1% for a negated condition. A swapped operator breaks the
 answer loudly enough for three examples to notice; a boundary moved by one does not.</p>
-<p>The sanitized split — 413 problems the authors hand-verified — scores 16.5% of 1,553
+<p>The sanitized split — 427 problems the authors hand-verified, 413 of them with tests
+that name a function to run — scores 16.5% of 1,553
 mutants, and 117 of
 them (28.3%) still accept a survivor. Verification fixed the reference solutions and left
 the false accepts alone, because the limit is the number of asserts, not their quality.</p>
@@ -187,7 +200,8 @@ app = create_app(
                 ("mbpp", "the whole benchmark"),
                 ("mbpp-sanitized", "the hand-verified subset"),
             ],
-            hint="the sanitized split is the 427 problems the authors re-checked by hand",
+            hint="the sanitized split is the 427 problems the authors re-checked by hand; "
+            "413 of them carry a test that names a function, which is what gets scored",
         ),
         Field(
             "per_problem",

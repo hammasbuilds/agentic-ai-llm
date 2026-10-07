@@ -226,9 +226,18 @@ def test_sweep_counts_verdicts_and_the_ones_that_measured_nothing(tmp_path, caps
     assert "source changes without tests" in out
 
 
-def test_sweep_over_a_folder_of_no_repositories_says_so(tmp_path, capsys):
+def test_sweep_over_a_folder_of_no_repositories_is_refused(tmp_path, capsys):
+    """This asserted the table, and the table was the problem.
+
+    It checked for "measured 0" and "0 of the 0 clean GO verdict(s) rest on a check
+    that had nothing to look at" - a sentence that is true of every folder on earth
+    and says nothing about this one - and exited 0. A distribution over no
+    repositories is not a distribution, and `apps/_platform/cache.py` states the rule
+    the fix follows: a measurement nobody could take has no rate, and printing zero is
+    a different claim from having none.
+    """
     (tmp_path / "not-a-repo").mkdir()
-    assert sweep(tmp_path) == 0
-    out = capsys.readouterr().out
-    assert "measured                        0" in out
-    assert "0 of the 0 clean GO verdict(s)" in out
+    assert sweep(tmp_path) == 2
+    captured = capsys.readouterr()
+    assert "nothing to sweep" in captured.err
+    assert "clean GO verdict" not in captured.out, captured.out

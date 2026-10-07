@@ -10,6 +10,28 @@ from pathlib import Path
 
 from .templates import extract, sweep
 
+#: Byte-order marks, longest first so UTF-32 is not read as UTF-16. A UTF-16 export
+#: is text that is full of NUL bytes, and the refusal below used to turn one away with
+#: the words "No log file contains one" - which a log exported by a Windows tool
+#: falsifies. A mark is a statement about the encoding, so the honest rule is: decode
+#: what declares itself, refuse what has NULs and no mark.
+BOM_ENCODINGS = (
+    (b"\xff\xfe\x00\x00", "utf-32-le"),
+    (b"\x00\x00\xfe\xff", "utf-32-be"),
+    (b"\xff\xfe", "utf-16-le"),
+    (b"\xfe\xff", "utf-16-be"),
+    (b"\xef\xbb\xbf", "utf-8-sig"),
+)
+
+
+def declared_encoding(head: bytes) -> str | None:
+    """The encoding a byte-order mark declares, or None if there is no mark."""
+    for mark, encoding in BOM_ENCODINGS:
+        if head.startswith(mark):
+            return encoding
+    return None
+
+
 #: How much of a file to look at before deciding it is not text. A NUL in the first
 #: block is what every common binary format has and no log file has.
 BINARY_SNIFF = 65_536
@@ -30,9 +52,21 @@ def _is_text(path: Path) -> bool:
     """
     try:
         with path.open("rb") as handle:
-            return b"\x00" not in handle.read(BINARY_SNIFF)
+            head = handle.read(BINARY_SNIFF)
     except OSError:
         return False
+    # A byte-order mark says the file is UTF-16 or UTF-32, which is text full of NUL
+    # bytes. The check used to say "No log file contains one", which an exported log
+    # from a Windows tool falsifies.
+    return declared_encoding(head) is not None or b"\x00" not in head
+
+
+def _read_lines(path: Path) -> list[str]:
+    """One log's lines, decoded as it declares itself or as utf-8 with replacements."""
+    with path.open("rb") as handle:
+        declared = declared_encoding(handle.read(4))
+    encoding = declared or "utf-8"
+    return path.read_text(encoding=encoding, errors="replace").splitlines()
 
 
 def _read(paths: list[str]) -> list[str]:
@@ -54,16 +88,17 @@ def _read(paths: list[str]) -> list[str]:
                 if not _is_text(f):
                     print(f"not a text log, skipped: {f.name}", file=sys.stderr)
                     continue
-                lines += f.read_text(encoding="utf-8", errors="replace").splitlines()
+                lines += _read_lines(f)
         elif path.is_file():
             if not _is_text(path):
                 print(
-                    f"{path.name} holds a NUL byte, so it is not a text log. "
-                    "No log file contains one; most binary formats do.",
+                    f"{path.name} holds a NUL byte and no byte-order mark, so it is "
+                    "not a text log. A UTF-16 or UTF-32 log declares itself with a "
+                    "mark; most binary formats do not.",
                     file=sys.stderr,
                 )
                 continue
-            lines += path.read_text(encoding="utf-8", errors="replace").splitlines()
+            lines += _read_lines(path)
         else:
             print(f"no such path: {path}", file=sys.stderr)
     return lines

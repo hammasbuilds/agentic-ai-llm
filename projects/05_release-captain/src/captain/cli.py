@@ -170,6 +170,18 @@ def _sweep_command(args: argparse.Namespace) -> int:
             blocked_by[check.name] = blocked_by.get(check.name, 0) + 1
 
     total = sum(len(v) for v in verdicts.values())
+    # A distribution over no repositories is not a distribution. This printed the
+    # whole table with every row at 0 and "0 of the 0 clean GO verdict(s) rest on a
+    # check that had nothing to look at" - a sentence that is true of any folder and
+    # says nothing about this one. `apps/_platform/cache.py` states the rule: a
+    # measurement nobody could take has no rate, and printing zero is a different
+    # claim from having none.
+    if not total:
+        where = (
+            "no git repositories" if not skipped else f"{skipped} checkout(s) with no commits"
+        )
+        print(f"nothing to sweep: {where} under {parent}", file=sys.stderr)
+        return 2
     print(f"{'Verdict':20s} {'Repositories':>12s}")
     print("-" * 34)
     for name, repos in verdicts.items():

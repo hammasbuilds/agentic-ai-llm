@@ -219,6 +219,28 @@ class NotDelimitedTextError(ValueError):
     """
 
 
+#: Byte-order marks, longest first so UTF-32 is not read as UTF-16. Excel's "Unicode
+#: Text (*.txt)" export is UTF-16LE and is one of the commonest CSV-ish files there is;
+#: every one of them holds NUL bytes, so the sniff below refused it with the words "No
+#: CSV contains one", which that file falsifies. A BOM says what the encoding is, so
+#: the honest rule is: decode what declares itself, refuse what has NULs and no BOM.
+BOM_ENCODINGS = (
+    (b"\xff\xfe\x00\x00", "utf-32-le"),
+    (b"\x00\x00\xfe\xff", "utf-32-be"),
+    (b"\xff\xfe", "utf-16-le"),
+    (b"\xfe\xff", "utf-16-be"),
+    (b"\xef\xbb\xbf", "utf-8-sig"),
+)
+
+
+def declared_encoding(head: bytes) -> str | None:
+    """The encoding a byte-order mark declares, or None if there is no mark."""
+    for mark, encoding in BOM_ENCODINGS:
+        if head.startswith(mark):
+            return encoding
+    return None
+
+
 #: How much of the file to look at before deciding it is not text. A NUL in a header
 #: is in the first few bytes; one further in belongs to a binary payload, and reading
 #: the whole of a large file to find it is not worth the time.
@@ -236,19 +258,28 @@ def _read(path: Path, limit: int | None) -> tuple[list[str], list[list[str]], st
     """
     with path.open("rb") as handle:
         head = handle.read(BINARY_SNIFF)
-    if b"\x00" in head:
+    declared = declared_encoding(head)
+    if declared is None and b"\x00" in head:
         where = "in its header" if b"\x00" in head.split(b"\n", 1)[0] else "in its contents"
         raise NotDelimitedTextError(
-            f"{path.name} holds a NUL byte {where}, so it is not delimited text. "
-            "No CSV contains one; most binary formats do."
+            f"{path.name} holds a NUL byte {where} and no byte-order mark, so it is "
+            "not delimited text. A UTF-16 or UTF-32 export declares itself with a "
+            "mark; most binary formats do not."
         )
 
-    encoding = "utf-8"
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        encoding = "latin-1"
-        text = path.read_text(encoding="latin-1")
+    if declared is not None:
+        # A mark is a statement about the encoding, so take it. Excel's "Unicode Text"
+        # export is UTF-16LE: full of NUL bytes and a perfectly ordinary CSV, which
+        # the refusal above used to turn away with "No CSV contains one".
+        encoding = declared
+        text = path.read_text(encoding=declared)
+    else:
+        encoding = "utf-8"
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            encoding = "latin-1"
+            text = path.read_text(encoding="latin-1")
 
     delimiter = _sniff(text[:8192])
     reader = csv.reader(text.splitlines(), delimiter=delimiter)

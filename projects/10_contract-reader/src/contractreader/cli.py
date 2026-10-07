@@ -72,6 +72,28 @@ def _read_all(root: Path) -> list[Reading]:
     return readings
 
 
+#: Byte-order marks, longest first so UTF-32 is not read as UTF-16. A UTF-16 export
+#: is text that is full of NUL bytes, and the refusal below used to turn one away with
+#: the words "No licence contains one" - which a licence saved by a Windows editor
+#: falsifies. A mark is a statement about the encoding, so the honest rule is: decode
+#: what declares itself, refuse what has NULs and no mark.
+BOM_ENCODINGS = (
+    (b"\xff\xfe\x00\x00", "utf-32-le"),
+    (b"\x00\x00\xfe\xff", "utf-32-be"),
+    (b"\xff\xfe", "utf-16-le"),
+    (b"\xfe\xff", "utf-16-be"),
+    (b"\xef\xbb\xbf", "utf-8-sig"),
+)
+
+
+def declared_encoding(head: bytes) -> str | None:
+    """The encoding a byte-order mark declares, or None if there is no mark."""
+    for mark, encoding in BOM_ENCODINGS:
+        if head.startswith(mark):
+            return encoding
+    return None
+
+
 #: How much of a file to look at before deciding it is not text. A NUL in the first
 #: block is what every common binary format has and no licence has.
 BINARY_SNIFF = 65_536
@@ -99,10 +121,11 @@ def _not_a_licence(path: Path) -> str | None:
         return f"cannot read {path.name}: {exc.strerror or exc}"
     if not head:
         return f"{path.name} is empty: there is no licence text in it"
-    if b"\x00" in head:
+    if declared_encoding(head) is None and b"\x00" in head:
         return (
-            f"{path.name} holds a NUL byte, so it is not text. No licence contains "
-            "one; most binary formats do."
+            f"{path.name} holds a NUL byte and no byte-order mark, so it is not text. "
+            "A UTF-16 or UTF-32 licence declares itself with a mark; most binary "
+            "formats do not."
         )
     return None
 
@@ -113,7 +136,9 @@ def _read_command(args: argparse.Namespace) -> int:
     if refusal:
         print(refusal, file=sys.stderr)
         return 2
-    reading = read(str(path), path.read_text(encoding="utf-8", errors="replace"))
+    with path.open("rb") as handle:
+        declared = declared_encoding(handle.read(4))
+    reading = read(str(path), path.read_text(encoding=declared or "utf-8", errors="replace"))
 
     # A file this reader recognised nothing in is not a licence it read. Printing an
     # empty obligations table under "family: unknown" and exiting 0 made a `.csv`

@@ -154,13 +154,19 @@ def test_the_per_commit_repair_makes_gold_files_findable_on_a_fixed_denominator(
 
 @needs_data
 def test_bm25_reproduces_the_headline_the_root_readme_states():
-    """38 of 51 when the issue quotes the path, 13 of 153 when it does not.
+    """38 of 51 when the issue quotes the path, 13 of 154 when it does not.
+
+    This docstring said 153, which is the figure the test below it exists to reject -
+    the denominator that drops the instance whose gold file is absent from its own
+    repository listing. Nothing retrieves a file that is not there, so excluding it
+    flatters every retriever equally and by an amount nobody can see.
 
     Pinned as fractions, not as rates. The README quoted `74.5%` on 51 instances, where
     one instance is two percentage points, so the decimal place was a digit the sample
-    could not support - and the same headline appeared elsewhere as `8.4%`, which is
-    13/153 rounded the wrong way. A fraction cannot be rounded wrongly, and it is the
-    form the tier table now prints.
+    could not support - and the same headline appeared elsewhere as `8.4%`, which was
+    then defended as "13/153 rounded the wrong way", resolving a rounding complaint by
+    adopting the flattering denominator. A fraction cannot be rounded wrongly, and it
+    is the form the tier table now prints.
     """
     out = le.run()
     tiers = out["recall"]["bm25"]["by_tier"]
@@ -173,7 +179,14 @@ def test_bm25_reproduces_the_headline_the_root_readme_states():
     # The four tiers are the whole scored population, so none of them is a subset
     # quietly standing in for the rest.
     assert sum(t["n"] for t in tiers.values()) == 300
-    assert tiers["full_path"]["recall@10"] > tiers["not_mentioned"]["recall@10"] * 8
+    # The gap, as the two fractions rather than as a multiple of one rate by the other.
+    # `> ... * 8` was a floor where the exact pair is already asserted four lines up,
+    # and it would pass on any number of pathological pairs that satisfy it.
+    assert tiers["full_path"]["recall@10"] == pytest.approx(38 / 51)
+    assert tiers["not_mentioned"]["recall@10"] == pytest.approx(13 / 154)
+    assert tiers["full_path"]["recall@10"] / tiers["not_mentioned"]["recall@10"] == (
+        pytest.approx(8.82, abs=0.01)
+    )
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "75% (38 of 51)" in readme
@@ -183,6 +196,19 @@ def test_bm25_reproduces_the_headline_the_root_readme_states():
     )
     assert "74.5%" not in readme, "the over-precise form is back"
     assert "13 of 153" not in readme, "the flattering denominator is back"
+
+    # The paragraph that states the rule, which is a separate thing from the figure.
+    # It described the OPPOSITE rule - "excluded rather than counted as a retrieval
+    # failure" - forty lines above a headline computed the other way, and nothing here
+    # read it. A figure can be right while the sentence explaining it is wrong, and a
+    # reader takes the sentence.
+    assert "kept** in the denominator and" in readme or "kept in the denominator" in readme, (
+        "the README no longer states which way the absent gold file is counted"
+    )
+    assert "excluded rather than counted as a retrieval" not in readme, (
+        "the README states the exclusion rule again; `evaluate.py` mandates the opposite"
+    )
+    assert "denominator is\n154 and not 153" in readme or "154 and not 153" in readme
 
 
 # -- one implementation per arm -------------------------------------------
@@ -258,6 +284,52 @@ SHAPES = {
     "dot slash": "./django/db/models/query.py",
     "a leading slash": "/django/db/models/query.py",
 }
+
+#: Paths whose own shape the parser used to damage, which the table above cannot
+#: express because every row of it is the same path.
+#:
+#: The first group is the `lstrip` bug: `str.lstrip` takes a character SET, so
+#: `".github/scripts/x.py".lstrip("./")` was `"github/scripts/x.py"` - a path in no
+#: listing, which `resolve` cannot recover (it matches on "/" + p) and
+#: `fabrication_rate` then counts as an invented file. 463 of the 66,895 paths in
+#: `data/trees` are dot-prefixed and 9 of those are Python.
+#:
+#: The second is the extension list, which was closed around source files: a Django
+#: template or a translation catalogue named by a model fell out as unparsed - honestly
+#: reported, but a silent recall miss. `.rst` is 6,002 paths of the committed listings
+#: and `.po` 3,646.
+EXACT_SHAPES = {
+    ".github/scripts/label_title_regex.py": ".github/scripts/label_title_regex.py",
+    ".circleci/fetch_doc_logs.py": ".circleci/fetch_doc_logs.py",
+    ".pyinstaller/hooks/hook-sklearn.py": ".pyinstaller/hooks/hook-sklearn.py",
+    "./django/db/models/query.py": "django/db/models/query.py",
+    "/django/db/models/query.py": "django/db/models/query.py",
+    "django/contrib/admin/templates/base.html": "django/contrib/admin/templates/base.html",
+    "django/conf/locale/de/LC_MESSAGES/django.po": "django/conf/locale/de/LC_MESSAGES/django.po",
+    "sklearn/utils/_cython_blas.pyx": "sklearn/utils/_cython_blas.pyx",
+    "doc/whats_new/v1.0.rst": "doc/whats_new/v1.0.rst",
+    "build_tools/circle/build_doc.sh": "build_tools/circle/build_doc.sh",
+}
+
+
+@pytest.mark.parametrize("written,expected", sorted(EXACT_SHAPES.items()))
+def test_a_path_is_returned_as_the_path_it_is(written, expected):
+    from apps._engine.locate_prompts import parse_paths
+
+    assert parse_paths(written) == [expected], written
+
+
+@pytest.mark.parametrize(
+    "written", ["and/or the behaviour changed.", "Makefile", "assets/logo.png"]
+)
+def test_what_is_not_a_source_path_is_still_not_one(written):
+    """Widening the extension list must not turn prose or a binary into a path. The
+    binary and generated end of the list stays out, and no bug report names a `.png`
+    as the file to edit."""
+    from apps._engine.locate_prompts import dropped_lines, parse_paths
+
+    assert parse_paths(written) == [], written
+    assert len(dropped_lines(written)) == 1, written
 
 
 @pytest.mark.parametrize("shape", sorted(SHAPES))

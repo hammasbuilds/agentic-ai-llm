@@ -20,7 +20,7 @@ this file used to cover them with a table of COUNTS - the number of distinct fig
 per app - describing itself as "every number in every app's prose is pinned by count,
 so changing one is a deliberate edit to this table". The inference is wrong: a value
 changes without the count moving. An independent review rewrote `93.3% survived` to
-`99.9% survived` in app 05 and the whole suite stayed green, and 56 of the 104 figures
+`99.9% survived` in app 05 and the whole suite stayed green, and 56 of the 106 figures
 had no value-level protection at all.
 
 The figure SET is frozen instead, in `tests/fixtures/app_figures.json`. A changed value
@@ -73,6 +73,23 @@ def regions(app: Path) -> dict[str, str]:
             and isinstance(node.value.value, str)
         ):
             out["about"] = node.value.value
+
+    # The `hint=` on every Field, which is the prose a visitor who never reads the
+    # source actually sees - it is rendered beside the input they fill in. It was
+    # outside every check here, and app 02's hint was still quoting a figure this
+    # module's own list of superseded numbers named as gone. The suite was green
+    # because these three regions were two.
+    hints = [
+        keyword.value.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Field"
+        for keyword in node.keywords
+        if keyword.arg == "hint"
+        and isinstance(keyword.value, ast.Constant)
+        and isinstance(keyword.value.value, str)
+    ]
+    if hints:
+        out["hints"] = chr(10).join(hints)
     return out
 
 
@@ -112,7 +129,7 @@ def mutation_summary(app: Path) -> dict | None:
 #: deliberate edit to this table". That does not follow: a value can change without
 #: the count moving. An independent review rewrote `93.3% survived` to `99.9%` and all
 #: 470 tests passed. Only apps 02 and 03 have a committed run to check values against,
-#: so 56 of the 104 figures had no value-level protection at all.
+#: so 56 of the 106 figures had no value-level protection at all.
 #:
 #: The set is pinned now, so a changed value is one figure appearing and one vanishing,
 #: and the failure message names both. `python scripts/freeze_app_figures.py` re-freezes
@@ -142,7 +159,7 @@ def test_the_figure_fixture_covers_every_app():
 def test_the_fixture_holds_every_figure_it_claims_to():
     """A sweep over empty sets passes, and so does a comparison of two of them."""
     held = frozen()
-    assert sum(len(v) for v in held.values()) == 104, {k: len(v) for k, v in held.items()}
+    assert sum(len(v) for v in held.values()) == 106, {k: len(v) for k, v in held.items()}
     assert all(held.values()), [k for k, v in held.items() if not v]
 
 
@@ -301,7 +318,17 @@ def test_the_about_panel_breaks_the_run_down_as_the_run_does(app: Path):
     assert kinds["const"]["rate"] > kinds["compare"]["rate"] > kinds["binop"]["rate"]
 
     san_rate = san["problems_with_a_survivor"] / san["problems_usable"] * 100
-    assert f"{san['problems']} problems the authors hand-verified" in text
+    # Two numbers, because the panel was publishing one. The authors hand-verified 427
+    # rows; `load_mbpp` can use 413 of them, the other fourteen carrying no test that
+    # names a function to run the reference against. This assertion read
+    # `f"{san['problems']} problems the authors hand-verified"` - the usable count
+    # attributed to the authors - which is the conflation itself, asserted.
+    from apps._engine.datasets import mbpp_population
+
+    population = mbpp_population("sanitized")
+    assert population.usable == san["problems"], (population.usable, san["problems"])
+    assert f"{population.rows} problems the authors hand-verified" in text
+    assert f"{population.usable} of them with tests" in text
     assert f"{san['problems_with_a_survivor']} of them ({san_rate:.1f}%)" in text
 
 
@@ -317,9 +344,19 @@ def test_the_root_readme_bullet_quotes_the_same_run():
 
 
 def test_the_superseded_run_is_quoted_nowhere_in_the_prose():
+    """The figures of a run that was replaced, which must not survive in the prose.
+
+    `"427 problems"` used to be on this list and has been taken off it. 427 is the real
+    row count of `sanitized-mbpp.json` - the superseded claim was using it as the
+    population the rates are *over*, and banning the string stopped the file ever
+    stating the true size of its own input. The ban is now on the denominator, which is
+    the thing that was wrong: `of 427` in a sentence about mutants or survival.
+    """
     text = prose(APPS[1]) + (ROOT / "README.md").read_text(encoding="utf-8")
-    for gone in ("5,116", "17.6%", "442", " 782", "16.0%", "427 problems", "25.3%"):
+    for gone in ("5,116", "17.6%", "442", " 782", "16.0%", "25.3%"):
         assert gone not in text, f"{gone} is from the superseded run"
+    for over in ("of 427 ", "of 427,", "of 427.", "over 427", "across 427"):
+        assert over not in text, f"{over!r} makes 427 the scored population; it is 413"
 
 
 # -- app 03, whose claims are dataset facts rather than a model run -------

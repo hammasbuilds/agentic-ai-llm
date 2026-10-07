@@ -209,13 +209,57 @@ def test_the_scan_prints_the_file_count_and_names_what_it_could_not_parse(tmp_pa
     assert Path(tmp_path / "broken.py").exists(), "and nothing was rewritten"
 
 
-def test_a_scan_of_nothing_reports_a_denominator_of_nothing(tmp_path, capsys):
+def test_a_scan_of_nothing_is_refused_rather_than_reported(tmp_path, capsys):
+    """This asserted the opposite, and the opposite was wrong.
+
+    It read "a scan of nothing reports a denominator of nothing" and checked for
+    `files scanned: 0` with exit 0. But that output is a clean rewrite report for a
+    folder the tool never looked at, and an independent review reached it the way that
+    matters - `scan` on a path that does not exist, where `rglob` yields nothing and
+    the output is identical. A CI step with a typo'd path was green.
+
+    Five of this repository's eleven tools already refused it. This one did not, and
+    neither did `apply` or `test-smith preview`.
+    """
     from pilot.cli import main
 
-    assert main(["scan", str(tmp_path)]) == 0
-    out = capsys.readouterr().out
-    assert "files scanned    : 0" in out
-    assert "files with edits : 0" in out
+    assert main(["scan", str(tmp_path)]) == 2
+    captured = capsys.readouterr()
+    assert "nothing to scan" in captured.err
+    assert "files scanned" not in captured.out, captured.out
+
+
+def test_a_path_that_does_not_exist_is_refused_by_both_commands(tmp_path, capsys):
+    """Not the same case as an empty folder - this one cannot be a real scan at all -
+    and it printed the same thing."""
+    from pilot.cli import main
+
+    for command in ("scan", "apply"):
+        assert main([command, str(tmp_path / "nope")]) == 2, command
+        assert "no such file or directory" in capsys.readouterr().err, command
+
+
+def test_a_file_that_is_not_python_is_refused(tmp_path, capsys):
+    """`scan README.md` used to parse it, fail, and report one parse error out of one
+    file scanned - a rewrite report about a markdown file."""
+    from pilot.cli import main
+
+    note = tmp_path / "README.md"
+    note.write_text("# notes", encoding="utf-8")
+    assert main(["scan", str(note)]) == 2
+    assert "not Python" in capsys.readouterr().err
+
+
+def test_one_python_file_is_still_scannable(tmp_path, capsys):
+    """A refusal that refuses the working case is not a fix."""
+    from pilot.cli import main
+
+    one = tmp_path / "m.py"
+    one.write_text(
+        "from typing import List" + chr(10) + "x: List[int] = []" + chr(10), encoding="utf-8"
+    )
+    assert main(["scan", str(one)]) == 0
+    assert "files scanned    : 1" in capsys.readouterr().out
 
 
 def test_the_mechanical_behavioural_split_is_what_the_readme_leads_with(tmp_path, capsys):

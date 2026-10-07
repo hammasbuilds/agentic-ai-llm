@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from contractreader.cli import main
 
 MIT = (
@@ -94,3 +96,44 @@ def test_a_licence_with_no_obligations_is_not_confused_with_a_csv(tmp_path: Path
 def test_a_missing_path_is_still_refused(tmp_path: Path, capsys):
     assert main(["read", str(tmp_path / "nope")]) == 2
     assert "not a file" in capsys.readouterr().err
+
+
+# -- a UTF-16 export is text -------------------------------------------------------
+#
+# The NUL-byte sniff refused one with the words "No licence contains one", which an
+# Excel "Unicode Text (*.txt)" export falsifies: it is UTF-16LE, it is full of NUL
+# bytes, and it is one of the commonest licence-ish files there is. A byte-order mark
+# is a statement about the encoding, so the rule is now: decode what declares itself,
+# refuse what has NULs and no mark.
+
+#: The encoding names Python writes a byte-order mark for. `utf-16-le` and
+#: `utf-16-be` are NOT among them: those write the bytes with no mark, so a file
+#: encoded that way declares nothing and is correctly refused - which is what
+#: `test_a_markless_wide_file_is_refused` below pins. Getting this wrong was the first
+#: version of these tests, and the failure was the test's rather than the code's.
+UTF16 = ("utf-16", "utf-32", "utf-8-sig")
+
+
+@pytest.mark.parametrize("encoding", UTF16)
+def test_a_licence_with_a_byte_order_mark_is_read_not_refused(tmp_path: Path, encoding, capsys):
+    wide = tmp_path / "LICENSE"
+    wide.write_bytes(MIT.encode(encoding))
+    assert main(["read", str(wide)]) == 0, capsys.readouterr().err
+    assert "family: MIT" in capsys.readouterr().out
+
+
+def test_a_binary_file_with_no_mark_is_still_refused(tmp_path: Path, capsys):
+    png = tmp_path / "LICENSE"
+    png.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+    assert main(["read", str(png)]) == 2
+    err = capsys.readouterr().err
+    assert "no byte-order mark" in err, err
+    assert "No licence contains one" not in err
+
+
+def test_a_markless_wide_licence_is_refused(tmp_path: Path, capsys):
+    """UTF-16 with no byte-order mark cannot be told from binary without guessing."""
+    bare = tmp_path / "LICENSE"
+    bare.write_bytes(MIT.encode("utf-16-le"))
+    assert main(["read", str(bare)]) == 2
+    assert "no byte-order mark" in capsys.readouterr().err

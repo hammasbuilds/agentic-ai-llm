@@ -1,5 +1,5 @@
 {
-  "measured": "2026-10-06",
+  "measured": "2026-10-07",
   "fresh": [
     "CSV_CORPUS",
     "HF_DATASETS_CACHE",
@@ -15,8 +15,8 @@
   "note": "What every suite really did on a fresh clone, recorded by scripts/test_all.py --write-counts with the variables in 'fresh' pointed at an empty directory. The READMEs quote these, so they are the numbers a reader reproduces rather than the ones this machine happens to produce - 20_driftwatch ran 21 more tests here than anywhere else, and its README said so.",
   "suites": {
     "(root)": {
-      "passed": 910,
-      "skipped": 75,
+      "passed": 963,
+      "skipped": 94,
       "outcome": "ok"
     },
     "products/01_revenue-desk": {
@@ -125,7 +125,7 @@
       "outcome": "ok"
     },
     "projects/01_repo-cartographer": {
-      "passed": 42,
+      "passed": 44,
       "skipped": 13,
       "outcome": "ok"
     },
@@ -140,7 +140,7 @@
       "outcome": "ok"
     },
     "projects/04_migration-pilot": {
-      "passed": 29,
+      "passed": 32,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -160,17 +160,17 @@
       "outcome": "ok"
     },
     "projects/08_csv-analyst": {
-      "passed": 56,
+      "passed": 61,
       "skipped": 9,
       "outcome": "ok"
     },
     "projects/09_log-detective": {
-      "passed": 46,
+      "passed": 51,
       "skipped": 0,
       "outcome": "ok"
     },
     "projects/10_contract-reader": {
-      "passed": 41,
+      "passed": 46,
       "skipped": 0,
       "outcome": "ok"
     },

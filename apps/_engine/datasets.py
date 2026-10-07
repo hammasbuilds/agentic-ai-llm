@@ -49,7 +49,51 @@ def _find(pattern: str, fallback: str = "") -> Path | None:
     return hf_cache.resolve(pattern, fallback) if fallback else hf_cache.find_in_cache(pattern)
 
 
+@dataclass(frozen=True)
+class Population:
+    """What a slice holds, and what a loader could use of it.
+
+    The two are different claims and were being published as one. `_load_mbpp` skips
+    any row whose tests never call a function it can name as the entry point - which
+    was a bare `continue` with no counter - and `data/benchmarks/README.md` printed
+    the surviving count in a column headed with the row counts of two other slices:
+
+        mbpp.jsonl            974 rows on disk, 972 usable  (printed as 972)
+        sanitized-mbpp.json   427 rows on disk, 413 usable  (printed as 413)
+
+    So two of the four numbers under one heading meant something different from the
+    other two, in the directory whose purpose is making the measurements reproducible,
+    for a set of apps whose stated discipline is publishing the denominator. App 02
+    names the single problem whose reference fails its own tests and accounts for it;
+    sixteen rows had already gone one layer below.
+
+    `discarded` carries the ids so the exclusion can be argued with rather than taken
+    on trust.
+    """
+
+    rows: int
+    usable: int
+    discarded: tuple[str, ...]
+
+    @property
+    def dropped(self) -> int:
+        return len(self.discarded)
+
+
+def mbpp_population(split: str = "full") -> Population:
+    """The row count of the slice on disk, and how much of it `load_mbpp` can use.
+
+    Read the whole slice, so this is the population and not a window on it.
+    """
+    return _load_mbpp(split=split)[1]
+
+
 def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
+    """The tasks. `mbpp_population` is the same read with the counts kept."""
+    return _load_mbpp(limit=limit, split=split)[0]
+
+
+def _load_mbpp(limit: int | None = None, split: str = "full") -> tuple[list[Task], Population]:
     """MBPP, or its hand-verified subset.
 
     `sanitized` is the 427 problems the authors re-checked by hand, and it ships in the
@@ -88,13 +132,21 @@ def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
         lines = path.read_text(encoding="utf-8").splitlines()
 
     out: list[Task] = []
+    discarded: list[str] = []
+    rows = 0
     for line in lines:
         if not line.strip():
             continue
+        rows += 1
         r = json.loads(line)
         tests = tuple(r["test_list"])
         entry = next((m.group(1) for t in tests if (m := _CALLED.search(t))), "")
         if not entry:
+            # No test in this row calls a function by name, so there is nothing to run
+            # the reference against. Recorded rather than dropped in silence: every
+            # rate these apps publish is over `usable`, and a denominator that shrank
+            # a layer below the figure is exactly what this repository is about.
+            discarded.append(f"mbpp/{r['task_id']}")
             continue
         out.append(
             Task(
@@ -109,7 +161,10 @@ def load_mbpp(limit: int | None = None, split: str = "full") -> list[Task]:
         )
         if limit and len(out) >= limit:
             break
-    return out
+    # With `limit`, `rows` is what was read rather than what the slice holds, so this
+    # is a population only when nothing was limited - which is why `mbpp_population`
+    # passes no limit.
+    return out, Population(rows=rows, usable=len(out), discarded=tuple(discarded))
 
 
 def load_humaneval(limit: int | None = None) -> list[Task]:

@@ -11,22 +11,22 @@
       <div class="v">{{ '%.1f' % (result.full.majority * 100) }}%</div>
     </div>
     <div class="tile">
-      <div class="k">Difference</div>
-      <div class="v {{ 'good' if result.beats_baseline > 0 else 'bad' }}">
-        {{ '%+.1f' % (result.beats_baseline * 100) }}%
+      <div class="k">Against always-SAFE</div>
+      <div class="v {{ 'good' if result.vs_always_safe > 0 else 'bad' }}">
+        {{ '%+.1f' % (result.vs_always_safe * 100) }}%
       </div>
     </div>
     <div class="tile"><div class="k">Rows</div><div class="v">{{ result.full.n }}</div></div>
   </div>
 
-  {% if result.beats_baseline <= 0 %}
+  {% if result.vs_always_safe <= 0 %}
   <p class="note">
     The model is <b>below a classifier that reads nothing and always answers SAFE</b>.
     Every point of apparent skill here is a point the baseline already had.
   </p>
   {% else %}
   <p class="note">
-    The model beats the constant by {{ '%.1f' % (result.beats_baseline * 100) }} points.
+    The model beats the constant by {{ '%.1f' % (result.vs_always_safe * 100) }} points.
     Devign's published accuracies sit near 62% against a 54.1% baseline, so read that
     difference against eight points of total headroom, not against zero.
   </p>

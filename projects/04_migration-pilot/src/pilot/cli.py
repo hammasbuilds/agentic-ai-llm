@@ -36,7 +36,10 @@ SKIP_DIRS = frozenset(
 
 def _python_files(target: Path) -> list[Path]:
     if target.is_file():
-        return [target]
+        # A single file has to be Python. `scan README.md` used to parse it, fail, and
+        # report one parse error out of one file scanned - a rewrite report about a
+        # markdown file.
+        return [target] if target.suffix == ".py" else []
     return sorted(
         p
         for p in target.rglob("*.py")
@@ -56,6 +59,20 @@ def _selected_rules(args: argparse.Namespace) -> set[str]:
 
 def _scan_command(args: argparse.Namespace) -> int:
     target = Path(args.path).resolve()
+    # A path that is not there is not a clean scan of it. `rglob` over a missing
+    # directory yields nothing, so this printed `files scanned: 0 ... mechanical: 0`
+    # and exited 0 - a CI step with a typo'd path was green. Five of this
+    # repository's eleven tools already refuse it with exit 2 and a named reason;
+    # `log-detective`'s own `_nothing_read` states the principle ("the one thing a
+    # tool built to report what extraction destroyed must not do is say nothing at
+    # all"). It is applied everywhere now.
+    if not target.exists():
+        print(f"no such file or directory: {args.path}", file=sys.stderr)
+        return 2
+    if not _python_files(target):
+        what = "file is not Python" if target.is_file() else "directory holds no Python files"
+        print(f"nothing to scan: {what}: {args.path}", file=sys.stderr)
+        return 2
     rules = _selected_rules(args)
     counts: Counter = Counter()
     files_with_edits = 0
@@ -94,7 +111,10 @@ def _scan_command(args: argparse.Namespace) -> int:
 
     for path, scan in rows[: args.limit]:
         try:
-            shown = path.relative_to(target)
+            # Against the target's PARENT when the target is the file itself:
+            # `Path('a/b.py').relative_to('a/b.py')` is `.`, so a single-file
+            # scan listed its own parse error as `.` and named nothing.
+            shown = path.relative_to(target.parent if target.is_file() else target)
         except ValueError:
             shown = path
         print(f"{shown}")
@@ -118,7 +138,10 @@ def _scan_command(args: argparse.Namespace) -> int:
     print(f"  parse errors     : {errors}")
     for path, why in unparsed[:8]:
         try:
-            shown = path.relative_to(target)
+            # Against the target's PARENT when the target is the file itself:
+            # `Path('a/b.py').relative_to('a/b.py')` is `.`, so a single-file
+            # scan listed its own parse error as `.` and named nothing.
+            shown = path.relative_to(target.parent if target.is_file() else target)
         except ValueError:
             shown = path
         print(f"      {shown}: {str(why)[:60]}")
@@ -150,6 +173,20 @@ def _scan_command(args: argparse.Namespace) -> int:
 def _apply_command(args: argparse.Namespace) -> int:
     """Apply mechanical edits only. Behavioural edits are never touched."""
     target = Path(args.path).resolve()
+    # A path that is not there is not a clean rewrite of it. `rglob` over a missing
+    # directory yields nothing, so this printed `files scanned: 0 ... mechanical: 0`
+    # and exited 0 - a CI step with a typo'd path was green. Five of this
+    # repository's eleven tools already refuse it with exit 2 and a named reason;
+    # `log-detective`'s own `_nothing_read` states the principle ("the one thing a
+    # tool built to report what extraction destroyed must not do is say nothing at
+    # all"). It is applied everywhere now.
+    if not target.exists():
+        print(f"no such file or directory: {args.path}", file=sys.stderr)
+        return 2
+    if not _python_files(target):
+        what = "file is not Python" if target.is_file() else "directory holds no Python files"
+        print(f"nothing to rewrite: {what}: {args.path}", file=sys.stderr)
+        return 2
     rules = {r for r in _selected_rules(args) if RULE_KIND[r] == MECHANICAL}
     changed = 0
     edits = 0

@@ -21,7 +21,15 @@ def _audit_command(args: argparse.Namespace) -> int:
         print(render_repo(repo))
         return 1 if (args.strict and repo.failures) else 0
 
+    # A rate over nothing is not a rate. `apps/_platform/cache.py` states the rule
+    # this follows: "a cache nobody asked anything of has no hit rate, and reporting
+    # one as zero is the same claim as a cache that missed every time". This printed
+    # `0 repositories  -  0/0 controls passed (0%)` for a folder holding none, which
+    # reads as a folder that failed every control.
     audit = audit_folder(target)
+    if not audit.repos:
+        print(f"nothing to audit: no repositories under {target}", file=sys.stderr)
+        return 2
     print(render_folder(audit))
     if args.json:
         Path(args.json).write_text(to_json(audit), encoding="utf-8")

@@ -45,7 +45,15 @@ CANDIDATES:
 
 
 #: A path-shaped token, which is what both parsers are actually looking for. Anchored
-#: so a sentence does not contribute its last word, and the extension list is closed
+#: because an unanchored "has a slash in it" matches prose like "and/or". The
+#: list is drawn from what the committed listings in `data/trees` actually hold:
+#: `.py` is 35,339 of 66,895 paths, and `.rst`, `.po`, `.html`, `.js`, `.pyx`,
+#: `.sh` and `.css` are each in the hundreds or thousands. A Django template or a
+#: `.po` file named by a model used to fall out here - honestly reported in
+#: `dropped_lines` rather than charged as a fabrication, but a silent recall miss
+#: all the same. What stays out is the binary and generated end of the list
+#: (`.png`, `.mo`, `.pdf`, `.gz`) and extensionless files, which no bug report
+#: names as the file to edit.
 #: because an unanchored "has a slash in it" matches prose like "and/or".
 PATH = re.compile(
     r"""
@@ -53,7 +61,9 @@ PATH = re.compile(
     (?P<path>
         (?:[\w.+-]+/)*                         # directories, possibly none
         [\w.+-]+
-        \.(?:py|pyx|pyi|js|ts|tsx|jsx|rb|go|rs|java|c|h|cc|cpp|php|cs|scala|kt|md|rst|txt|cfg|ini|toml|yaml|yml|json)
+        \.(?:py|pyx|pyi|pxd|js|ts|tsx|jsx|rb|go|rs|java|c|h|cc|cpp|php|cs|scala|kt
+          |html|css|scss|sh|bash|sql|xml|po|rst|md|txt|cfg|ini|toml|yaml|yml|json
+          |ipynb|rc|in|cmake|mk)
     )
     (?::\d+(?::\d+)?)?                         # file.py:112 and file.py:112:4
     (?=$|[\s"'`)\]*,.;:!?])                    # end, or a closing delimiter
@@ -106,7 +116,17 @@ def parse_paths(text: str, k: int = 10) -> list[str]:
     paths: list[str] = []
     for raw in (text or "").splitlines():
         for found in _paths_in(raw):
-            path = found.lstrip("./").lstrip("/")
+            # `removeprefix`, not `lstrip`: `lstrip` takes a character SET, so
+            # `".github/scripts/x.py".lstrip("./")` is `"github/scripts/x.py"` - a
+            # path that exists in no listing, which `resolve` cannot recover either
+            # (it matches on "/" + p) and `fabrication_rate` then counts as an
+            # invented file. That is the exact failure this parser was rewritten to
+            # stop: the model named a real path and the harness mangled it.
+            #
+            # 9 of the 66,895 paths in `data/trees` are dot-prefixed Python files,
+            # so the effect on a re-run is small and in the one direction a
+            # fabrication figure must not have.
+            path = found.removeprefix("./").removeprefix("/")
             if path and path not in paths:
                 paths.append(path)
             if len(paths) >= k:

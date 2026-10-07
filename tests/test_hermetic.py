@@ -114,6 +114,88 @@ def test_the_code_benchmarks_load_with_no_cache_at_all(empty_cache, benchmark, e
     assert len(load(benchmark)) == expected
 
 
+#: Rows on disk against rows a loader can use. `data/benchmarks/README.md` said this
+#: module "asserts the row counts (300 / 2,732 / 972 / 413)" and it asserted
+#: `len(load(...))` for two of the four - the post-filter count - while the other two
+#: really were row counts. Both numbers now, named as what they are.
+MBPP_POPULATION = {"full": (974, 972, 2), "sanitized": (427, 413, 14)}
+
+
+@pytest.mark.parametrize("split", sorted(MBPP_POPULATION))
+def test_the_mbpp_slices_row_counts_and_usable_counts_are_both_what_is_published(
+    empty_cache, split
+):
+    """The distinction the provenance table was collapsing.
+
+    `load_mbpp` skips any row whose tests never call a function it can name as the
+    entry point, which is correct - there is nothing to run a reference against - and
+    it did it with a bare `continue`. So every rate the apps publish is over `usable`,
+    the table printed `usable` as though it were the file's size, and nothing anywhere
+    compared either number to the file.
+    """
+    from apps._engine import hf_cache
+    from apps._engine.datasets import mbpp_population
+
+    rows, usable, dropped = MBPP_POPULATION[split]
+    population = mbpp_population(split)
+    assert (population.rows, population.usable, population.dropped) == (rows, usable, dropped)
+
+    # Against the file itself, not against the loader: the point is that the two can
+    # differ, so one of them has to be measured without going through the loader.
+    name = "mbpp.jsonl" if split == "full" else "sanitized-mbpp.json"
+    path = hf_cache.committed(name)
+    text = path.read_text(encoding="utf-8")
+    if split == "full":
+        on_disk = len([line for line in text.splitlines() if line.strip()])
+    else:
+        import json
+
+        on_disk = len(json.loads(text))
+    assert on_disk == rows, f"{name} holds {on_disk} rows; the table says {rows}"
+
+
+@pytest.mark.parametrize("split", sorted(MBPP_POPULATION))
+def test_the_discarded_rows_are_named_and_are_the_ones_with_no_entry_point(empty_cache, split):
+    """A count alone is satisfied by discarding something else.
+
+    Each id is checked against the reason: no test in that row calls a function by
+    name, so there is nothing for the entry-point regex to find. That is the only
+    exclusion this loader is allowed to make.
+    """
+    import json
+
+    from apps._engine import hf_cache
+    from apps._engine.datasets import _CALLED, mbpp_population
+
+    population = mbpp_population(split)
+    assert population.discarded, split
+    assert len(set(population.discarded)) == population.dropped, "a duplicate id"
+
+    name = "mbpp.jsonl" if split == "full" else "sanitized-mbpp.json"
+    text = hf_cache.committed(name).read_text(encoding="utf-8")
+    if split == "full":
+        rows = [json.loads(line) for line in text.splitlines() if line.strip()]
+    else:
+        rows = json.loads(text)
+
+    by_id = {f"mbpp/{row['task_id']}": row for row in rows}
+    for task_id in population.discarded:
+        row = by_id[task_id]
+        assert not any(_CALLED.search(t) for t in row["test_list"]), (
+            f"{task_id} was discarded and its tests do name a function"
+        )
+
+
+def test_the_provenance_table_states_both_numbers():
+    """The table is where the two were conflated, so the table is what is checked."""
+    note = (ROOT / "data" / "benchmarks" / "README.md").read_text(encoding="utf-8")
+    for split, (rows, usable, dropped) in sorted(MBPP_POPULATION.items()):
+        del split
+        assert f"**{rows} rows**, {usable} usable" in note, (rows, usable)
+        assert f"| {rows} | {usable} | " in note, f"the rows/usable table is missing {rows}"
+        del dropped
+
+
 def test_swebench_lite_loads_with_no_cache_at_all(empty_cache):
     from apps._engine.swebench_data import find_parquet, load
 

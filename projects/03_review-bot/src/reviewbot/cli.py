@@ -95,7 +95,10 @@ def _scan_command(args: argparse.Namespace) -> int:
                 skipped_tests += 1
                 continue
             try:
-                shown = str(path.relative_to(target))
+                # Against the target's PARENT when the target is the file itself:
+                # `Path('a/b.py').relative_to('a/b.py')` is `.`, so a single-file
+                # scan listed its own parse error as `.` and named nothing.
+                shown = str(path.relative_to(target.parent if target.is_file() else target))
             except ValueError:
                 shown = str(path)
             file_review = review_source(shown, source)

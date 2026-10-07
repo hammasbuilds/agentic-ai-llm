@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-39-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-51-success" alt="tests">
   <img src="https://img.shields.io/badge/scored%20log%20lines-973-orange" alt="lines">
 </p>
 
@@ -104,7 +104,7 @@ dashboard.
 ## Run it
 
 ```bash
-uv run pytest -q                    # 46 tests
+uv run pytest -q                    # 51 tests
 uv run log-detective cost data/
 uv run --extra ui panel serve ui/app.py --show
 ```

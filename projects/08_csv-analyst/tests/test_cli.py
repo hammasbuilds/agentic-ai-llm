@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from csvanalyst.cli import main
 from csvanalyst.profile import NotDelimitedTextError, profile_csv
 
@@ -83,3 +85,57 @@ def test_the_sweep_names_a_binary_file_rather_than_dropping_it(tmp_path: Path, c
     out = capsys.readouterr().out
     assert "1 file(s) could not be profiled" in out, out
     assert "bad.csv" in out, out
+
+
+# -- a UTF-16 export is text -------------------------------------------------------
+#
+# The NUL-byte sniff refused one with the words "No CSV contains one", which an
+# Excel "Unicode Text (*.txt)" export falsifies: it is UTF-16LE, it is full of NUL
+# bytes, and it is one of the commonest CSV-ish files there is. A byte-order mark
+# is a statement about the encoding, so the rule is now: decode what declares itself,
+# refuse what has NULs and no mark.
+
+#: The encoding names Python writes a byte-order mark for. `utf-16-le` and
+#: `utf-16-be` are NOT among them: those write the bytes with no mark, so a file
+#: encoded that way declares nothing and is correctly refused - which is what
+#: `test_a_markless_wide_file_is_refused` below pins. Getting this wrong was the first
+#: version of these tests, and the failure was the test's rather than the code's.
+UTF16 = ("utf-16", "utf-32", "utf-8-sig")
+
+
+@pytest.mark.parametrize("encoding", UTF16)
+def test_a_csv_with_a_byte_order_mark_is_profiled_not_refused(tmp_path: Path, encoding, capsys):
+    wide = tmp_path / "excel.csv"
+    wide.write_bytes("a,b\nM\u00fcller,2\nS\u00e3o,4\n".encode(encoding))
+    assert main(["report", str(wide)]) == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert "2 rows and 2 columns" in out, out
+    # The encoding it used is named, because "read as latin-1" is how a reader knows
+    # a figure might be about mojibake.
+    assert "read as" in out
+
+
+def test_a_binary_file_with_no_mark_is_still_refused(tmp_path: Path, capsys):
+    """The other half: widening this must not accept a PNG."""
+    png = tmp_path / "image.csv"
+    png.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+    assert main(["report", str(png)]) == 2
+    err = capsys.readouterr().err
+    assert "no byte-order mark" in err, err
+    # The sentence that was false.
+    assert "No CSV contains one" not in err
+
+
+def test_a_markless_wide_file_is_refused(tmp_path: Path, capsys):
+    """UTF-16 with no byte-order mark is indistinguishable from a binary file.
+
+    There is no way to tell `a,b` in UTF-16LE from two-byte binary data without
+    guessing, and guessing is what the latin-1 fallback already does one layer up.
+    So the line is drawn at the mark: a file that declares itself is decoded, one that
+    does not and holds NULs is refused. Pinned because it is the boundary, and an
+    implementation that "helpfully" sniffed for wide text would cross it.
+    """
+    bare = tmp_path / "bare.csv"
+    bare.write_bytes("a,b\n1,2\n".encode("utf-16-le"))
+    assert main(["report", str(bare)]) == 2
+    assert "no byte-order mark" in capsys.readouterr().err

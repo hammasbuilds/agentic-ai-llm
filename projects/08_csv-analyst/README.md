@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-47%20%2B%209%20skipped-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-61%20%2B%209%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/rows%20measured-1.07M-orange" alt="rows">
 </p>
 
@@ -194,7 +194,7 @@ by hand. `marimo` is an optional extra used only by the notebook view.
 ## Run it
 
 ```bash
-uv run pytest -q                                  # 56 passed, 9 skipped
+uv run pytest -q                                  # 61 passed, 9 skipped
 uv run csv-analyst report <csv> --limit 100000
 uv run csv-analyst coercion <csv>
 uv run --extra ui marimo edit ui/notebook.py

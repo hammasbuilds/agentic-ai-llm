@@ -56,9 +56,25 @@ def test_each_documented_rate_is_the_one_the_code_measures(name, all_pct, repo_p
 
 
 def test_the_gap_between_the_columns_is_the_point():
-    """If the two columns ever converge, the README's argument has gone stale."""
-    for name, all_pct, repo_pct in _rows():
-        assert repo_pct > all_pct * 2, f"{name}: {all_pct}% vs {repo_pct}%"
+    """If the two columns ever converge, the README's argument has gone stale.
+
+    The exact pair for every row is asserted by
+    `test_each_documented_rate_is_the_one_the_code_measures` above - when the checkout
+    is present. This ran `repo_pct > all_pct * 2`, a floor, in a file where the
+    equality is already available, and it would be satisfied by a great many pairs the
+    README does not state. It now asserts the gap each row actually shows, which is
+    checkable from the README alone and so holds on a fresh clone where the rows skip.
+    """
+    rows = _rows()
+    assert rows, "the comparison table no longer parses"
+    for name, all_pct, repo_pct in rows:
+        assert repo_pct > all_pct, f"{name}: {all_pct}% vs {repo_pct}%"
+        # The narrowest gap in the published table, which is the claim a reader takes
+        # from it: the in-scope rate is never merely a little higher.
+        assert repo_pct - all_pct >= 50, f"{name}: {repo_pct}% - {all_pct}%"
+    narrowest = min(repo - every for _, every, repo in rows)
+    widest = max(repo - every for _, every, repo in rows)
+    assert (narrowest, widest) == (55, 73), (narrowest, widest)
 
 
 UI_DATA = sorted(
@@ -156,3 +172,61 @@ def test_the_maps_still_compared_are_counted():
         f"{present} of the five checkouts are here and none is at the revision its map "
         "records; regenerate them"
     )
+
+
+# -- the badges, and the table they are supposed to agree with ---------------------
+
+
+def test_the_resolution_badges_match_the_table_below_them():
+    """Two rates in the header, repeated in the folder table, checked by nothing.
+
+    An independent review found four of that table's eight rows already wrong on the
+    day it was dated - every absolute count had moved, because several of those
+    repositories are worked on daily. The rates had not, which is why they are what
+    the table now leads with and the counts are given as magnitudes.
+
+    These badges are the first thing on the page and were outside every check here.
+    They cannot be recomputed without the sibling checkouts, so what is asserted is
+    that they agree with the table in the same file - a disagreement between two
+    numbers on one page is the failure that needs no external data to catch.
+    """
+    import re
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+
+    badges = dict(re.findall(r"badge/(median|pooled)%20resolution-(\d+)%25", readme))
+    assert set(badges) == {"median", "pooled"}, badges
+
+    median = re.search(r"\*\*Median repo-call resolution\*\* \| \*\*(\d+)%\*\*", readme)
+    pooled = re.search(r"\*\*Pooled over [^|]*\*\* \| \*\*(\d+)%\*\*", readme)
+    assert median and pooled, "the folder table no longer states both rates"
+
+    assert badges["median"] == median.group(1), (badges["median"], median.group(1))
+    assert badges["pooled"] == pooled.group(1), (badges["pooled"], pooled.group(1))
+
+    # The gap is the argument the section makes, so it has to survive both numbers
+    # being updated together.
+    assert int(median.group(1)) > int(pooled.group(1)), (median.group(1), pooled.group(1))
+
+
+def test_the_folder_table_marks_which_rows_are_measurements():
+    """The distinction the review's re-run established, kept in the table itself.
+
+    A reader cannot tell a figure that is stable from one that moved overnight unless
+    the table says so, and a count printed to the unit - "339,739 lines" - reads as
+    the more precise of the two when it is the less durable.
+    """
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    table = readme.split("## Measured across 78 repositories", 1)[1].split("\n\n")
+    rows = [line for part in table for line in part.split("\n") if line.startswith("| ")]
+    assert rows, "the folder table is gone"
+
+    marked = [r for r in rows if r.rstrip().endswith(("| stable |", "| the measurement |"))]
+    moving = [r for r in rows if "moves" in r.rsplit("|", 2)[-2]]
+    assert len(marked) >= 6, rows
+    assert len(moving) >= 3, rows
+
+    # And no absolute count is printed to the unit any more, because that was the
+    # form that went stale.
+    for row in rows:
+        assert "339,739" not in row and "32,527" not in row and "1,740" not in row, row

@@ -61,9 +61,13 @@ and no network**:
 python -m apps._engine.localize_eval     # all 300 instances, ~30s, no model, no network
 ```
 
-It reports the population it scored and the instances it could not, because the one
-instance whose gold file is in no cached listing is excluded rather than counted as a
-retrieval failure. The two model arms and the dense arm are flags on the same command.
+It reports the population it scored and the instances it could not. The one instance
+whose gold file is absent from its repository listing is **kept** in the denominator and
+scored as a miss: nothing can retrieve a file that is not there, so excluding it would
+flatter every retriever equally and by an amount nobody could see. So the denominator is
+154 and not 153, and the rate is 8.4% and not 8.5%. This paragraph used to state the
+opposite rule - the flattering one - while every figure below it was computed under this
+one. The two model arms and the dense arm are flags on the same command.
 
 That command used to work only here. It read SWE-bench Lite out of a Hugging Face cache,
 and on a machine without one it raised `FileNotFoundError` — while the four tests that
@@ -77,16 +81,20 @@ The columns these apps read are committed under
 [`data/benchmarks/`](data/benchmarks) — 2.8 MB, beside the 460 KB of tree listings in
 `data/trees` that are committed for the same reason. `tests/test_hermetic.py` asserts the
 guarantee by pointing both variables at an empty directory, and the suite gives the same
-result either way: **985 tests collected**. Measured 2026-10-06, 946 of them pass and 39
+result either way: **1,057 tests collected**. Measured 2026-10-07, 963 of them pass and 94
 skip here; on a fresh clone the split moves because three suites read data that is not in
 the repository.
 
-That first figure said "317 passed, 38 skipped" for a long time - wrong by 348. Nothing
-checked it: `tests/test_documented_counts.py` sweeps `projects/` and `products/`, so the
-module whose whole job is catching a drifted count had a blind spot at the repository's
-own front door. The 703 is asserted against `pytest --collect-only`, which is the only
+That figure said "317 passed, 38 skipped" for a long time, against a suite that was
+already collecting more than twice that. Nothing checked it:
+`tests/test_documented_counts.py` sweeps `projects/` and `products/`, so the module whose
+whole job is catching a drifted count had a blind spot at the repository's own front
+door - and this paragraph then described the correction with three different numbers,
+none of which was the one being asserted.
+
+The collected figure above is asserted against `pytest --collect-only`, which is the only
 form of this claim a suite can check about itself: a suite cannot assert its own pass and
-skip counts without running itself, and the two figures beside it are measured and dated
+skip counts without running itself, so the two figures beside it are measured and dated
 rather than pinned. `scripts/test_all.py` runs the root suite too, so a fresh-clone
 failure in it shows up beside the other 32.
 

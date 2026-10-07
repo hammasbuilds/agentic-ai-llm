@@ -47,6 +47,16 @@ def _preview_command(args: argparse.Namespace) -> int:
     repository whose suite does not currently pass.
     """
     repo = Path(args.repo).resolve()
+    # `_run_command` refuses a path that is not a directory, with exit 2; this one did
+    # not, and printed "0 mutants across the repository" with exit 0 for a typo. The
+    # two commands take the same argument and have to answer it the same way.
+    if not repo.is_dir():
+        what = "no such directory" if not repo.exists() else "not a directory"
+        print(f"{what}: {args.repo}", file=sys.stderr)
+        return 2
+    if not source_files(repo):
+        print(f"nothing to mutate: no Python files under {args.repo}", file=sys.stderr)
+        return 2
     total = 0
     for f in source_files(repo):
         rel = f.relative_to(repo).as_posix()

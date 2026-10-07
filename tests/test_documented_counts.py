@@ -451,6 +451,72 @@ def test_every_withheld_variable_is_one_something_actually_reads():
     assert not orphans, f"withheld but read nowhere: {orphans}"
 
 
+# -- the badge at the top of the page, which nothing read at all --------------------
+#
+# This module opens "Every test count quoted in a README, against what pytest
+# collects." `QUOTED` requires the literal `pytest -q … #`, so the shields.io badge in
+# the header - the most-read count in the file, and the first thing on the page - was
+# outside every check here. Five of the ten were wrong when this was written:
+# cartographer 39 against 42, review-bot 43 against 46, release-captain 50 against
+# 49 + 1 skipped, csv-analyst 47 against 56, log-detective 39 against 46.
+#
+# Checked against the recorded fixture rather than by collection, because the badge
+# states a pass/skip split and collection cannot tell one from the other - the same
+# reason the `pytest -q` check above uses the fixture.
+
+BADGE = re.compile(r"img\.shields\.io/badge/tests-([^-\s\"']+)-")
+
+
+def _badge_claim(package: Path) -> tuple[int, int] | None:
+    """The pass and skip counts a README's badge states, or None if it has none."""
+    found = BADGE.search((package / "README.md").read_text(encoding="utf-8"))
+    if not found:
+        return None
+    text = found.group(1).replace("%20", " ").replace("%2B", "+")
+    numbers = [int(n) for n in re.findall(r"\d+", text)]
+    if "skipped" in text:
+        return (numbers[0], numbers[1]) if len(numbers) >= 2 else None
+    return (numbers[0], 0) if numbers else None
+
+
+BADGED = [p for p in PACKAGES if _badge_claim(p) is not None]
+
+
+def test_the_badges_are_still_there_to_check():
+    """A sweep over an empty list passes, and ten of these READMEs carry one."""
+    assert len(BADGED) >= 10, [p.name for p in BADGED]
+
+
+@pytest.mark.parametrize("package", BADGED, ids=[p.name for p in BADGED])
+def test_each_readme_badge_is_what_the_suite_really_did(package: Path):
+    claimed = _badge_claim(package)
+    key = f"{package.parent.name}/{package.name}"
+    row = recorded().get(key)
+    if row is None:
+        pytest.skip(f"no recorded count for {key}")
+    assert claimed == (row["passed"], row["skipped"]), (
+        f"{key}: the badge says {claimed[0]} passed and {claimed[1]} skipped; "
+        f"the suite does {row['passed']} and {row['skipped']}"
+    )
+
+
+@pytest.mark.parametrize("package", BADGED, ids=[p.name for p in BADGED])
+def test_a_badge_and_the_command_beside_it_do_not_contradict_each_other(package: Path):
+    """Two counts on one page, which is two places for one of them to be wrong - and
+    was: every one of the five drifted badges sat above a corrected `pytest -q` line."""
+    text = (package / "README.md").read_text(encoding="utf-8")
+    quoted = QUOTED.search(text)
+    if not quoted:
+        pytest.skip("no `pytest -q` line to compare against")
+    passed, skipped = _badge_claim(package)
+    stated = int(quoted.group(1).replace(",", ""))
+    if quoted.group(2) == "passed":
+        assert stated == passed, (package.name, stated, passed)
+        assert int(quoted.group(3) or 0) == skipped, (package.name, quoted.group(3), skipped)
+    else:
+        assert stated == passed + skipped, (package.name, stated, passed + skipped)
+
+
 # -- the per-file counts, which this module's own regex did not match ----------
 
 #: A count beside a command that names ONE test file: `pytest tests/test_real_x.py -q
@@ -523,8 +589,15 @@ def test_the_root_readme_states_the_number_this_suite_collects():
     `PACKAGES` above is every directory under `projects/` and `products/` with a
     `tests/`, so the root suite - the one a reader runs first - was the one suite whose
     published count nothing compared to anything. `README.md` said "317 passed, 38
-    skipped" where it gives 606 / 38: wrong by 329, through every round of correcting
-    the sub-packages' counts.
+    skipped" against a suite already collecting more than twice that, through every
+    round of correcting the sub-packages' counts.
+
+    The figure is deliberately not restated here. This docstring used to give the
+    correction as "606 / 38: wrong by 329" while the README gave it as "wrong by 348"
+    and referred to a third number entirely - four figures for one count, in the two
+    places whose subject is counts that drift when nobody rereads the prose. The
+    assertion below reads the README and asks pytest; neither number is written down
+    twice.
 
     Checked by COLLECTION, not against the recorded fixture. A suite cannot assert its
     own pass and skip counts without running itself, and the sweep that records them

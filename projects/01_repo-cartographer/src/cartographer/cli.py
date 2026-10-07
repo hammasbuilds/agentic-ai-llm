@@ -43,6 +43,17 @@ def _map_command(args: argparse.Namespace) -> int:
         return 2
 
     report = build_report(root, top=args.top)
+    # A rate over nothing is not a rate. `apps/_platform/cache.py` states the rule
+    # this follows: "a cache nobody asked anything of has no hit rate, and reporting
+    # one as zero is the same claim as a cache that missed every time". This printed
+    # `0 of 0 repo-internal calls resolved  (0%)` for a folder with no Python in it,
+    # which is this tool's worst possible reading of a repository it never read.
+    if not report.modules:
+        print(
+            f"nothing to map: no Python modules under {root}",
+            file=sys.stderr,
+        )
+        return 2
     if args.json:
         out = report.to_json()
         if args.output:

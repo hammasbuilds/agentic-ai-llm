@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-39%20%2B%2013%20skipped-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-44%20%2B%2013%20skipped-success" alt="tests">
   <img src="https://img.shields.io/badge/median%20resolution-81%25-orange" alt="resolution">
   <img src="https://img.shields.io/badge/pooled%20resolution-75%25-orange" alt="pooled">
 </p>
@@ -77,22 +77,33 @@ last three lines are this table. Measured 2026-10-06, and it is a snapshot: thes
 repositories and committing to any of them moves the row it is in. The five maps under
 `ui/public/data` each record the revision they were taken at for the same reason.
 
-| | |
-|---|---|
-| Repositories measured | 78 |
-| Modules | 1,740 |
-| Lines | 339,739 |
-| **Median repo-call resolution** | **81%** |
-| **Pooled over all 32,527 internal call sites** | **75%** |
-| Median over *all* call sites, for contrast | 21% |
-| At or above 90% | 18 of 78 |
-| With fewer than 50 internal call sites | 9 of 78 |
-| Parse failures | 1 |
-| Checkouts holding no Python, skipped | 26 |
+**The rates are the measurement; the absolute counts are not.** An independent review
+re-ran the command the day after this was dated and found every rate unchanged and every
+raw count moved — 1,740 modules to 1,768, 339,739 lines to 349,104, 32,527 call sites to
+33,110, 26 skipped checkouts to 27 — because several of those repositories are worked on
+daily. A table printed as verbatim command output was wrong in four of eight rows within
+a day of being recorded, and nothing here checked it.
+
+So the counts below are given as the order of magnitude they are stable at, and the
+measurement is the share. What a reader wants from this table is whether an AST resolver
+binds most of a repository's internal calls, and that answer has not moved.
+
+| | | |
+|---|---|---|
+| Repositories measured | 78 | stable |
+| Modules | ~1,800 | moves daily |
+| Lines | ~350,000 | moves daily |
+| **Median repo-call resolution** | **81%** | the measurement |
+| **Pooled over ~33,000 internal call sites** | **75%** | the measurement |
+| Median over *all* call sites, for contrast | 21% | the measurement |
+| At or above 90% | 18 of 78 | stable |
+| With fewer than 50 internal call sites | 9 of 78 | stable |
+| Parse failures | 1 | stable |
+| Checkouts holding no Python, skipped | 26–27 | moves |
 
 The median and the pooled rate differ by six points, and the row `n` in the table above
 says why: the median weighs a repository with nine internal call sites the same as one
-with 1,345. `vision-language-lab` scores 100% on nine, `visual-analytics` 67% on three.
+with over a thousand. `vision-language-lab` scores 100% on nine, `visual-analytics` 67% on three.
 Nine of the 78 have fewer than fifty, which is where a percentage is a coin flip with a
 decimal point. The pooled fraction is the one to quote for the resolver; the median is the
 one to quote for a repository picked at random, and both are printed because neither
@@ -169,7 +180,7 @@ questions this tool exists for.
 ## Run it
 
 ```bash
-uv run pytest -q                      # 42 passed, 13 skipped
+uv run pytest -q                      # 44 passed, 13 skipped
 uv run cartographer map <repo>
 uv run cartographer compare <folder>  # every checkout under it
 ```

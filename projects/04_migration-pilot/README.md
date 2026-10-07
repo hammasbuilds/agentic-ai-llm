@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-29-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-32-success" alt="tests">
   <img src="https://img.shields.io/badge/files%20scanned-3%2C028-orange" alt="files">
 </p>
 
@@ -184,7 +184,7 @@ matters. Only the Vue front end needs npm.
 ## Run it
 
 ```bash
-uv run pytest -q                        # 29 tests
+uv run pytest -q                        # 32 tests
 uv run python scripts/prove_utcnow.py   # the demonstration
 uv run migration-pilot scan ~/code
 uv run migration-pilot rules

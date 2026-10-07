@@ -27,14 +27,14 @@ make it rather than asking something to guess.
 | 10 | [**contract-reader**](10_contract-reader) | Read a licence, and cite the character span behind every claim |
 | 11 | [**study-tutor**](11_study-tutor) | Spaced repetition where the scheduler is arithmetic and the model only writes questions |
 
-**531 tests across the eleven**, every one of them runnable without a network, a model or a
+**551 tests across the eleven**, every one of them runnable without a network, a model or a
 GPU. The per-package counts are in the table that `scripts/test_all.py` prints.
 
 On a fresh clone **477 run and 25 skip**. Four suites read data that is not in the
 repository: `repo-cartographer` has thirteen tests, `compliance-auditor` two and
 `release-captain` one that need a folder of real git checkouts (`REPOS_ROOT`), and
 `csv-analyst` nine that need the Online Retail II corpus (`CSV_CORPUS`). All four
-default to a path beside this checkout, so all 531 run on the machine they were written
+default to a path beside this checkout, so all 551 run on the machine they were written
 on.
 
 That default is why `scripts/test_all.py --write-counts` runs every suite with those

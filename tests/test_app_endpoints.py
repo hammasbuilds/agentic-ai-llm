@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import functools
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -271,3 +272,90 @@ def test_a_job_that_has_not_finished_still_says_so(path):
         response = client.get("/job/j/result")
     assert response.status_code == 200
     assert "Still running" in response.text
+
+
+# -- the result template on a result that is the right shape -----------------------
+#
+# `job_result` now catches `Exception` around `TemplateResponse` and returns a 200
+# fragment, which is right for a drifted result and removed the only signal a template
+# broken for the CORRECT shape ever had: it would ship as a muted paragraph with
+# nothing failing. An independent review raised exactly that, having probed it by hand.
+#
+# The two apps with a committed run are the two that can be checked without a model.
+# `apps/results/*.json` is what the real run produced, so feeding it back through the
+# route is the closest thing to a rendered page that a test can assert.
+
+#: App -> the committed file that is a RUN of it, in the shape `runner` returns.
+#:
+#: `03_vuln_baseline.json` is deliberately not here. `apps/results/README.md` describes
+#: it as "the Devign test split's class balance and two sampling windows" - dataset
+#: facts, which is a different artefact from a run, and the only one that can be
+#: committed because `runner`'s `full` block is built from model answers. Feeding it to
+#: the result template is a type error, not a test.
+#:
+#: That gap is why `tests/test_result_templates.py` exists: an app whose run cannot be
+#: committed is exactly the one whose template rots unnoticed, and app 03's did - it
+#: read `result.beats_baseline` for four lines after the runner split that field in two.
+COMMITTED_RUNS = {
+    "01_localizer": None,
+    "02_false_accepts": "02_false_accepts.json",
+    "03_vuln_baseline": None,
+}
+
+
+def _committed(slug: str):
+    import json
+
+    name = COMMITTED_RUNS.get(slug)
+    if name is None:
+        return None
+    path = ROOT / "apps" / "results" / name
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
+def test_the_result_template_renders_the_run_this_app_committed(path):
+    """A well-shaped result has to render, and has to render as the result.
+
+    The fallback fragment is indistinguishable from a successful render to any test
+    that only checks the status code, so this asserts the fallback is NOT what came
+    back - which is the assertion the catch-all would otherwise have silenced.
+    """
+    slug = path.parent.name
+    run = _committed(slug)
+    if run is None:
+        pytest.skip(f"{slug} has no committed run to render")
+
+    module = load(path)
+    # The committed file is keyed by split for app 02 and is one run for app 03; both
+    # shapes go in as the job's `result` exactly as the worker would have stored them.
+    payloads = run.values() if slug == "02_false_accepts" else [run]
+    for n, result in enumerate(payloads):
+        cache._LOCAL_JOBS.clear()
+        cache._LOCAL_JOBS["j"] = {
+            "status": "done",
+            "slug": module.app.title,
+            "result": json.dumps(result),
+        }
+        with TestClient(module.app, raise_server_exceptions=False) as client:
+            response = client.get("/job/j/result")
+
+        assert response.status_code == 200, (slug, n, response.text[:300])
+        assert "cannot display its result" not in response.text, (
+            f"{slug}: the result template could not render the run this app committed, "
+            "and the fallback made it a 200"
+        )
+        assert "Still running" not in response.text, (slug, n)
+        # Something from the run itself, so an empty page cannot pass.
+        assert len(response.text.strip()) > 200, (slug, n, response.text[:200])
+
+
+def test_the_two_apps_with_a_committed_run_are_the_ones_named():
+    """A sweep whose every case skips passes. This says which two do not."""
+    renderable = [slug for slug in COMMITTED_RUNS if _committed(slug) is not None]
+    assert renderable == ["02_false_accepts"], renderable
+    # And the one that is excluded is excluded for a stated reason, not by omission.
+    assert (ROOT / "apps" / "results" / "03_vuln_baseline.json").is_file()
+    assert COMMITTED_RUNS["03_vuln_baseline"] is None
