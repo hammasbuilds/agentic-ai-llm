@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import os
 import time
 import uuid
@@ -54,6 +55,37 @@ RETRY_AFTER = float(os.environ.get("BUS_RETRY_AFTER", "30"))
 START_TIMEOUT = float(os.environ.get("BUS_START_TIMEOUT", "1.5"))
 
 
+@contextlib.contextmanager
+def _quiet_probe():
+    """Silence aiokafka's connection logger for the duration of an EXPECTED failure.
+
+    Running an app with no broker is the documented way to run this repository - every
+    `runtime()` constructs the in-memory bus, and no product binds Kafka - so the probe
+    below failing is the normal path, not an incident. aiokafka logs it anyway, at
+    ERROR, once per app:
+
+        Unable connect to "localhost:9092": [WinError 1225] The remote computer
+        refused the network connection
+
+    Ten apps, ten of those in the terminal a reader is watching, for a condition this
+    module handles and the page already reports. The caller sees the outcome either way:
+    `available()` returns False and the masthead says `inline`.
+
+    Scoped to the probe and restored afterwards, so a broker that IS configured and then
+    breaks still says so.
+    """
+    # The parent logger, not `aiokafka.conn`: the line comes from `aiokafka/client.py`,
+    # which logs to `aiokafka` itself. Quieting the child silenced nothing, and the
+    # terminal said so.
+    logger = logging.getLogger("aiokafka")
+    was = logger.level
+    logger.setLevel(logging.CRITICAL)
+    try:
+        yield
+    finally:
+        logger.setLevel(was)
+
+
 async def producer() -> AIOKafkaProducer | None:
     """The shared producer, or None if the bus is not reachable."""
     global _producer, _available, _last_attempt
@@ -72,7 +104,8 @@ async def producer() -> AIOKafkaProducer | None:
             acks="all",
             request_timeout_ms=10_000,
         )
-        await asyncio.wait_for(p.start(), timeout=START_TIMEOUT)
+        with _quiet_probe():
+            await asyncio.wait_for(p.start(), timeout=START_TIMEOUT)
         _producer, _available = p, True
         return p
     except (KafkaError, OSError, AssertionError, TimeoutError):
@@ -189,7 +222,11 @@ async def replay_completed(app: str | None = None, limit: int = 200) -> list[dic
         commit=False,
     )
     try:
-        await c.start()
+        # Quieted like the producer's probe. This is the call that was actually printing
+        # "Unable connect to localhost:9092" once per app: `/history` opens a consumer,
+        # and the first fix wrapped only the producer, so the terminal went on saying it.
+        with _quiet_probe():
+            await c.start()
     except (KafkaError, OSError, AssertionError):
         with contextlib.suppress(Exception):
             await c.stop()  # same half-started client as the producer above

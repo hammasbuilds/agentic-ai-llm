@@ -15,5 +15,21 @@ CONSOLE = Path(__file__).with_name("console.html")
 
 
 def html(domain: str) -> str:
-    """The console, with the product's domain baked in."""
-    return CONSOLE.read_text(encoding="utf-8").replace("{{DOMAIN}}", domain)
+    """The console, with the product's domain and its initial baked in.
+
+    The initial is for the favicon. Twenty products served one page with no `<link
+    rel="icon">` at all, so every console tab showed the browser's blank-document glyph
+    and four of them open at once were indistinguishable.
+    """
+    initial = (domain.strip() or "?")[0].upper()
+    # Escaped, because it lands inside an SVG data URI in an attribute. A domain is a
+    # product name from this repository rather than user input, and the escape is here
+    # so that stays true of the next one.
+    initial = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}.get(
+        initial, initial
+    )
+    return (
+        CONSOLE.read_text(encoding="utf-8")
+        .replace("{{DOMAIN}}", domain)
+        .replace("{{INITIAL}}", initial)
+    )

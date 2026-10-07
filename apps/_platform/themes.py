@@ -45,6 +45,50 @@ class Theme:
     glow: str = ""
     extras: dict = field(default_factory=dict)
 
+    def mark(self) -> str:
+        """The same mark as `favicon()`, inline, for the masthead.
+
+        The heading was `{{ icon }} {{ theme.name }}` - an emoji before the title. An
+        emoji in an <h1> is a glyph from the operating system's emoji font: a different
+        shape on Windows, macOS and Linux, a different weight from the type beside it,
+        and nothing a palette can tune. The drawn mark is the app's own two colours and
+        sits at the cap height of the word next to it.
+        """
+        letter = (self.name.strip() or "?")[0].upper()
+        return (
+            "<svg class='mark' viewBox='0 0 32 32' aria-hidden='true' focusable='false'>"
+            f"<rect width='32' height='32' rx='7' fill='{self.accent}'/>"
+            f"<text x='16' y='22' text-anchor='middle' fill='{self.bg}' "
+            "font-family='system-ui,sans-serif' font-size='18' font-weight='700'>"
+            f"{letter}</text></svg>"
+        )
+
+    def favicon(self) -> str:
+        """A data-URI favicon drawn from this theme's own palette.
+
+        This was an emoji inside an SVG `<text>` element, which is not a mark: it is a
+        glyph from whatever emoji font the operating system ships, drawn at that font's
+        idea of the size and colour, and absent in the browsers that decline to
+        rasterise emoji into a favicon at all. Ten apps with ten identities shared one
+        rendering accident.
+
+        A rounded square in the accent colour with the app's initial knocked out of it,
+        so the tab carries the same identity the page does. SVG rather than a generated
+        .ico because it is a few hundred bytes, scales to every size a browser asks for,
+        and adds no binary to a repository of text.
+        """
+        letter = (self.name.strip() or "?")[0].upper()
+        # The glyph is cut from the plate in the page background, so it reads on both
+        # the light and the dark themes without a second colour decision.
+        return (
+            "data:image/svg+xml,"
+            "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E"
+            f"%3Crect width='32' height='32' rx='7' fill='{self.accent}'/%3E"
+            f"%3Ctext x='16' y='22' text-anchor='middle' fill='{self.bg}' "
+            "font-family='system-ui,sans-serif' font-size='18' font-weight='700'%3E"
+            f"{letter}%3C/text%3E%3C/svg%3E"
+        )
+
     def css_vars(self) -> str:
         return "\n".join(
             f"      --{k.replace('_', '-')}: {v};"

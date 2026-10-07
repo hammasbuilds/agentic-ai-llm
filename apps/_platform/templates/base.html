@@ -4,11 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ theme.name }}{% endblock %}</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>{{ icon }}</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js"></script>
+{# The app's own mark, drawn from its own palette. This was an emoji in an SVG
+   <text>, which is a glyph from the OS emoji font: a different shape on every platform,
+   and blank in the browsers that decline to rasterise emoji into a favicon. `theme.favicon()`
+   builds a rounded square in the accent colour with the app's initial cut out of it. #}
+<link rel="icon" href="{{ theme.favicon() }}">
+{# No webfonts. Every stack in `themes.py` already names a system face after the
+   hosted one - Inter falls to system-ui, JetBrains Mono to SF Mono and Consolas, Source
+   Serif 4 to Georgia - so the typography degrades by one step offline instead of the page
+   waiting on fonts.googleapis.com it cannot reach. A repository that tells you to run it
+   with no network should not open a connection to render a heading. #}
+{# htmx was loaded from a CDN for ONE attribute pair in `job.html`, and that pair is
+   what puts the result on the page. Unreachable, the job still ran and streamed its
+   progress - that is vanilla JS - and then showed nothing. Replaced there by `fetch`. #}
 <style>
   :root {
 {{ theme.css_vars() }}
@@ -137,6 +145,39 @@
   }
   .spin { display: inline-block; animation: sp 1s linear infinite; }
   @keyframes sp { to { transform: rotate(360deg); } }
+
+  /* The app's mark, at the cap height of the title beside it. `aria-hidden` in the SVG
+     because the <h1> already says the name; a screen reader announcing both reads it
+     twice. */
+  h1 .mark {
+    width: 1.1em; height: 1.1em; border-radius: .28em;
+    vertical-align: -0.17em; margin-right: .42em; flex: 0 0 auto;
+  }
+
+  /* Motion and focus. Every interactive thing moved instantly and showed the browser's
+     default focus ring, which on a dark theme is a blue halo nobody chose. One
+     transition and one ring, in the app's own accent. */
+  a, button, input, select, textarea, .card {
+    transition: background-color .15s ease, border-color .15s ease,
+                color .15s ease, box-shadow .15s ease, transform .12s ease;
+  }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  header.masthead nav a:hover { color: var(--text); }
+  button:not(:disabled):active { transform: translateY(1px); }
+
+  /* A reader who asks for less motion gets none of it, including the spinner - which is
+     the one thing on these pages that animates forever. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+    }
+  }
 </style>
 {% block head %}{% endblock %}
 </head>
@@ -144,7 +185,7 @@
 <header class="masthead">
   <div class="bar"></div>
   <div class="inner">
-    <h1>{{ icon }} {{ theme.name }}</h1>
+    <h1>{{ theme.mark()|safe }}{{ theme.name }}</h1>
     <p class="tagline">{{ theme.tagline }}</p>
     <nav>
       <a href="/">Run</a>

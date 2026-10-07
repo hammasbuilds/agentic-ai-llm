@@ -14,7 +14,7 @@
   <div class="log" id="log"></div>
 </div>
 
-<div id="result" hx-get="/job/{{ job_id }}/result" hx-trigger="load once, resultready from:body"></div>
+<div id="result"></div>
 
 {% endblock %}
 {% block scripts %}
@@ -55,5 +55,29 @@
   });
 
   src.onerror = () => { stat.innerHTML = '<span class="warn">stream closed</span>'; src.close(); };
+
+  // The result panel. This was `hx-get` plus `hx-trigger="load once, resultready from:body"`,
+  // which is a CDN script for one fetch and one event listener - and the one thing on the
+  // page that could not be done without the network was the thing that showed the answer.
+  const panel = document.getElementById('result');
+
+  async function showResult() {
+    try {
+      const r = await fetch('/job/{{ job_id }}/result');
+      // The server renders this fragment; a non-200 means the job has no result yet or
+      // the run failed, and the status line above has already said which.
+      if (!r.ok) { return; }
+      panel.innerHTML = await r.text();
+    } catch (err) {
+      // Said rather than swallowed: a blank panel with no explanation is what the CDN
+      // outage looked like, and that is the failure this replaced.
+      panel.innerHTML = '<div class="card"><p class="bad">The result could not be '
+        + 'fetched: ' + String(err) + '</p></div>';
+    }
+  }
+
+  // `load once` and `resultready`, which is what the two htmx triggers meant.
+  showResult();
+  document.body.addEventListener('resultready', showResult, { once: true });
 </script>
 {% endblock %}
