@@ -40,17 +40,44 @@ def python_files() -> list[Path]:
     return [p for p in ROOT.rglob("*.py") if not (SKIP_PARTS & set(p.parts))]
 
 
+def code_only(source: str) -> str:
+    """The source with comments and string literals removed.
+
+    A name in a comment or a docstring is not a caller, and counting one as a use is
+    how `trees.coverage()` passed this check while nothing called it: its own module
+    docstring says "`coverage()` measures what it costs", which the first version of
+    this test read as a reference. The function returned a rate over a denominator
+    that silently excluded every instance whose repository could not be listed, so it
+    was both uncalled and wrong - and the uncalled part is what would have found it.
+
+    Tokenised rather than regexed, because a `#` inside a string is not a comment and
+    a quote inside a comment does not open a string.
+    """
+    import io
+    import tokenize
+
+    kept = []
+    try:
+        for token in tokenize.generate_tokens(io.StringIO(source).readline):
+            if token.type in (tokenize.COMMENT, tokenize.STRING):
+                continue
+            kept.append(token.string)
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        return source  # unparseable: fall back to counting everything
+    return "\n".join(kept)
+
+
 def test_every_definition_under_src_is_named_somewhere_else():
     files = python_files()
     assert len(files) > 200, len(files)
-    texts = {p: p.read_text(encoding="utf-8", errors="replace") for p in files}
+    texts = {p: code_only(p.read_text(encoding="utf-8", errors="replace")) for p in files}
 
     defined: dict[str, list[Path]] = defaultdict(list)
-    for path, source in texts.items():
+    for path in files:
         if "src" not in path.parts:
             continue
         try:
-            tree = ast.parse(source)
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
         except SyntaxError:  # pragma: no cover - deliberately broken fixtures
             continue
         for node in tree.body:
@@ -61,9 +88,30 @@ def test_every_definition_under_src_is_named_somewhere_else():
     # A sweep over nothing passes, and this one walks the whole repository.
     assert len(defined) > 500, len(defined)
 
+    # A name in `__all__` is a deliberate export, not prose - the only string literal
+    # that counts as a use. `testsmith.runner.operator_summary` is listed there and
+    # called nowhere in this repository, which is what a published package's public
+    # surface looks like.
+    exported: set[str] = set()
+    for path in files:
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:  # pragma: no cover - deliberately broken fixtures
+            continue
+        for node in tree.body:
+            if not (isinstance(node, ast.Assign) and isinstance(node.value, (ast.List, ast.Tuple))):
+                continue
+            if not any(getattr(t, "id", None) == "__all__" for t in node.targets):
+                continue
+            for element in node.value.elts:
+                if isinstance(element, ast.Constant) and isinstance(element.value, str):
+                    exported.add(element.value)
+
+    # The definitions themselves are read from the real source; only the use counting
+    # is done over code with the prose stripped.
     dead = []
     for name, where in sorted(defined.items()):
-        if name in NAMED_INDIRECTLY:
+        if name in NAMED_INDIRECTLY or name in exported:
             continue
         pattern = re.compile(rf"\b{re.escape(name)}\b")
         uses = sum(

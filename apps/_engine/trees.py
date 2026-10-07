@@ -191,9 +191,14 @@ def coverage(instances, listings: dict[str, list[str]]) -> dict:
     """
     per_repo: dict[str, list[int]] = {}
     missing = []
+    unlistable = []
     for inst in instances:
         listing = listings.get(inst.repo)
         if listing is None:
+            # Counted, not skipped. The rate below is over the instances whose repo
+            # could be listed, and the set that could not is exactly the repositories
+            # that failed to list - which is not a random sample of them.
+            unlistable.append(inst.instance_id)
             continue
         present = inst.gold_files[0] in set(listing)
         per_repo.setdefault(inst.repo, []).append(int(present))
@@ -204,7 +209,11 @@ def coverage(instances, listings: dict[str, list[str]]) -> dict:
     return {
         "covered": covered,
         "total": total,
-        "rate": covered / total if total else 0.0,
+        # None, not 0.0. A coverage of zero and a coverage nobody could measure are
+        # different claims and read identically as a number - the same rule
+        # `apps/_platform/cache.py` states for an unasked cache.
+        "rate": covered / total if total else None,
         "per_repo": {r: (sum(v), len(v)) for r, v in per_repo.items()},
         "missing": missing,
+        "unlistable": unlistable,
     }
