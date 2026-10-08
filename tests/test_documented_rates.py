@@ -34,8 +34,8 @@ from __future__ import annotations
 
 import ast
 import json
-from collections import Counter
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -768,4 +768,3 @@ def test_the_devign_baseline_is_derived_from_the_committed_split():
     assert f"{share * 100:.1f}%" == "54.1%", share
     readme = _root_findings()
     assert f"{share * 100:.1f}%" in readme, share
-

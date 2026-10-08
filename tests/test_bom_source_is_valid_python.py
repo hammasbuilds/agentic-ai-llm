@@ -66,9 +66,12 @@ def _encoding_argument(call: ast.Call) -> str | None:
     `NOT_PYTHON_SOURCE` by file and line if they ever appear.
     """
     for keyword in call.keywords:
-        if keyword.arg == "encoding" and isinstance(keyword.value, ast.Constant):
-            if isinstance(keyword.value.value, str):
-                return keyword.value.value
+        if (
+            keyword.arg == "encoding"
+            and isinstance(keyword.value, ast.Constant)
+            and isinstance(keyword.value.value, str)
+        ):
+            return keyword.value.value
     name = call.func.attr if isinstance(call.func, ast.Attribute) else ""
     if name in ("decode", "encode") and call.args:
         first = call.args[0]

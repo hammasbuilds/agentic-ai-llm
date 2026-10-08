@@ -139,7 +139,13 @@ def _reads_a_readme(path: Path) -> bool:
     docstrings = set()
     for node in ast.walk(tree):
         body = getattr(node, "body", None)
-        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and body:
+        carries_a_docstring = (
+            ast.Module,
+            ast.FunctionDef,
+            ast.AsyncFunctionDef,
+            ast.ClassDef,
+        )
+        if isinstance(node, carries_a_docstring) and body:
             first = body[0]
             if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
                 docstrings.add(id(first.value))
@@ -167,14 +173,11 @@ def test_the_products_that_read_their_own_readme_are_counted_honestly():
     exactly what it said.
     """
     slugs = sorted(
-        d.name
-        for d in PRODUCTS.iterdir()
-        if d.is_dir() and re.fullmatch(r"\d\d_[a-z-]+", d.name)
+        d.name for d in PRODUCTS.iterdir() if d.is_dir() and re.fullmatch(r"\d\d_[a-z-]+", d.name)
     )
     sources = [
         path
-        for path in list((ROOT / "tests").rglob("*.py"))
-        + list(PRODUCTS.rglob("tests/**/*.py"))
+        for path in list((ROOT / "tests").rglob("*.py")) + list(PRODUCTS.rglob("tests/**/*.py"))
         # This file is the index cross-check, not a product's own check.
         if path.name != Path(__file__).name
     ]
@@ -191,6 +194,5 @@ def test_the_products_that_read_their_own_readme_are_counted_honestly():
                 checked.add(slug)
     assert len(checked) == 6, sorted(checked)
     assert "**Six** of the twenty" in INDEX.read_text(encoding="utf-8"), (
-        f"{len(checked)} products open their own README; the index states a different "
-        "number"
+        f"{len(checked)} products open their own README; the index states a different number"
     )

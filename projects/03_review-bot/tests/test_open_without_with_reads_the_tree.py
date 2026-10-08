@@ -137,9 +137,9 @@ def test_the_defeater_answers_the_question_it_claims_to(case: str):
             assert verdict.confirmed, (case, verdict.reason)
         else:
             assert not verdict.confirmed, (case, "reported a handle that is closed")
-            assert any(
-                word in verdict.reason for word in ("with", "consumed", "closes it")
-            ), verdict.reason
+            assert any(word in verdict.reason for word in ("with", "consumed", "closes it")), (
+                verdict.reason
+            )
 
 
 def test_a_comment_cannot_retract_a_finding():
@@ -212,13 +212,10 @@ def test_the_readme_states_the_number_of_rules_there_are():
     from reviewbot.checks import RULES
 
     words = {6: "Six", 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten"}
-    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(
-        encoding="utf-8"
-    )
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
     assert len(RULES) in words, f"{len(RULES)} rules; add the word to this test"
     assert f"**{words[len(RULES)]} rules.**" in readme, (
-        f"there are {len(RULES)} rules and the README does not say "
-        f"{words[len(RULES)]!r}"
+        f"there are {len(RULES)} rules and the README does not say {words[len(RULES)]!r}"
     )
     assert f"{words[len(RULES)].lower()} rules" in readme, (
         "the Layout block still names a different number"

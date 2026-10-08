@@ -50,9 +50,7 @@ def resolve(wanted: str) -> str:
     if len(matches) == 1:
         return matches[0]
     if not matches:
-        raise SystemExit(
-            f"no app matches {wanted!r}. One of:\n  " + "\n  ".join(APPS)
-        )
+        raise SystemExit(f"no app matches {wanted!r}. One of:\n  " + "\n  ".join(APPS))
     raise SystemExit(f"{wanted!r} matches several: {', '.join(matches)}")
 
 

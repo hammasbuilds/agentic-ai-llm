@@ -281,6 +281,7 @@ def test_a_job_that_has_not_finished_still_says_so(path):
 # `gen()` has a fast path for a job that finished before the browser opened the stream,
 # and it asked `status == "done"` while the loop below it ends on `"done"` or `"error"`.
 
+
 @pytest.mark.parametrize("path", APP_FILES, ids=lambda p: p.parent.name)
 def test_the_stream_ends_for_a_job_that_failed(path, monkeypatch):
     """A failed job must close the stream, not wait for a message that cannot come.
@@ -321,13 +322,15 @@ def test_the_stream_ends_for_a_job_that_failed(path, monkeypatch):
     lines: list[str] = []
 
     def read() -> None:
-        with TestClient(module.app) as client:
-            with client.stream("GET", "/job/failed/stream") as response:
-                assert response.status_code == 200
-                for line in response.iter_lines():
-                    lines.append(line)
-                    if len(lines) >= 6:
-                        break
+        with (
+            TestClient(module.app) as client,
+            client.stream("GET", "/job/failed/stream") as response,
+        ):
+            assert response.status_code == 200
+            for line in response.iter_lines():
+                lines.append(line)
+                if len(lines) >= 6:
+                    break
 
     reader = threading.Thread(target=read, daemon=True)
     reader.start()
@@ -354,13 +357,15 @@ def test_the_terminal_event_carries_the_status(path):
         "slug": module.app.title,
         "note": "a stated reason",
     }
-    with TestClient(module.app) as client:
-        with client.stream("GET", "/job/failed2/stream") as response:
-            payload = ""
-            for line in response.iter_lines():
-                if line.startswith("data:"):
-                    payload = line[len("data:"):].strip()
-                    break
+    with (
+        TestClient(module.app) as client,
+        client.stream("GET", "/job/failed2/stream") as response,
+    ):
+        payload = ""
+        for line in response.iter_lines():
+            if line.startswith("data:"):
+                payload = line[len("data:") :].strip()
+                break
     sent = json.loads(payload)
     assert sent.get("status") == "error", sent
     assert sent.get("note") == "a stated reason", sent

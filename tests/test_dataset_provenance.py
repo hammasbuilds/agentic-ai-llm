@@ -18,11 +18,11 @@ checked for presence and shape only.
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import re
-from collections import Counter
-import hashlib
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -272,8 +272,7 @@ def test_each_committed_data_file_is_the_file_that_was_measured(relative: str):
     assert path.is_file(), relative
     recorded = _digest()[relative]
     assert path.stat().st_size == recorded["bytes"], (
-        f"{relative} is {path.stat().st_size:,} bytes and the manifest says "
-        f"{recorded['bytes']:,}"
+        f"{relative} is {path.stat().st_size:,} bytes and the manifest says {recorded['bytes']:,}"
     )
     actual = hashlib.sha256(path.read_bytes()).hexdigest()
     assert actual == recorded["sha256"], (

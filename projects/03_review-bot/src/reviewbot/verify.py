@@ -197,7 +197,7 @@ def _defeat_eq_none(context: FileContext, proposal: Proposal) -> str | None:
 _CONSUMES_THE_HANDLE = frozenset({"read", "readline", "readlines", "write", "writelines"})
 
 
-def _open_calls_inside_with(tree: "ast.AST") -> set[tuple[int, int]]:
+def _open_calls_inside_with(tree: ast.AST) -> set[tuple[int, int]]:
     """(line, col) of every `open()` call that is a `with` statement's context.
 
     Nested, because `with contextlib.closing(open(p)) as fh:` closes the handle just as
@@ -221,7 +221,7 @@ def _open_calls_inside_with(tree: "ast.AST") -> set[tuple[int, int]]:
 _TAKES_OWNERSHIP = frozenset({"enter_context", "push", "callback"})
 
 
-def _consumed_open_calls(tree: "ast.AST") -> set[tuple[int, int]]:
+def _consumed_open_calls(tree: ast.AST) -> set[tuple[int, int]]:
     """(line, col) of every `open()` whose result is consumed or handed to an owner."""
     found: set[tuple[int, int]] = set()
     for node in ast.walk(tree):
@@ -241,7 +241,7 @@ def _consumed_open_calls(tree: "ast.AST") -> set[tuple[int, int]]:
     return found
 
 
-def _callee(call: "ast.Call") -> str:
+def _callee(call: ast.Call) -> str:
     """The bare name being called, or "" for anything dotted or computed."""
     return call.func.id if isinstance(call.func, ast.Name) else ""
 
@@ -275,9 +275,7 @@ def _defeat_open_without_with(context: FileContext, proposal: Proposal) -> str |
     # finding that stands rather than one dismissed.
     if here in inside or (here[1] < 0 and any(line == proposal.line for line, _ in inside)):
         return "the call is the context of a `with` statement"
-    if here in consumed or (
-        here[1] < 0 and any(line == proposal.line for line, _ in consumed)
-    ):
+    if here in consumed or (here[1] < 0 and any(line == proposal.line for line, _ in consumed)):
         return "the handle is consumed immediately, or handed to something that closes it"
     return None
 

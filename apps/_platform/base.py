@@ -12,19 +12,16 @@ UI says so, because a demo that only works with the full stack up is a demo nobo
 
 from __future__ import annotations
 
-from datetime import datetime
-
-import time
-
-import os
-
 import asyncio
 import html
 import json
 import logging
+import os
+import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -110,7 +107,10 @@ def format_when(value: object) -> str:
     if (now - moment).days < 7:
         return moment.strftime("%a %H:%M")
     if moment.year == now.year:
-        return moment.strftime("%-d %b %H:%M") if os.name != "nt" else moment.strftime("%d %b %H:%M")
+        # `%-d` strips the leading zero on a POSIX strftime and is not supported by the
+        # Windows one, which raises on it.
+        day = "%d %b %H:%M" if os.name == "nt" else "%-d %b %H:%M"
+        return moment.strftime(day)
     return moment.strftime("%d %b %Y")
 
 

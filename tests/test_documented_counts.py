@@ -856,8 +856,19 @@ def test_the_skip_breakdown_names_every_skip_the_projects_tree_has():
     split = re.search(r"On a fresh clone \*\*\d+ run and (\d+) skip\*\*", index)
     assert split
     words = {
-        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
-        "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+        "thirteen": 13,
     }
     named = re.findall(
         r"has (\w+) tests?|`compliance-auditor` (\w+)|`release-captain` (\w+)|"
@@ -906,7 +917,8 @@ def test_the_counting_marker_suppresses_the_number_the_runner_says_it_does():
 
     # Parametrised tests contribute one skip per case, so the test count is not the
     # skip count - which is the whole reason "three" was wrong.
-    stated = re.search(r"It suppresses \*\*(\d+)\*\* tests", (ROOT / "scripts" / "test_all.py").read_text(encoding="utf-8"))
+    runner_source = (ROOT / "scripts" / "test_all.py").read_text(encoding="utf-8")
+    stated = re.search(r"It suppresses \*\*(\d+)\*\* tests", runner_source)
     assert stated, "scripts/test_all.py no longer states a suppression count"
     assert int(stated.group(1)) == 47, (
         f"scripts/test_all.py says {stated.group(1)}; the measured figure is 47 "
