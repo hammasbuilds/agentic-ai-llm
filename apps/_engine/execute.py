@@ -90,7 +90,8 @@ def run(code: str, tests, setup: str = "", timeout: float = TIMEOUT) -> Outcome:
         # newline="" disables Windows LF->CRLF translation. Source that already contains
         # CRLF would otherwise become CR CR LF and break backslash line-continuations,
         # turning valid code into a SyntaxError.
-        f.write_text(src, encoding="utf-8", newline="")
+        with f.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(src)
         try:
             r = subprocess.run(
                 [sys.executable, str(f)],

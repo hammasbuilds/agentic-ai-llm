@@ -344,7 +344,8 @@ def run(
                 # reads lines or compares text would see the translation rather than
                 # the mutation, and the mutant is supposed to be the only difference
                 # between this run and the baseline.
-                target.write_text(mutant.source, encoding="utf-8", newline="")
+                with target.open("w", encoding="utf-8", newline="") as handle:
+                    handle.write(mutant.source)
                 code, output = _run_suite(interpreter, workspace, timeout, fail_fast=True)
                 if code == -1:
                     outcome = TIMEOUT

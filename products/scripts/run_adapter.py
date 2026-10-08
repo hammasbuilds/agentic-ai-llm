@@ -111,7 +111,8 @@ def main(limit: int = 12) -> int:
             print(f"  {i}/{len(texts)} ok")
 
     # `newline=""`: tracked artefact, see `smoke_serve.py`.
-    OUT.write_text(json.dumps({"runs": runs}, indent=1), encoding="utf-8", newline="")
+    with OUT.open("w", encoding="utf-8", newline="") as handle:
+        handle.write(json.dumps({"runs": runs}, indent=1))
     print(f"\nwrote {OUT} - {len(runs)} runs x {len(PLATFORMS)} variants")
     return 0
 

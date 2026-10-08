@@ -209,7 +209,8 @@ def _apply_command(args: argparse.Namespace) -> int:
                 # every `\r\n` into `\n` while reading, so a CRLF file was normalised
                 # before the write could preserve anything: the two flags are one fix,
                 # and only the outbound half was obvious. `ast.parse` handles `\r\n`.
-                source = path.read_text(encoding="utf-8-sig", newline="")
+                with path.open(encoding="utf-8-sig", newline="") as handle:
+                    source = handle.read()
                 # Remembered, because this command writes the file back and the decode
                 # above has already consumed the mark.
                 had_bom = path.read_bytes().startswith(b"\xef\xbb\xbf")
@@ -240,11 +241,12 @@ def _apply_command(args: argparse.Namespace) -> int:
                 # the same edit-nobody-asked-for as the BOM it is handling on the line
                 # above, and `apps/_engine/execute.py` already passes this flag with a
                 # comment saying why.
-                path.write_text(
-                    result,
+                with path.open(
+                    "w",
                     encoding="utf-8-sig" if had_bom else "utf-8",
                     newline="",
-                )
+                ) as handle:
+                    handle.write(result)
             else:
                 diff = difflib.unified_diff(
                     source.splitlines(keepends=True),

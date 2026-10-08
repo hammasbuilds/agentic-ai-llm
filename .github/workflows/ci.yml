@@ -50,6 +50,14 @@ jobs:
       # between minor versions, so the failure is a formatting diff in files nobody
       # touched. `tests/test_ci_pins.py` keeps the two specifiers equal.
       - run: pip install "pytest>=8" "ruff>=0.16,<0.17"
+      # The sweep below includes the ROOT suite, and the root suite imports FastAPI,
+      # Jinja2 and sse-starlette - the package's own dependencies - plus `fakeredis`
+      # and `pytest-asyncio` from the dev group. With only pytest and ruff installed it
+      # reported `0 ran +2 skip, 8 errors` and the whole job went red on a missing
+      # install rather than on anything in the tree. A fresh clone runs `pip install -e .`
+      # before that suite, so this does too, and the recorded counts are measured with
+      # these present.
+      - run: pip install -e . "pytest-asyncio>=0.24" "fakeredis>=2.39"
       # Lint them too. CI checked only `apps tests`, so 56 errors accumulated in
       # projects/ unseen - including unused imports in shipped CLI modules. Each
       # package has its own ruff config and ruff honours the nearest one, so this is

@@ -183,7 +183,8 @@ def find_witness(
     src = _PROBE.format(setup=setup, ref=reference, mut=mutant, fn=fn, cases=cases)
     with tempfile.TemporaryDirectory() as tmp:
         f = Path(tmp) / "probe.py"
-        f.write_text(src, encoding="utf-8", newline="")
+        with f.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(src)
         try:
             r = subprocess.run(
                 [sys.executable, str(f)],

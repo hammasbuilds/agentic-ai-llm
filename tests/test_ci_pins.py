@@ -45,6 +45,13 @@ def test_every_pip_installed_tool_is_pinned():
             name = token.strip('"')
             if name.startswith("-"):
                 continue
+            # The checkout itself, as `pip install -e .`. A version on it would mean
+            # installing some RELEASE of this project instead of the tree being tested,
+            # which is the opposite of what pinning is for everything else on this line.
+            # Narrowed to that exact token rather than to "anything unversioned", so a
+            # genuinely unpinned tool is still a failure.
+            if name == ".":
+                continue
             if not re.search(r"[<>=!~]", name):
                 unpinned.append(name)
     assert not unpinned, f"installed with no version: {unpinned}"

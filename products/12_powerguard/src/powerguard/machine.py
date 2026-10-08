@@ -15,7 +15,6 @@ import os
 import re
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 
 from .domain import DOWNLOAD, OTHER, TRAINING, Job, Machine
 
@@ -130,7 +129,15 @@ class Process:
             head, _, tail = command[1:].partition('"')
         else:
             head, _, tail = command.partition(" ")
-        return " ".join(f"{Path(head).name} {tail}".split())
+        # Split on EITHER separator, rather than on whatever the running interpreter
+        # calls one. The separator in this string was chosen by the machine that
+        # produced the command line - these are Windows command lines, with backslashes
+        # - and `Path(head).name` asks the host instead: on Linux it finds no separator
+        # in `C:\Program Files\ollama\ollama.exe` and returns the whole path as the
+        # "basename", so the signature keeps the install path it exists to discard and
+        # every rule matching on it misses.
+        basename = re.split(r"[\\/]", head)[-1]
+        return " ".join(f"{basename} {tail}".split())
 
     @property
     def kind(self) -> str:

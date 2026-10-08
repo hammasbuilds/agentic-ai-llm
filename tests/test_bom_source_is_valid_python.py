@@ -52,9 +52,38 @@ AST_READERS = {
 _DECODERS = frozenset({"read_text", "open", "decode"})
 
 
+def _open_mode(call: ast.Call) -> str:
+    """The mode an `open` call was given, or `"r"` - which is open's own default.
+
+    Two shapes: `open(path, "w", ...)`, where the mode is the second positional, and
+    `path.open("w", ...)`, where it is the first.
+    """
+    index = 0 if isinstance(call.func, ast.Attribute) else 1
+    if len(call.args) > index:
+        argument = call.args[index]
+        if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+            return argument.value
+    for keyword in call.keywords:
+        if (
+            keyword.arg == "mode"
+            and isinstance(keyword.value, ast.Constant)
+            and isinstance(keyword.value.value, str)
+        ):
+            return keyword.value.value
+    return "r"
+
+
 def _is_a_decode(call: ast.Call) -> bool:
     name = call.func.attr if isinstance(call.func, ast.Attribute) else getattr(call.func, "id", "")
-    return name in _DECODERS
+    if name not in _DECODERS:
+        return False
+    # An `open` for WRITING is not a decode. The comment above says so - "a write is out
+    # of scope however it is encoded" - and `write_text` is kept out of `_DECODERS` for
+    # exactly that reason, but `open` covers both directions and was not asked which one
+    # it was. A correct `target.open("w", encoding="utf-8")` was reported as a file read
+    # as plain utf-8, and the fix for THAT would have been to write a BOM into every
+    # mutant this package produces.
+    return not (name == "open" and any(flag in _open_mode(call) for flag in "wax"))
 
 
 def _encoding_argument(call: ast.Call) -> str | None:
