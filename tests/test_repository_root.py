@@ -36,7 +36,20 @@ ALLOWED_FILES = {
 }
 
 #: Top-level directories that may hold tracked files.
-ALLOWED_DIRECTORIES = {".github", "apps", "data", "products", "projects", "scripts", "tests"}
+# Widening this set is how an accident becomes permanent, so each name is here because
+# something deliberate lives under it: `docs` holds the interface screenshot the README
+# embeds, `observability` the console that reads the run log.
+ALLOWED_DIRECTORIES = {
+    ".github",
+    "apps",
+    "data",
+    "docs",
+    "observability",
+    "products",
+    "projects",
+    "scripts",
+    "tests",
+}
 
 
 def _tracked() -> list[str]:
