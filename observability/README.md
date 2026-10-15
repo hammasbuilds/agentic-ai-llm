@@ -7,6 +7,10 @@ and what failed.
 dependency — the apps already pull in FastAPI and the rest, and a console is not a reason
 to add a metrics stack on top.
 
+![The run console](console.png)
+
+*Real runs: five jobs, two failures, and every one of them inline.*
+
 ```bash
 # 1. run an app with recording on. Off unless this names a file.
 AAL_TELEMETRY=runs.jsonl python scripts/run_app.py 01_localizer

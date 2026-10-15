@@ -20,6 +20,18 @@ belongs to the prompt rather than the model.
 Every one is a real web application with its own visual identity, backed by a Kafka job bus,
 Redis state and a worker that owns the single GPU.
 
+## Interface
+
+![The command-line interface](docs/interface.png)
+
+A local front end over the eleven command-line packages: pick a command, see the exact
+command line, and read its real output with the exit code beside it. Python
+`http.server` and one HTML file.
+
+The ten apps serve their own operator UI — FastAPI, Jinja2 and server-sent events, no
+JavaScript build step — and the run console in [`observability/`](observability) reads
+what they recorded.
+
 ## The ten
 
 | # | Icon | App | Question | Theme |
