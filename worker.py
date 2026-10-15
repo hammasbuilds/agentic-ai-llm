@@ -25,13 +25,14 @@ import asyncio
 import importlib.util
 import signal
 import sys
+import time
 import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from apps._platform import bus, cache  # noqa: E402
+from apps._platform import bus, cache, telemetry  # noqa: E402
 
 APPS_DIR = ROOT / "apps"
 
@@ -70,15 +71,31 @@ async def handle(job_id: str, app: str, params: dict, runner) -> None:
         await bus.emit_progress(job_id, app, done, total, note)
 
     await cache.update_job(job_id, status="running")
+    started = time.perf_counter()
     try:
         result = await runner(params, emit)
         await cache.update_job(job_id, status="done", result=result)
         await cache.publish_progress(job_id, {"status": "done"})
         # The durable record. Everything above this line is recoverable from it.
         await bus.emit_completed(job_id, app, result)
+        # And the console's record, with `kafka` as the transport. Instrumenting only
+        # the in-process path in base.py would have made every job that went over the
+        # bus invisible - and since nothing here binds Kafka, the gap would have shown
+        # up as "all traffic is inline", which is true today and would stop being true
+        # the moment somebody started this worker.
+        telemetry.job(
+            app,
+            "done",
+            time.perf_counter() - started,
+            transport="kafka",
+            items=(result or {}).get("total") if isinstance(result, dict) else None,
+        )
         print(f"  done {job_id} ({app})")
     except Exception as exc:
         traceback.print_exc()
+        telemetry.job(
+            app, "error", time.perf_counter() - started, transport="kafka", error=type(exc).__name__
+        )
         await cache.update_job(job_id, status="error", error=str(exc)[:400])
         await cache.publish_progress(job_id, {"status": "error", "note": str(exc)[:200]})
         print(f"  FAILED {job_id} ({app}): {exc}")

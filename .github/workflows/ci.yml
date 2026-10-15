@@ -63,13 +63,13 @@ jobs:
       # package has its own ruff config and ruff honours the nearest one, so this is
       # eleven plus twenty-one separate rule sets being enforced at once.
       - name: Lint every sub-package
-        run: ruff check projects products scripts worker.py
+        run: ruff check projects products scripts worker.py observability
       # `format --check` covered only `apps tests`, so 70 files under products/ had
       # drifted out of format unseen - and in one of them `format` and `check`
       # disagreed, because formatting collapsed a hand-wrapped dict past the
       # package's own 96-column limit.
       - name: Check formatting in every sub-package
-        run: ruff format --check projects products scripts worker.py
+        run: ruff format --check projects products scripts worker.py observability
       # `--fresh` is what makes this the run the READMEs describe: REPOS_ROOT, the
       # HF caches and every endpoint pointed at an empty directory. Without it the
       # sweep reads whatever the runner happens to have - and `REPOS_ROOT` defaults

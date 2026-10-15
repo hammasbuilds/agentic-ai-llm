@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en" data-brand="agentic">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentic-ai-llm · run console</title>
+<meta name="description" content="What ran, how long it took, which way it travelled, and what failed.">
+<meta name="theme-color" content="#101011">
+<style>
+  /* ---- graphite and amber, opening dark: the palette of this repository's command
+     line, where the sibling projects are a document and an instrument panel. Square
+     corners, mono throughout, no shadows. A terminal should open dark. ---- */
+  :root {
+    --bg: #101011; --panel: #191919; --ink: #ebe8e2; --muted: #9a968c;
+    --line: #2a2a2b; --accent: #e0a23c; --good: #5fcf8a; --bad: #f58a80;
+    --warn: #e0b458; --code-bg: #141414; --on-accent: #1a1200;
+    --radius: 0px;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", Inter, sans-serif;
+  }
+  /* Only the toggle leaves dark, which is why there is no media query here: a console
+     for a command line opens dark on purpose rather than following the desktop. */
+  :root[data-theme="light"] {
+    --bg: #f6f6f4; --panel: #ffffff; --ink: #1b1a17; --muted: #6a685f;
+    --line: #cfccc3; --accent: #a35a07; --good: #157f3b; --bad: #b3261e;
+    --warn: #8a5a00; --code-bg: #f0efea; --on-accent: #ffffff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.6 var(--mono); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px 64px; }
+
+  header { border-bottom: 1px solid var(--line); margin-bottom: 26px; }
+  .bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 24px 0 10px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  h1::after { content: "_"; color: var(--accent); animation: caret 1.1s steps(1) infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+  h1 .dim { color: var(--muted); font-weight: 400; }
+  .sub { color: var(--muted); max-width: 74ch; margin: 0 0 14px; font-family: var(--sans); }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 16px; }
+  .chip { font: 11px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+          border: 1px solid var(--line); border-radius: 0; padding: 6px 10px;
+          color: var(--muted); background: var(--panel); white-space: nowrap; }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .chip.live { border-color: var(--good); color: var(--good); }
+  .chip.bad { border-color: var(--bad); color: var(--bad); }
+  #theme { margin-left: auto; background: none; border: 1px solid var(--line);
+           color: var(--muted); border-radius: 0; padding: 6px 12px; cursor: pointer;
+           font: 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+  #theme:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+  h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+       color: var(--muted); margin: 32px 0 12px; font-weight: 600; }
+  h2::before { content: "$ "; color: var(--accent); opacity: .75; }
+  h2:first-of-type { margin-top: 0; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 18px 20px; }
+  .tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 14px 16px; }
+  .tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .tile .v { font-size: 26px; font-weight: 600; margin-top: 6px; line-height: 1.1; }
+  .tile .n { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .tile .v.accent { color: var(--accent); }
+  .tile .v.good { color: var(--good); }
+  .tile .v.bad { color: var(--bad); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+       color: var(--muted); padding: 0 10px 8px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  th.num, td.num { text-align: right; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .scroll-x { overflow-x: auto; }
+  .scroll-x table { min-width: 34rem; }
+
+  .meter { height: 8px; background: var(--code-bg); overflow: hidden; min-width: 110px; }
+  .meter > i { display: block; height: 100%; background: var(--accent); }
+  .meter > i.good { background: var(--good); }
+  .meter > i.bad { background: var(--bad); }
+
+  code { font-size: 12.5px; background: var(--code-bg); padding: 1px 5px; }
+  .muted { color: var(--muted); }
+  .note { border-left: 3px solid var(--warn); background: var(--code-bg);
+          padding: 10px 14px; margin: 14px 0 0; font-size: 13px; font-family: var(--sans); }
+  .empty { color: var(--muted); font-size: 13px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 44px;
+           border-top: 1px solid var(--line); padding-top: 16px; font-family: var(--sans); }
+
+  :where(a, button, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    h1::after { animation: none; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="bar">
+    <h1>agentic-ai-llm <span class="dim">/ run console</span></h1>
+    <button id="theme" type="button">theme</button>
+  </div>
+  <p class="sub">What ran, how long it took, <strong>which way it travelled</strong>, and
+  what failed. One line per finished job, from the file the platform appends to when
+  <code>AAL_TELEMETRY</code> names one. Durable, unlike the job state in Redis, which
+  expires.</p>
+  <div class="meta" id="meta"><span class="chip">reading…</span></div>
+</header>
+
+<div id="body"><p class="empty">Loading…</p></div>
+
+<footer>
+  Console: Python <code>http.server</code> + one HTML file, no build step and nothing from
+  a CDN. Recording is off unless <code>AAL_TELEMETRY</code> is set, and records the shape
+  of a run — app, outcome, duration, transport — never the parameters, the result, or the
+  text of an error.
+</footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const themeBtn = $("#theme");
+const saved = (() => { try { return localStorage.getItem("aal-console-theme"); } catch { return null; } })();
+if (saved) document.documentElement.dataset.theme = saved;
+themeBtn.onclick = () => {
+  const now = document.documentElement.dataset.theme || "dark";
+  const next = now === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("aal-console-theme", next); } catch {}
+};
+
+const el = (tag, props = {}, kids = []) => {
+  const node = Object.assign(document.createElement(tag), props);
+  for (const kid of kids) node.append(kid);
+  return node;
+};
+const tile = (k, v, note, cls) => el("div", { className: "tile" }, [
+  el("div", { className: "k", textContent: k }),
+  el("div", { className: "v" + (cls ? " " + cls : ""), textContent: v }),
+  ...(note ? [el("div", { className: "n", textContent: note })] : []),
+]);
+const pct = (x) => (x === null || x === undefined) ? "—" : (x * 100).toFixed(1) + "%";
+function when(seconds) {
+  if (!seconds) return "—";
+  return new Date(seconds * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+function duration(s) {
+  if (s < 60) return s.toFixed(1) + "s";
+  if (s < 3600) return (s / 60).toFixed(1) + "m";
+  return (s / 3600).toFixed(1) + "h";
+}
+
+function ranked(rows, tone) {
+  const total = rows.reduce((sum, [, n]) => sum + n, 0) || 1;
+  if (!rows.length) return el("p", { className: "empty", textContent: "Nothing recorded yet." });
+  const table = el("table", {}, [
+    el("thead", {}, [el("tr", {}, [
+      el("th", { textContent: "name" }),
+      el("th", { className: "num", textContent: "runs" }),
+      el("th", { className: "num", textContent: "share" }),
+      el("th", { textContent: "" }),
+    ])]),
+  ]);
+  const body = el("tbody");
+  for (const [name, n] of rows) {
+    const share = n / total;
+    body.append(el("tr", {}, [
+      el("td", {}, [el("code", { textContent: name })]),
+      el("td", { className: "num", textContent: n.toLocaleString() }),
+      el("td", { className: "num", textContent: (share * 100).toFixed(1) + "%" }),
+      el("td", {}, [el("div", { className: "meter" }, [
+        Object.assign(el("i", { className: tone || "" }), { style: `width:${(share * 100).toFixed(1)}%` }),
+      ])]),
+    ]));
+  }
+  table.append(body);
+  return el("div", { className: "scroll-x" }, [table]);
+}
+
+function render(d) {
+  $("#meta").replaceChildren(
+    el("span", { className: "chip", innerHTML: `runs <b>${d.runs.toLocaleString()}</b>` }),
+    el("span", { className: "chip", innerHTML: `apps <b>${d.apps.length}</b>` }),
+    el("span", { className: d.failed ? "chip bad" : "chip live",
+                 innerHTML: `failed <b>${d.failed}</b>` }),
+    el("span", { className: "chip", innerHTML: `compute <b>${d.runs ? duration(d.compute_seconds) : "—"}</b>` }),
+    el("span", { className: "chip", innerHTML: `window <b>${when(d.first)} → ${when(d.last)}</b>` }),
+    el("span", { className: d.log_exists ? "chip live" : "chip bad",
+                 innerHTML: `log <b>${esc(d.log.split(/[\\/]/).pop())}</b>` }),
+  );
+
+  const out = $("#body");
+  out.replaceChildren();
+
+  if (!d.log_exists) {
+    out.append(el("div", { className: "panel" }, [
+      el("p", { innerHTML: `No log at <code>${esc(d.log)}</code>.` }),
+      el("p", { className: "muted", innerHTML:
+        `Recording is off unless asked for. Start an app with ` +
+        `<code>AAL_TELEMETRY=${esc(d.log)}</code> and run a measurement.` }),
+    ]));
+    return;
+  }
+  if (!d.runs) {
+    out.append(el("div", { className: "panel" }, [
+      el("p", { textContent: "The log exists and holds no finished jobs yet." }),
+      el("p", { className: "muted", textContent:
+        "A line is written when a job finishes, so a job still running is not here yet." }),
+    ]));
+    return;
+  }
+
+  out.append(el("h2", { textContent: "at a glance" }));
+  out.append(el("div", { className: "tiles" }, [
+    tile("runs", d.runs.toLocaleString()),
+    tile("failed", String(d.failed), pct(d.failure_rate) + " of runs", d.failed ? "bad" : "good"),
+    tile("p50", duration(d.p50)),
+    tile("p95", duration(d.p95), d.thin ? `only ${d.runs} runs` : null),
+    tile("longest", duration(d.max)),
+    tile("compute", duration(d.compute_seconds), "summed across runs", "accent"),
+  ]));
+  if (d.thin) {
+    out.append(el("div", { className: "note", innerHTML:
+      `<strong>Read the percentiles as the sample they are.</strong> p95 over ${d.runs} ` +
+      `run${d.runs === 1 ? "" : "s"} is close to the longest one; it becomes a percentile past ${d.thin_at}.` }));
+  }
+
+  // ---- the signature panel ---------------------------------------------------------
+  out.append(el("h2", { textContent: "which way it travelled" }));
+  const transports = Object.entries(d.transports);
+  const allInline = transports.length === 1 && transports[0][0] === "inline";
+  out.append(el("div", { className: "panel" }, [
+    el("p", { className: "muted", style: "margin-top:0; font-family: var(--sans)", innerHTML:
+      "Kafka, Redis, Postgres and Ollama adapters all ship here and <strong>no product " +
+      "binds one</strong> — every <code>runtime()</code> constructs the in-memory bus and " +
+      "store. So this panel is a statement of fact, not a fault to go and fix." }),
+    ranked(transports, "accent"),
+    ...(allInline ? [el("p", { className: "muted", style: "font-size:12px; margin-bottom:0; font-family: var(--sans)",
+      textContent: "Everything ran in process. Start worker.py against a broker and kafka appears here on its own." })] : []),
+  ]));
+
+  // ---- by app -----------------------------------------------------------------------
+  out.append(el("h2", { textContent: "by app" }));
+  const table = el("table", {}, [
+    el("thead", {}, [el("tr", {}, [
+      el("th", { textContent: "app" }),
+      el("th", { className: "num", textContent: "runs" }),
+      el("th", { className: "num", textContent: "failed" }),
+      el("th", { className: "num", textContent: "items" }),
+      el("th", { className: "num", textContent: "p50" }),
+      el("th", { className: "num", textContent: "p95" }),
+      el("th", { className: "num", textContent: "total" }),
+    ])]),
+  ]);
+  const tbody = el("tbody");
+  for (const row of d.apps) {
+    tbody.append(el("tr", {}, [
+      el("td", {}, [el("code", { textContent: row.app })]),
+      el("td", { className: "num", textContent: row.runs.toLocaleString() }),
+      el("td", { className: "num", textContent: row.error ? `${row.error} (${pct(row.failure_rate)})` : "0" }),
+      el("td", { className: "num", textContent: row.items ? row.items.toLocaleString() : "—" }),
+      el("td", { className: "num", textContent: duration(row.p50) }),
+      el("td", { className: "num", textContent: row.thin ? duration(row.p95) + " *" : duration(row.p95) }),
+      el("td", { className: "num", textContent: duration(row.total) }),
+    ]));
+  }
+  table.append(tbody);
+  out.append(el("div", { className: "panel scroll-x" }, [table]));
+  if (d.apps.some((r) => r.thin)) {
+    out.append(el("p", { className: "muted", style: "font-size:12px",
+      textContent: `* fewer than ${d.thin_at} runs, so that column is the longest of a handful rather than a percentile.` }));
+  }
+
+  // ---- what failed --------------------------------------------------------------------
+  const errors = Object.entries(d.errors);
+  if (errors.length) {
+    out.append(el("h2", { textContent: "what failed" }));
+    out.append(el("div", { className: "panel" }, [
+      el("p", { className: "muted", style: "margin-top:0; font-family: var(--sans)",
+        textContent: "By exception type. The message is not recorded: it can carry a path or a prompt, and what a console needs is which failure keeps happening." }),
+      ranked(errors, "bad"),
+    ]));
+  }
+
+  // ---- the tail -------------------------------------------------------------------------
+  out.append(el("h2", { textContent: "recent runs" }));
+  const recent = el("table", {}, [
+    el("thead", {}, [el("tr", {}, [
+      el("th", { textContent: "time" }),
+      el("th", { textContent: "app" }),
+      el("th", { textContent: "outcome" }),
+      el("th", { className: "num", textContent: "took" }),
+      el("th", { textContent: "via" }),
+      el("th", { className: "num", textContent: "items" }),
+    ])]),
+  ]);
+  const rbody = el("tbody");
+  for (const row of d.recent) {
+    rbody.append(el("tr", {}, [
+      el("td", { className: "num muted", textContent: when(row.at) }),
+      el("td", {}, [el("code", { textContent: row.app })]),
+      el("td", { className: row.outcome === "done" ? "" : "bad",
+                 textContent: row.outcome + (row.error ? ` · ${row.error}` : "") }),
+      el("td", { className: "num", textContent: duration(row.seconds || 0) }),
+      el("td", { className: "muted", textContent: row.transport || "—" }),
+      el("td", { className: "num", textContent: row.items ?? "—" }),
+    ]));
+  }
+  recent.append(rbody);
+  out.append(el("div", { className: "panel scroll-x" }, [recent]));
+}
+
+async function tick() {
+  try {
+    const answer = await fetch("/api/summary", { cache: "no-store" });
+    render(await answer.json());
+  } catch (err) {
+    $("#meta").replaceChildren(el("span", { className: "chip bad", textContent: "console unreachable" }));
+    $("#body").replaceChildren(el("div", { className: "panel" }, [
+      el("p", { textContent: "The console stopped answering: " + String(err.message) }),
+    ]));
+  }
+}
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

@@ -31,7 +31,7 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import StrictUndefined
 from sse_starlette.sse import EventSourceResponse
 
-from . import bus, cache
+from . import bus, cache, telemetry
 from . import model as model_client
 from .themes import get as get_theme
 
@@ -380,10 +380,30 @@ async def _run_inline(app_slug: str, job_id: str, params: dict, runner: Runner) 
         )
 
     await cache.update_job(job_id, status="running")
+    # The durable record, beside the live one. `cache` holds job state in Redis under a
+    # TTL - right for the page polling its own run, gone on restart - and this is what
+    # survives for the console. Off unless AAL_TELEMETRY names a file.
+    started = time.perf_counter()
     try:
         result = await runner(params, emit)
         await cache.update_job(job_id, status="done", result=result)
         await cache.publish_progress(job_id, {"status": "done"})
+        telemetry.job(
+            app_slug,
+            "done",
+            time.perf_counter() - started,
+            transport="inline",
+            items=(result or {}).get("total") if isinstance(result, dict) else None,
+        )
     except Exception as exc:  # a failed measurement must not look like a hung one
+        # The exception TYPE, not its message: a message can carry a path or a prompt,
+        # and the console needs to know which failure keeps happening, not its text.
+        telemetry.job(
+            app_slug,
+            "error",
+            time.perf_counter() - started,
+            transport="inline",
+            error=type(exc).__name__,
+        )
         await cache.update_job(job_id, status="error", error=str(exc)[:400])
         await cache.publish_progress(job_id, {"status": "error", "note": str(exc)[:200]})
