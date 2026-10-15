@@ -92,6 +92,23 @@
     h1::after { animation: none; }
     * { transition: none !important; }
   }
+
+  /* The links row. A console is the page somebody leaves open, and it had no way back to
+     the repository it watches or to the projects beside it. */
+  .links { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+           padding: 0 0 18px; font-size: 12.5px; }
+  .links a, .links span.here {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 6px 11px; text-decoration: none; color: var(--muted);
+    background: var(--panel); white-space: nowrap;
+  }
+  .links a:hover { border-color: var(--accent); color: var(--accent); }
+  .links span.here { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .links .sep { border: 0; background: none; color: var(--muted); opacity: .6;
+                padding: 0 2px; }
+  .links b { color: var(--ink); font-weight: 600; }
+  .links a:hover b { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -106,6 +123,14 @@
   <code>AAL_TELEMETRY</code> names one. Durable, unlike the job state in Redis, which
   expires.</p>
   <div class="meta" id="meta"><span class="chip">reading…</span></div>
+<nav class="links" aria-label="This project, and the others">
+  <span class="here" aria-current="page">agentic-ai-llm</span>
+  <a href="https://github.com/hammasbuilds/agentic-ai-llm" rel="noopener">repository</a>
+  <a href="https://agentic-ai-q7lvdl9sy-hammasbuilds.vercel.app" rel="noopener">live page</a>
+  <span class="sep">·</span>
+  <a href="https://github.com/hammasbuilds/pak-law-assistant" rel="noopener">Pakistan Law</a>
+  <a href="https://github.com/hammasbuilds/repo-recon" rel="noopener">Repo Recon</a>
+</nav>
 </header>
 
 <div id="body"><p class="empty">Loading…</p></div>
