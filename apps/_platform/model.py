@@ -32,6 +32,13 @@ CONCURRENCY = int(os.environ.get("GEN_CONCURRENCY", "8"))
 PROBE_TIMEOUT = float(os.environ.get("OLLAMA_PROBE_TIMEOUT", "5.0"))
 
 
+def placement() -> dict:
+    """Where Ollama puts the model. OLLAMA_NUM_GPU=0 keeps every layer on the CPU, for a
+    machine whose GPU is busy with something else; unset, Ollama decides as usual."""
+    value = os.environ.get("OLLAMA_NUM_GPU", "").strip()
+    return {"num_gpu": int(value)} if value else {}
+
+
 async def generate(
     prompt: str,
     *,
@@ -48,7 +55,7 @@ async def generate(
         if hit is not None:
             return hit
 
-    options: dict = {"temperature": temperature, "num_predict": num_predict}
+    options: dict = {"temperature": temperature, "num_predict": num_predict, **placement()}
     if seed is not None:
         options["seed"] = seed
     try:
@@ -111,7 +118,12 @@ async def embed(texts: list[str], model: str = "nomic-embed-text") -> list[list[
             for i in range(0, len(texts), 256):
                 r = await client.post(
                     f"{OLLAMA}/api/embed",
-                    json={"model": model, "input": texts[i : i + 256], "keep_alive": "30m"},
+                    json={
+                        "model": model,
+                        "input": texts[i : i + 256],
+                        "keep_alive": "30m",
+                        "options": placement(),
+                    },
                 )
                 r.raise_for_status()
                 out.extend(r.json()["embeddings"])

@@ -179,3 +179,16 @@ def test_the_light_dark_split_is_the_one_the_readme_states():
 def test_one_monospace_across_all_ten():
     """Stated, because "their own typeface pairings" implied otherwise."""
     assert len({t.font_mono for t in themes.all_themes()}) == 1
+
+
+# --- model placement -----------------------------------------------------------------
+
+
+def test_ollama_num_gpu_reaches_every_request(monkeypatch):
+    """OLLAMA_NUM_GPU=0 must keep the model off a GPU that is busy; unset sends nothing."""
+    from apps._platform import model
+
+    monkeypatch.delenv("OLLAMA_NUM_GPU", raising=False)
+    assert model.placement() == {}
+    monkeypatch.setenv("OLLAMA_NUM_GPU", "0")
+    assert model.placement() == {"num_gpu": 0}
