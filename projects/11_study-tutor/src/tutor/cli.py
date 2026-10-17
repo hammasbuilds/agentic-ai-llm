@@ -124,16 +124,35 @@ def _review_command(args: argparse.Namespace) -> int:
         return 0
 
     print(f"{len(pending)} card(s) due.\n")
-    for card in pending:
-        print(f"  {card.question}")
-        input("  [enter to reveal] ")
-        print(f"  {card.answer}")
-        while True:
-            raw = input("  grade 1=again 2=hard 3=good 4=easy: ").strip()
-            if raw.isdigit() and int(raw) in GRADES:
-                break
-        card.review(int(raw), today, scheduler=args.scheduler)
-        print(f"  next in {card.state.interval} day(s)\n")
+    graded = 0
+    try:
+        for card in pending:
+            print(f"  {card.question}")
+            input("  [enter to reveal] ")
+            print(f"  {card.answer}")
+            while True:
+                raw = input("  grade 1=again 2=hard 3=good 4=easy: ").strip()
+                if raw.isdigit() and int(raw) in GRADES:
+                    break
+            card.review(int(raw), today, scheduler=args.scheduler)
+            graded += 1
+            print(f"  next in {card.state.interval} day(s)\n")
+    except (EOFError, KeyboardInterrupt) as stopped:
+        # This is a terminal session, and it was reached with no terminal: piped,
+        # redirected from /dev/null, or run from a script. Unhandled, `input()` raised
+        # `EOFError` after printing the first question and the traceback was the whole
+        # answer - and every grade already given was lost, because the deck was only
+        # written after the last card. Both are fixed here: the work done is saved and
+        # the reason is said in one line.
+        print()
+        if graded:
+            _save(path, cards)
+            print(f"stopped after {graded} of {len(pending)} card(s); saved {path}")
+        else:
+            print(f"stopped before the first grade; {path} is unchanged")
+        if isinstance(stopped, EOFError):
+            print("  `review` asks questions, so it needs a terminal on stdin.")
+        return 1
 
     _save(path, cards)
     print(f"saved {path}")

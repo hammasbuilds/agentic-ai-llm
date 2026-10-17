@@ -200,6 +200,28 @@ def _cost_command(args: argparse.Namespace) -> int:
     print("  'distinct lost' counts messages that no longer have a template of")
     print("  their own. Compression is bought by deciding two lines are the same.")
 
+    # The table is read as a dial: loosen the threshold, get more compression. On real
+    # logs it is not one. Over 25,000 lines of an Apache error log the template count
+    # goes 33 at 0.6, 46 at 0.5, 47 at 0.4 and 33 at 0.3 - LOOSENING the threshold
+    # produced half as much compression again. Clustering here is a single greedy pass,
+    # so a line that would have started its own cluster at a tight threshold instead
+    # joins an earlier, broader one, whose template then generalises far enough that
+    # later lines no longer match it and start clusters of their own. Printed rather
+    # than left for a reader to notice, because the shape of the table invites the
+    # other conclusion.
+    backwards = [
+        (later.threshold, earlier.threshold)
+        for earlier, later in zip(rows, rows[1:], strict=False)
+        if later.compression < earlier.compression - 1e-9
+    ]
+    if backwards:
+        pairs = ", ".join(f"{low} below {high}" for low, high in backwards)
+        print()
+        print("  NOT MONOTONIC: a looser threshold compressed LESS at " + pairs + ".")
+        print("  Clustering is one greedy pass, so the threshold reorders which lines")
+        print("  join which cluster. Pick a threshold by reading this table, not by")
+        print("  assuming lower is tighter.")
+
     if args.json:
         Path(args.json).write_text(
             json.dumps(

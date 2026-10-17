@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-43-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-46-success" alt="tests">
 </p>
 
 ---
@@ -94,7 +94,7 @@ the simulation are arithmetic. `reflex` is an optional extra used only by the UI
 ## Run it
 
 ```bash
-uv run pytest -q                 # 43 tests
+uv run pytest -q                 # 46 tests
 uv run study-tutor compare
 uv run --extra ui reflex run
 ```
@@ -107,5 +107,6 @@ src/tutor/
     simulate.py   identical review histories through both schedulers
     cli.py        argparse
 ui/app.py         Reflex UI (optional extra)
-tests/test_scheduler.py   43 tests
+tests/test_scheduler.py                 43 tests
+tests/test_review_without_a_terminal.py  3 tests
 ```

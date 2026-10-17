@@ -1,5 +1,5 @@
 {
-  "measured": "2026-10-08",
+  "measured": "2026-10-17",
   "fresh": [
     "CSV_CORPUS",
     "HF_DATASETS_CACHE",
@@ -15,7 +15,7 @@
   "note": "What every suite really did on a fresh clone, recorded by scripts/test_all.py --write-counts with the variables in 'fresh' pointed at an empty directory. The READMEs quote these, so they are the numbers a reader reproduces rather than the ones this machine happens to produce - 20_driftwatch ran 21 more tests here than anywhere else, and its README said so.",
   "suites": {
     "(root)": {
-      "passed": 1250,
+      "passed": 1262,
       "skipped": 95,
       "outcome": "ok"
     },
@@ -150,7 +150,7 @@
       "outcome": "ok"
     },
     "projects/06_db-surgeon": {
-      "passed": 64,
+      "passed": 67,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -165,7 +165,7 @@
       "outcome": "ok"
     },
     "projects/09_log-detective": {
-      "passed": 51,
+      "passed": 60,
       "skipped": 0,
       "outcome": "ok"
     },
@@ -175,7 +175,7 @@
       "outcome": "ok"
     },
     "projects/11_study-tutor": {
-      "passed": 43,
+      "passed": 46,
       "skipped": 0,
       "outcome": "ok"
     }

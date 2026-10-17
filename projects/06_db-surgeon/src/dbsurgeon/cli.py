@@ -147,7 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.set_defaults(func=_check_command)
 
     s = sub.add_parser("classify", help="read a script without running it")
-    s.add_argument("sql")
+    s.add_argument("sql", metavar="FILE", help="path to a file of SQL, not SQL itself")
     s.set_defaults(func=_classify_command)
 
     k = sub.add_parser("corpus", help="run the bundled migration corpus")
@@ -158,7 +158,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except OSError as problem:
+        # Every subcommand here reads SQL from a file, and a path that is not there is
+        # the commonest way to call one wrong. Unhandled, it printed a fourteen-line
+        # `FileNotFoundError` traceback ending in `pathlib.open` - which reads as a
+        # crash in the tool rather than as a wrong argument, and buries the one fact
+        # that matters. `classify` takes a file and the name of its argument is `sql`,
+        # so being handed the SQL itself is exactly the mistake to answer clearly.
+        name = getattr(problem, "filename", None) or "the file"
+        print(f"{name}: {problem.strerror or problem}", file=sys.stderr)
+        print("  every argument here is a path to a file of SQL, not SQL.", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

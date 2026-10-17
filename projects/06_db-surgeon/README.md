@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/runtime%20deps-0-brightgreen" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/tests-64-success" alt="tests">
+  <img src="https://img.shields.io/badge/tests-67-success" alt="tests">
   <img src="https://img.shields.io/badge/corpus-12%20migrations-orange" alt="corpus">
 </p>
 
@@ -175,7 +175,7 @@ parsing it. The UI's API is `http.server`; only the SolidJS front end needs npm.
 ## Run it
 
 ```bash
-uv run pytest -q                  # 64 tests
+uv run pytest -q                  # 67 tests
 uv run db-surgeon corpus
 uv run python scripts/sweep.py
 uv run python ui/server.py        # then: cd ui && npm install && npm run dev
@@ -195,4 +195,5 @@ ui/                   SolidJS + Vite front end, http.server API
 tests/
     test_shadow.py      24 tests
     test_operations.py  40 tests (parametrised)
+    test_cli_errors.py   3 tests
 ```

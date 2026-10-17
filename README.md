@@ -114,7 +114,7 @@ reader cannot reproduce:
 | fresh data paths alone | 1,309 | 48 |
 | neither - a plain `pytest tests/` | 1,309 | 48 |
 
-The data those suites read does move a split, in `projects/`: 25 of its 606 tests skip
+The data those suites read does move a split, in `projects/`: 25 of its 621 tests skip
 on a fresh clone, and `projects/README.md` says which.
 
 That figure said "317 passed, 38 skipped" for a long time, against a suite that was
