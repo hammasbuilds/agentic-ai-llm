@@ -15,6 +15,14 @@ anything, how much of a score is the prompt), **eleven zero-dependency developer
 real web applications on a Kafka job bus, Redis state and a worker that owns the one GPU; the
 tools and products run with no model at all.
 
+**Dataset:** [File Listings for the SWE-bench Lite Repositories](https://www.kaggle.com/datasets/muhammadhammas13/swebench-lite-file-listings)
+on Kaggle. We built it: 34 listings, 66,895 paths, filenames only. It suits file-level
+retrieval and localisation - ranking the files a bug report is about - and any
+code-search or issue-triage tool that has to narrow a repository to a few candidates
+before reading any of it. Credit for the repositories themselves belongs to astropy,
+django, matplotlib, seaborn, flask, requests, xarray, pylint, pytest, scikit-learn,
+sphinx and sympy, and to SWE-bench Lite for the instance set.
+
 ## Projects
 
 **The ten measurement apps** ([`apps/`](apps), ports 8001-8010):
