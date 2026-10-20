@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentic-ai-lab - isometric</title>
+<style>
+  :root { --bg:#0b0d12; --panel:#12151d; --line:#222836; --ink:#eef1f7; --dim:#8e9ab2;
+          --accent:#f59e0b;
+          --mono: ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--mono);
+         font-size:14px; }
+  .wrap { max-width:1320px; margin:0 auto; padding:30px 24px 70px; }
+  h1 { font-size:24px; margin:0; }
+  p.sub { color:var(--dim); max-width:74ch; line-height:1.55; }
+  h2 { font-size:15px; margin:30px 0 10px; letter-spacing:.04em; }
+  .grid { display:grid; gap:14px;
+           grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+  a.card { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+            overflow:hidden; text-decoration:none; color:inherit; display:block; }
+  a.card:hover { border-color:var(--accent); }
+  a.card img { width:100%; aspect-ratio:16/9; display:block;
+                border-bottom:1px solid var(--line); background:#000; }
+  .body { padding:11px 13px 13px; }
+  .t { font-weight:700; }
+  .s { color:var(--dim); font-size:12.5px; margin-top:3px; line-height:1.45; }
+  .m { color:var(--dim); font-size:11.5px; margin-top:8px; }
+  .tag { border:1px solid var(--line); border-radius:999px; padding:1px 8px;
+          margin-right:6px; }
+  .tag.arch { color:var(--accent); border-color:var(--accent); }
+</style>
+</head>
+<body><div class="wrap">
+<h1>agentic-ai-lab &mdash; isometric</h1>
+<p class="sub">How this project actually works. A <b>flow</b> follows one tool from the
+input to the output and names what every stage in between does to it; an
+<b>architecture</b> view shows the layers of the codebase, the modules on them and the
+path a real call takes through them. Each one is a single self-contained HTML file: no
+build step, no dependencies, no network.</p>
+
+<h2>agentic-ai-llm &nbsp;<span class='m'>2</span></h2><div class='grid'>
+<a class='card' href='scenes/arch-agentic.html'><img src='scenes/arch-agentic.png' alt='' loading='lazy'><div class='body'><div class='t'>agentic-ai-llm</div><div class='s'>forty-one pieces, three kinds of thing</div><div class='m'><span class='tag arch'>architecture</span><span class='tag'>9 steps</span><span class='tag'>20.7s</span></div></div></a>
+<a class='card' href='scenes/arch-agentic-platform.html'><img src='scenes/arch-agentic-platform.png' alt='' loading='lazy'><div class='body'><div class='t'>the product platform</div><div class='s'>what all twenty products are standing on</div><div class='m'><span class='tag arch'>architecture</span><span class='tag'>9 steps</span><span class='tag'>20.7s</span></div></div></a>
+</div>
+<h2>agentic-ai-llm · apps &nbsp;<span class='m'>10</span></h2><div class='grid'>
+<a class='card' href='scenes/flow-app-debug-ceiling.html'><img src='scenes/flow-app-debug-ceiling.png' alt='' loading='lazy'><div class='body'><div class='t'>Debug ceiling</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-false-accepts.html'><img src='scenes/flow-app-false-accepts.png' alt='' loading='lazy'><div class='body'><div class='t'>False accepts</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-kill-rate.html'><img src='scenes/flow-app-kill-rate.png' alt='' loading='lazy'><div class='body'><div class='t'>Kill rate</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-localizer.html'><img src='scenes/flow-app-localizer.png' alt='' loading='lazy'><div class='body'><div class='t'>Localizer</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-prompt-shapes.html'><img src='scenes/flow-app-prompt-shapes.png' alt='' loading='lazy'><div class='body'><div class='t'>Prompt shapes</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-repair-rewrite.html'><img src='scenes/flow-app-repair-rewrite.png' alt='' loading='lazy'><div class='body'><div class='t'>Repair or rewrite</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-roundtrip.html'><img src='scenes/flow-app-roundtrip.png' alt='' loading='lazy'><div class='body'><div class='t'>Round trip</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-size-curve.html'><img src='scenes/flow-app-size-curve.png' alt='' loading='lazy'><div class='body'><div class='t'>Size curve</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-temperature.html'><img src='scenes/flow-app-temperature.png' alt='' loading='lazy'><div class='body'><div class='t'>Temperature</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-app-vuln-baseline.html'><img src='scenes/flow-app-vuln-baseline.png' alt='' loading='lazy'><div class='body'><div class='t'>Vulnerability baseline</div><div class='s'>a measurement, run in this process</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+</div>
+<h2>agentic-ai-llm · packages &nbsp;<span class='m'>13</span></h2><div class='grid'>
+<a class='card' href='scenes/flow-pkg-audit-policy.html'><img src='scenes/flow-pkg-audit-policy.png' alt='' loading='lazy'><div class='body'><div class='t'>compliance-auditor</div><div class='s'>Controls, and the policy each one checks</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-captain-gate.html'><img src='scenes/flow-pkg-captain-gate.png' alt='' loading='lazy'><div class='body'><div class='t'>release-captain</div><div class='s'>Is this safe to ship</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-csv-report.html'><img src='scenes/flow-pkg-csv-report.png' alt='' loading='lazy'><div class='body'><div class='t'>csv-analyst</div><div class='s'>What a numeric cast would quietly drop</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-licence-survey.html'><img src='scenes/flow-pkg-licence-survey.png' alt='' loading='lazy'><div class='body'><div class='t'>contract-reader</div><div class='s'>Every licence in the portfolio</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-licence-this.html'><img src='scenes/flow-pkg-licence-this.png' alt='' loading='lazy'><div class='body'><div class='t'>contract-reader</div><div class='s'>Read a licence, and cite the span</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-log-cost.html'><img src='scenes/flow-pkg-log-cost.png' alt='' loading='lazy'><div class='body'><div class='t'>log-detective</div><div class='s'>What template extraction destroys</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-log-templates.html'><img src='scenes/flow-pkg-log-templates.png' alt='' loading='lazy'><div class='body'><div class='t'>log-detective</div><div class='s'>The templates themselves</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-map-repo.html'><img src='scenes/flow-pkg-map-repo.png' alt='' loading='lazy'><div class='body'><div class='t'>repo-cartographer</div><div class='s'>What is in here, and what to read first</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-mutants.html'><img src='scenes/flow-pkg-mutants.png' alt='' loading='lazy'><div class='body'><div class='t'>test-smith</div><div class='s'>Does the suite catch a change, or merely run the line?</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-pilot-rules.html'><img src='scenes/flow-pkg-pilot-rules.png' alt='' loading='lazy'><div class='body'><div class='t'>migration-pilot</div><div class='s'>Which rewrites can change what a program does</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-review-scan.html'><img src='scenes/flow-pkg-review-scan.png' alt='' loading='lazy'><div class='body'><div class='t'>review-bot</div><div class='s'>Findings that survive an attempt to disprove them</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-surgeon-corpus.html'><img src='scenes/flow-pkg-surgeon-corpus.png' alt='' loading='lazy'><div class='body'><div class='t'>db-surgeon</div><div class='s'>Migrations that look correct in review</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+<a class='card' href='scenes/flow-pkg-tutor-compare.html'><img src='scenes/flow-pkg-tutor-compare.png' alt='' loading='lazy'><div class='body'><div class='t'>study-tutor</div><div class='s'>Two schedulers, one simulated learner</div><div class='m'><span class='tag'>flow</span><span class='tag'>5 steps</span><span class='tag'>16.4s</span></div></div></a>
+</div>
+<h2>agentic-ai-llm · products &nbsp;<span class='m'>20</span></h2><div class='grid'>
+<a class='card' href='scenes/flow-prod-agri-desk.html'><img src='scenes/flow-prod-agri-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>Agri Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-bid-desk.html'><img src='scenes/flow-prod-bid-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>Bid Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-campus-ops.html'><img src='scenes/flow-prod-campus-ops.png' alt='' loading='lazy'><div class='body'><div class='t'>Campus Ops</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-claims-floor.html'><img src='scenes/flow-prod-claims-floor.png' alt='' loading='lazy'><div class='body'><div class='t'>Claims Floor</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-comms-desk.html'><img src='scenes/flow-prod-comms-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>Comms Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-driftwatch.html'><img src='scenes/flow-prod-driftwatch.png' alt='' loading='lazy'><div class='body'><div class='t'>Driftwatch</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-fleet-desk.html'><img src='scenes/flow-prod-fleet-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>Fleet Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-graph-clinic.html'><img src='scenes/flow-prod-graph-clinic.png' alt='' loading='lazy'><div class='body'><div class='t'>Graph Clinic</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-hermes-home.html'><img src='scenes/flow-prod-hermes-home.png' alt='' loading='lazy'><div class='body'><div class='t'>Hermes Home</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-hire-desk.html'><img src='scenes/flow-prod-hire-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>Hire Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-kyc-floor.html'><img src='scenes/flow-prod-kyc-floor.png' alt='' loading='lazy'><div class='body'><div class='t'>Kyc Floor</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-ledger-brain.html'><img src='scenes/flow-prod-ledger-brain.png' alt='' loading='lazy'><div class='body'><div class='t'>Ledger Brain</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-oncall-mate.html'><img src='scenes/flow-prod-oncall-mate.png' alt='' loading='lazy'><div class='body'><div class='t'>Oncall Mate</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-one-desk.html'><img src='scenes/flow-prod-one-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>One Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-powerguard.html'><img src='scenes/flow-prod-powerguard.png' alt='' loading='lazy'><div class='body'><div class='t'>Powerguard</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-revenue-desk.html'><img src='scenes/flow-prod-revenue-desk.png' alt='' loading='lazy'><div class='body'><div class='t'>Revenue Desk</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-shelf-ops.html'><img src='scenes/flow-prod-shelf-ops.png' alt='' loading='lazy'><div class='body'><div class='t'>Shelf Ops</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-swarm-lab.html'><img src='scenes/flow-prod-swarm-lab.png' alt='' loading='lazy'><div class='body'><div class='t'>Swarm Lab</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-ward-sync.html'><img src='scenes/flow-prod-ward-sync.png' alt='' loading='lazy'><div class='body'><div class='t'>Ward Sync</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+<a class='card' href='scenes/flow-prod-watchtower.html'><img src='scenes/flow-prod-watchtower.png' alt='' loading='lazy'><div class='body'><div class='t'>Watchtower</div><div class='s'>one press, one real agent run</div><div class='m'><span class='tag'>flow</span><span class='tag'>6 steps</span><span class='tag'>18.5s</span></div></div></a>
+</div>
+</div></body></html>

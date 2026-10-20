@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claims Floor - agentic-ai-llm</title>
+<style>
+  :root {
+    --accent: #f59e0b; --accent-soft: #b45309;
+    --bg0: #120d06; --bg1: #1c140a; --ink: #fbf3e6; --dim: #c4ab85;
+    --top: #3a2c15; --left: #241a0c; --right: #1a1308;
+    --edge: #503c1b; --grid: #2a1f0e;
+    --mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg0); }
+  body { display: grid; place-items: center; }
+  .frame { width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; }
+  svg { display: block; width: 100%; height: 100%; }
+
+  .sky { fill: url(#sky); }
+  .grid line { stroke: var(--grid); stroke-width: 1; opacity: .55; }
+  .shadow { fill: #000; opacity: .32; filter: url(#soft); }
+  .rail { stroke: var(--edge); stroke-width: 2; stroke-dasharray: 4 6; opacity: .75; }
+  .flow { stroke: var(--accent); stroke-width: 3; stroke-linecap: round;
+           stroke-dasharray: 18 18; opacity: 0; }
+
+  .face { stroke: var(--edge); stroke-width: 1.2; stroke-linejoin: round; }
+  .face.top { fill: var(--top); }
+  .face.top.end { fill: var(--accent-soft); }
+  .face.left { fill: var(--left); }
+  .face.right { fill: var(--right); }
+  .lit { fill: var(--accent); opacity: 0; filter: url(#glow); }
+
+  .slabname { font: 600 15px/1 var(--mono); fill: var(--dim); text-anchor: middle;
+               letter-spacing: .04em; }
+
+  .tk-top { fill: #fff; }
+  .tk-left { fill: var(--accent); }
+  .tk-right { fill: var(--accent-soft); }
+  .token { filter: url(#glow); }
+
+  .caption { opacity: 0; }
+  .cap-step { font: 700 26px/1 var(--mono); fill: var(--accent); }
+  .cap-name { font: 700 26px/1 var(--mono); fill: var(--ink); letter-spacing: .02em; }
+  .cap-note { font: 400 19px/1 var(--mono); fill: var(--dim); }
+
+  .card rect { fill: rgba(255,255,255,.035); stroke: var(--edge); stroke-width: 1.2; }
+  .card-label { font: 700 13px/1 var(--mono); fill: var(--accent); letter-spacing: .18em; }
+  .card-line { font: 400 17px/1 var(--mono); fill: var(--ink); }
+  .tie { stroke: var(--edge); stroke-width: 1.5; stroke-dasharray: 3 5; }
+
+  .title { font: 700 34px/1 var(--mono); fill: var(--ink); letter-spacing: -.01em; }
+  .subtitle { font: 400 19px/1 var(--mono); fill: var(--dim); }
+  .repo { font: 600 15px/1 var(--mono); fill: var(--accent); text-anchor: end;
+           letter-spacing: .1em; }
+  .footer { font: 400 14px/1 var(--mono); fill: var(--dim); }
+  .bar-bg { fill: var(--edge); opacity: .4; }
+  .bar { fill: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* The still frame is the end of the run: every slab lit and the output showing. */
+    * { animation: none !important; }
+    .lit, .out, .caption { opacity: 1 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+<svg viewBox="0 0 1280 720" role="img" aria-label="Claims Floor - agentic-ai-llm">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#1c140a"/>
+      <stop offset="1" stop-color="#120d06"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect class="sky" x="0" y="0" width="1280" height="720"/>
+  <g class="grid"><line x1="640.0" y1="-347.6" x2="-915.2" y2="430.0"/><line x1="640.0" y1="-347.6" x2="2195.2" y2="430.0"/><line x1="726.4" y1="-304.4" x2="-828.8" y2="473.2"/><line x1="553.6" y1="-304.4" x2="2108.8" y2="473.2"/><line x1="812.8" y1="-261.2" x2="-742.4" y2="516.4"/><line x1="467.2" y1="-261.2" x2="2022.4" y2="516.4"/><line x1="899.2" y1="-218.0" x2="-656.0" y2="559.6"/><line x1="380.8" y1="-218.0" x2="1936.0" y2="559.6"/><line x1="985.6" y1="-174.8" x2="-569.6" y2="602.8"/><line x1="294.4" y1="-174.8" x2="1849.6" y2="602.8"/><line x1="1072.0" y1="-131.6" x2="-483.2" y2="646.0"/><line x1="208.0" y1="-131.6" x2="1763.2" y2="646.0"/><line x1="1158.4" y1="-88.4" x2="-396.8" y2="689.2"/><line x1="121.6" y1="-88.4" x2="1676.8" y2="689.2"/><line x1="1244.8" y1="-45.2" x2="-310.4" y2="732.4"/><line x1="35.2" y1="-45.2" x2="1590.4" y2="732.4"/><line x1="1331.2" y1="-2.0" x2="-224.0" y2="775.6"/><line x1="-51.2" y1="-2.0" x2="1504.0" y2="775.6"/><line x1="1417.6" y1="41.2" x2="-137.6" y2="818.8"/><line x1="-137.6" y1="41.2" x2="1417.6" y2="818.8"/><line x1="1504.0" y1="84.4" x2="-51.2" y2="862.0"/><line x1="-224.0" y1="84.4" x2="1331.2" y2="862.0"/><line x1="1590.4" y1="127.6" x2="35.2" y2="905.2"/><line x1="-310.4" y1="127.6" x2="1244.8" y2="905.2"/><line x1="1676.8" y1="170.8" x2="121.6" y2="948.4"/><line x1="-396.8" y1="170.8" x2="1158.4" y2="948.4"/><line x1="1763.2" y1="214.0" x2="208.0" y2="991.6"/><line x1="-483.2" y1="214.0" x2="1072.0" y2="991.6"/><line x1="1849.6" y1="257.2" x2="294.4" y2="1034.8"/><line x1="-569.6" y1="257.2" x2="985.6" y2="1034.8"/><line x1="1936.0" y1="300.4" x2="380.8" y2="1078.0"/><line x1="-656.0" y1="300.4" x2="899.2" y2="1078.0"/><line x1="2022.4" y1="343.6" x2="467.2" y2="1121.2"/><line x1="-742.4" y1="343.6" x2="812.8" y2="1121.2"/><line x1="2108.8" y1="386.8" x2="553.6" y2="1164.4"/><line x1="-828.8" y1="386.8" x2="726.4" y2="1164.4"/><line x1="2195.2" y1="430.0" x2="640.0" y2="1207.6"/><line x1="-915.2" y1="430.0" x2="640.0" y2="1207.6"/><line x1="2281.6" y1="473.2" x2="726.4" y2="1250.8"/><line x1="-1001.6" y1="473.2" x2="553.6" y2="1250.8"/><line x1="2368.0" y1="516.4" x2="812.8" y2="1294.0"/><line x1="-1088.0" y1="516.4" x2="467.2" y2="1294.0"/><line x1="2454.4" y1="559.6" x2="899.2" y2="1337.2"/><line x1="-1174.4" y1="559.6" x2="380.8" y2="1337.2"/><line x1="2540.8" y1="602.8" x2="985.6" y2="1380.4"/><line x1="-1260.8" y1="602.8" x2="294.4" y2="1380.4"/></g>
+<g><line class="rail" x1="468.0" y1="286.0" x2="562.0" y2="309.7"/><line class="flow f0" x1="468.0" y1="286.0" x2="562.0" y2="309.7"/><line class="rail" x1="562.0" y1="309.7" x2="656.0" y2="333.4"/><line class="flow f1" x1="562.0" y1="309.7" x2="656.0" y2="333.4"/><line class="rail" x1="656.0" y1="333.4" x2="750.0" y2="357.1"/><line class="flow f2" x1="656.0" y1="333.4" x2="750.0" y2="357.1"/><line class="rail" x1="750.0" y1="357.1" x2="844.0" y2="380.9"/><line class="flow f3" x1="750.0" y1="357.1" x2="844.0" y2="380.9"/><line class="rail" x1="844.0" y1="380.9" x2="938.0" y2="404.6"/><line class="flow f4" x1="844.0" y1="380.9" x2="938.0" y2="404.6"/><line class="rail" x1="938.0" y1="404.6" x2="1032.0" y2="428.3"/><line class="flow f5" x1="938.0" y1="404.6" x2="1032.0" y2="428.3"/><line class="rail" x1="1032.0" y1="428.3" x2="1126.0" y2="452.0"/><line class="flow f6" x1="1032.0" y1="428.3" x2="1126.0" y2="452.0"/></g>
+<g class="slab" transform="translate(468.0,272.6)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top end" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s0" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n0" x="468.0" y="240.0">input</text>
+<g class="slab" transform="translate(562.0,296.4)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s1" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n1" x="562.0" y="263.7">blueprint</text>
+<g class="slab" transform="translate(656.0,320.1)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s2" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n2" x="656.0" y="287.4">submit</text>
+<g class="slab" transform="translate(750.0,343.8)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s3" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n3" x="750.0" y="311.1">drain</text>
+<g class="slab" transform="translate(844.0,367.5)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s4" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n4" x="844.0" y="334.9">model</text>
+<g class="slab" transform="translate(938.0,391.2)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s5" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n5" x="938.0" y="358.6">gate</text>
+<g class="slab" transform="translate(1032.0,414.9)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s6" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n6" x="1032.0" y="382.3">emit</text>
+<g class="slab" transform="translate(1126.0,438.6)">
+  <ellipse class="shadow" cx="0" cy="53.4" rx="75" ry="20"/>
+  <polygon class="face left" points="-78.7,13.4 0.0,52.7 0.0,78.7 -78.7,39.4"/>
+  <polygon class="face right" points="78.7,13.4 0.0,52.7 0.0,78.7 78.7,39.4"/>
+  <polygon class="face top end" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+  <polygon class="lit s7" points="0.0,-26.0 78.7,13.4 0.0,52.7 -78.7,13.4"/>
+</g>
+<text class="slabname n7" x="1126.0" y="406.0">output</text>
+<g class="token"><polygon class="tk-top" points="0,-11 13,-4 0,3 -13,-4"/><polygon class="tk-left" points="-13,-4 0,3 0,14 -13,7"/><polygon class="tk-right" points="13,-4 0,3 0,14 13,7"/></g>
+<g class="caption c1"><text class="cap-step" x="96" y="566">01</text><text class="cap-name" x="150" y="566">blueprint</text><text class="cap-note" x="150" y="596">seven nodes, and the order they may run in</text></g>
+<g class="caption c2"><text class="cap-step" x="96" y="566">02</text><text class="cap-name" x="150" y="566">submit</text><text class="cap-note" x="150" y="596">real work handed to the queue</text></g>
+<g class="caption c3"><text class="cap-step" x="96" y="566">03</text><text class="cap-name" x="150" y="566">drain</text><text class="cap-note" x="150" y="596">the queue worked off in this process</text></g>
+<g class="caption c4"><text class="cap-step" x="96" y="566">04</text><text class="cap-name" x="150" y="566">model</text><text class="cap-note" x="150" y="596">the model&#x27;s part played from the product&#x27;s own script</text></g>
+<g class="caption c5"><text class="cap-step" x="96" y="566">05</text><text class="cap-name" x="150" y="566">gate</text><text class="cap-note" x="150" y="596">approval - nothing is written before it passes</text></g>
+<g class="caption c6"><text class="cap-step" x="96" y="566">06</text><text class="cap-name" x="150" y="566">emit</text><text class="cap-note" x="150" y="596">the keys the run actually produced</text></g>
+<g class="card in"><rect x="96" y="152" width="320" height="124" rx="10"/><text class="card-label" x="114" y="180">INPUT</text><text class="card-line" x="114" y="210">python</text><text class="card-line" x="114" y="236">products/scripts/capture.py</text><text class="card-line" x="114" y="262"># the 15_claims-floor row…</text></g>
+<g class="card out"><rect x="864" y="538" width="320" height="124" rx="10"/><text class="card-label" x="882" y="566">OUTPUT</text><text class="card-line" x="882" y="596">exit 0</text><text class="card-line" x="882" y="622">submitted, drained,</text><text class="card-line" x="882" y="648">approved — in that order</text></g>
+<line class="tie" x1="376" y1="276" x2="442.0" y2="264.0"/>
+<line class="tie" x1="1152.0" y1="476.0" x2="904" y2="538"/>
+<rect class="bar-bg" x="96" y="684" width="740" height="3" rx="1.5"/>
+<rect class="bar" x="96" y="684" width="740" height="3" rx="1.5"/>
+  <!-- The title block is painted last so nothing in the scene can cross it. -->
+  <text class="title" x="96" y="78">Claims Floor</text><text class="subtitle" x="96" y="112">one press, one real agent run</text><text class="repo" x="1184" y="78">agentic-ai-llm</text>
+  <text class="footer" x="96" y="672">products/15_claims-floor</text>
+</svg>
+</div>
+<style>
+
+.f0 { animation: flow0 18.54s linear infinite; }
+@keyframes flow0 {
+  0%, 7.82% { stroke-dashoffset: 36; opacity: 0; }
+  7.83% { opacity: .95; }
+  11.70%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.f1 { animation: flow1 18.54s linear infinite; }
+@keyframes flow1 {
+  0%, 19.53% { stroke-dashoffset: 36; opacity: 0; }
+  19.54% { opacity: .95; }
+  23.41%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.f2 { animation: flow2 18.54s linear infinite; }
+@keyframes flow2 {
+  0%, 31.23% { stroke-dashoffset: 36; opacity: 0; }
+  31.24% { opacity: .95; }
+  35.11%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.f3 { animation: flow3 18.54s linear infinite; }
+@keyframes flow3 {
+  0%, 42.93% { stroke-dashoffset: 36; opacity: 0; }
+  42.94% { opacity: .95; }
+  46.82%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.f4 { animation: flow4 18.54s linear infinite; }
+@keyframes flow4 {
+  0%, 54.64% { stroke-dashoffset: 36; opacity: 0; }
+  54.65% { opacity: .95; }
+  58.52%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.f5 { animation: flow5 18.54s linear infinite; }
+@keyframes flow5 {
+  0%, 66.34% { stroke-dashoffset: 36; opacity: 0; }
+  66.35% { opacity: .95; }
+  70.23%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.f6 { animation: flow6 18.54s linear infinite; }
+@keyframes flow6 {
+  0%, 78.05% { stroke-dashoffset: 36; opacity: 0; }
+  78.06% { opacity: .95; }
+  81.93%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.s0 { animation: lit0 18.54s linear infinite; }
+@keyframes lit0 {
+  0%, 0.00% { opacity: 0; }
+  0.00%, 7.82% { opacity: 1; }
+  9.82%, 100% { opacity: 0; }
+}
+
+.n0 { animation: name0 18.54s linear infinite; }
+@keyframes name0 {
+  0%, 0.00% { fill: #c4ab85; }
+  0.00%, 7.82% { fill: #fbf3e6; }
+  9.82%, 100% { fill: #c4ab85; }
+}
+
+.s1 { animation: lit1 18.54s linear infinite; }
+@keyframes lit1 {
+  0%, 10.50% { opacity: 0; }
+  11.70%, 19.53% { opacity: 1; }
+  21.53%, 100% { opacity: 0; }
+}
+
+.n1 { animation: name1 18.54s linear infinite; }
+@keyframes name1 {
+  0%, 10.50% { fill: #c4ab85; }
+  11.70%, 19.53% { fill: #fbf3e6; }
+  21.53%, 100% { fill: #c4ab85; }
+}
+
+.s2 { animation: lit2 18.54s linear infinite; }
+@keyframes lit2 {
+  0%, 22.21% { opacity: 0; }
+  23.41%, 31.23% { opacity: 1; }
+  33.23%, 100% { opacity: 0; }
+}
+
+.n2 { animation: name2 18.54s linear infinite; }
+@keyframes name2 {
+  0%, 22.21% { fill: #c4ab85; }
+  23.41%, 31.23% { fill: #fbf3e6; }
+  33.23%, 100% { fill: #c4ab85; }
+}
+
+.s3 { animation: lit3 18.54s linear infinite; }
+@keyframes lit3 {
+  0%, 33.91% { opacity: 0; }
+  35.11%, 42.93% { opacity: 1; }
+  44.93%, 100% { opacity: 0; }
+}
+
+.n3 { animation: name3 18.54s linear infinite; }
+@keyframes name3 {
+  0%, 33.91% { fill: #c4ab85; }
+  35.11%, 42.93% { fill: #fbf3e6; }
+  44.93%, 100% { fill: #c4ab85; }
+}
+
+.s4 { animation: lit4 18.54s linear infinite; }
+@keyframes lit4 {
+  0%, 45.62% { opacity: 0; }
+  46.82%, 54.64% { opacity: 1; }
+  56.64%, 100% { opacity: 0; }
+}
+
+.n4 { animation: name4 18.54s linear infinite; }
+@keyframes name4 {
+  0%, 45.62% { fill: #c4ab85; }
+  46.82%, 54.64% { fill: #fbf3e6; }
+  56.64%, 100% { fill: #c4ab85; }
+}
+
+.s5 { animation: lit5 18.54s linear infinite; }
+@keyframes lit5 {
+  0%, 57.32% { opacity: 0; }
+  58.52%, 66.34% { opacity: 1; }
+  68.34%, 100% { opacity: 0; }
+}
+
+.n5 { animation: name5 18.54s linear infinite; }
+@keyframes name5 {
+  0%, 57.32% { fill: #c4ab85; }
+  58.52%, 66.34% { fill: #fbf3e6; }
+  68.34%, 100% { fill: #c4ab85; }
+}
+
+.s6 { animation: lit6 18.54s linear infinite; }
+@keyframes lit6 {
+  0%, 69.03% { opacity: 0; }
+  70.23%, 78.05% { opacity: 1; }
+  80.05%, 100% { opacity: 0; }
+}
+
+.n6 { animation: name6 18.54s linear infinite; }
+@keyframes name6 {
+  0%, 69.03% { fill: #c4ab85; }
+  70.23%, 78.05% { fill: #fbf3e6; }
+  80.05%, 100% { fill: #c4ab85; }
+}
+
+.s7 { animation: lit7 18.54s linear infinite; }
+@keyframes lit7 {
+  0%, 80.73% { opacity: 0; }
+  81.93%, 100.00% { opacity: 1; }
+  100.00%, 100% { opacity: 0; }
+}
+
+.n7 { animation: name7 18.54s linear infinite; }
+@keyframes name7 {
+  0%, 80.73% { fill: #c4ab85; }
+  81.93%, 100.00% { fill: #fbf3e6; }
+  100.00%, 100% { fill: #c4ab85; }
+}
+
+.token { offset-path: path('M 468.0 286.0 L 562.0 309.7 L 656.0 333.4 L 750.0 357.1 L 844.0 380.9 L 938.0 404.6 L 1032.0 428.3 L 1126.0 452.0'); animation: walk 18.54s linear infinite; }
+@keyframes walk {
+  0.00% { offset-distance: 0.00%; }
+  7.82% { offset-distance: 0.00%; }
+  11.70% { offset-distance: 14.29%; }
+  19.53% { offset-distance: 14.29%; }
+  23.41% { offset-distance: 28.57%; }
+  31.23% { offset-distance: 28.57%; }
+  35.11% { offset-distance: 42.86%; }
+  42.93% { offset-distance: 42.86%; }
+  46.82% { offset-distance: 57.14%; }
+  54.64% { offset-distance: 57.14%; }
+  58.52% { offset-distance: 71.43%; }
+  66.34% { offset-distance: 71.43%; }
+  70.23% { offset-distance: 85.71%; }
+  78.05% { offset-distance: 85.71%; }
+  81.93% { offset-distance: 100.00%; }
+  100.00% { offset-distance: 100.00%; }
+}
+
+.c1 { animation: cap1 18.54s linear infinite; }
+@keyframes cap1 {
+  0%, 10.90% { opacity: 0; transform: translateY(8px); }
+  12.70%, 19.53% { opacity: 1; transform: translateY(0); }
+  20.73%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.c2 { animation: cap2 18.54s linear infinite; }
+@keyframes cap2 {
+  0%, 22.61% { opacity: 0; transform: translateY(8px); }
+  24.41%, 31.23% { opacity: 1; transform: translateY(0); }
+  32.43%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.c3 { animation: cap3 18.54s linear infinite; }
+@keyframes cap3 {
+  0%, 34.31% { opacity: 0; transform: translateY(8px); }
+  36.11%, 42.93% { opacity: 1; transform: translateY(0); }
+  44.13%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.c4 { animation: cap4 18.54s linear infinite; }
+@keyframes cap4 {
+  0%, 46.02% { opacity: 0; transform: translateY(8px); }
+  47.82%, 54.64% { opacity: 1; transform: translateY(0); }
+  55.84%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.c5 { animation: cap5 18.54s linear infinite; }
+@keyframes cap5 {
+  0%, 57.72% { opacity: 0; transform: translateY(8px); }
+  59.52%, 66.34% { opacity: 1; transform: translateY(0); }
+  67.54%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.c6 { animation: cap6 18.54s linear infinite; }
+@keyframes cap6 {
+  0%, 69.43% { opacity: 0; transform: translateY(8px); }
+  71.23%, 78.05% { opacity: 1; transform: translateY(0); }
+  79.25%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.out { animation: reveal 18.54s linear infinite; }
+@keyframes reveal {
+  0%, 81.33% { opacity: 0; transform: translate(12px, 8px); }
+  83.53%, 100% { opacity: 1; transform: translate(0, 0); }
+}
+
+.bar { animation: bar 18.54s linear infinite; transform-origin: 96px 0; }
+@keyframes bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+</style>
+</body>
+</html>
