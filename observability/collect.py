@@ -61,11 +61,49 @@ def summarise(events: list[dict[str, Any]]) -> dict[str, Any]:
     transports = Counter(str(e.get("transport") or "unknown") for e in events)
     errors = Counter(str(e["error"]) for e in events if e.get("error"))
 
+    # Which tier each run came from. The repository has three - eleven command-line
+    # packages, ten measurement apps and twenty products - and a console that lumps them
+    # together shows one undifferentiated list of forty-one rows, where "slowest" means
+    # nothing because a product's graph and a package's subprocess are not comparable.
+    # `tier` is recorded by the caller; a run without one is counted as unknown rather
+    # than guessed at from its name.
+    by_tier: dict[str, dict[str, Any]] = {}
+    for event in events:
+        tier = str(event.get("tier") or "unknown")
+        row = by_tier.setdefault(
+            tier, {"tier": tier, "runs": 0, "done": 0, "error": 0, "seconds": []}
+        )
+        row["runs"] += 1
+        if str(event.get("outcome")) == "done":
+            row["done"] += 1
+        else:
+            row["error"] += 1
+        row["seconds"].append(float(event.get("seconds") or 0))
+
+    tiers = []
+    for row in by_tier.values():
+        times = row.pop("seconds")
+        row["p50"] = round(_percentile(times, 0.50), 2)
+        row["p95"] = round(_percentile(times, 0.95), 2)
+        row["total"] = round(sum(times), 1)
+        row["failure_rate"] = round(row["error"] / row["runs"], 4) if row["runs"] else 0.0
+        tiers.append(row)
+    tiers.sort(key=lambda r: -r["runs"])
+
     by_app: dict[str, dict[str, Any]] = {}
     for event in events:
         app = str(event.get("app") or "unknown")
         row = by_app.setdefault(
-            app, {"app": app, "runs": 0, "done": 0, "error": 0, "items": 0, "seconds": []}
+            app,
+            {
+                "app": app,
+                "tier": str(event.get("tier") or "unknown"),
+                "runs": 0,
+                "done": 0,
+                "error": 0,
+                "items": 0,
+                "seconds": [],
+            },
         )
         row["runs"] += 1
         if str(event.get("outcome")) == "done":
@@ -111,6 +149,8 @@ def summarise(events: list[dict[str, Any]]) -> dict[str, Any]:
         "thin": len(seconds) < THIN,
         "thin_at": THIN,
         "apps": apps,
+        # Beside the per-item rows, so a reader sees three tiers before forty-one rows.
+        "tiers": tiers,
         "recent": [
             {
                 k: v

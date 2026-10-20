@@ -281,11 +281,45 @@ function render(d) {
       textContent: "Everything ran in process. Start worker.py against a broker and kafka appears here on its own." })] : []),
   ]));
 
-  // ---- by app -----------------------------------------------------------------------
+  // ---- by tier, then by app ----------------------------------------------------------
+  /* The three tiers, before the forty-one rows. The repository is eleven command-line
+     packages, ten measurement apps and twenty products, and a single list of rows sorted
+     by duration puts a product's graph next to a package's subprocess as though the two
+     were comparable. A run recorded before the tier was written down reads "unknown",
+     which is the truth about it rather than a guess from its name. */
+  if (Array.isArray(d.tiers) && d.tiers.length) {
+    const tiers = el("table", {}, [
+      el("thead", {}, [el("tr", {}, [
+        el("th", { textContent: "tier" }),
+        el("th", { className: "num", textContent: "runs" }),
+        el("th", { className: "num", textContent: "failed" }),
+        el("th", { className: "num", textContent: "p50" }),
+        el("th", { className: "num", textContent: "p95" }),
+        el("th", { className: "num", textContent: "total" }),
+      ])]),
+    ]);
+    const body = el("tbody");
+    for (const row of d.tiers) {
+      body.append(el("tr", {}, [
+        el("td", {}, [el("code", { textContent: row.tier })]),
+        el("td", { className: "num", textContent: row.runs.toLocaleString() }),
+        el("td", { className: "num", textContent:
+          row.error ? `${row.error} (${pct(row.failure_rate)})` : "0" }),
+        el("td", { className: "num", textContent: duration(row.p50) }),
+        el("td", { className: "num", textContent: duration(row.p95) }),
+        el("td", { className: "num", textContent: duration(row.total) }),
+      ]));
+    }
+    tiers.append(body);
+    out.append(el("h2", { textContent: "by tier" }));
+    out.append(el("div", { className: "panel scroll-x" }, [tiers]));
+  }
+
   out.append(el("h2", { textContent: "by app" }));
   const table = el("table", {}, [
     el("thead", {}, [el("tr", {}, [
       el("th", { textContent: "app" }),
+      el("th", { textContent: "tier" }),
       el("th", { className: "num", textContent: "runs" }),
       el("th", { className: "num", textContent: "failed" }),
       el("th", { className: "num", textContent: "items" }),
@@ -298,6 +332,7 @@ function render(d) {
   for (const row of d.apps) {
     tbody.append(el("tr", {}, [
       el("td", {}, [el("code", { textContent: row.app })]),
+      el("td", { className: "muted", textContent: row.tier || "unknown" }),
       el("td", { className: "num", textContent: row.runs.toLocaleString() }),
       el("td", { className: "num", textContent: row.error ? `${row.error} (${pct(row.failure_rate)})` : "0" }),
       el("td", { className: "num", textContent: row.items ? row.items.toLocaleString() : "—" }),

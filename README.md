@@ -108,6 +108,21 @@ arm as missing rather than ranking from a partial index. Run on the CPU with
 `qwen2.5:7b-instruct` (`MODEL=qwen2.5:7b-instruct OLLAMA_NUM_GPU=0`), Kafka and Redis down, so
 the job ran in-process; the numbers in "What they found" come from `qwen2.5-coder` runs.
 
+![All forty-one, in three tiers](docs/screenshots/03-all-41-tiers.png)
+
+Every piece of this repository from one page: the eleven command-line packages, the ten
+measurement apps and the twenty products. A package runs in a subprocess, an app is
+imported and asked for its page, and a product submits real work, drains the queue and
+approves it - so what a press does differs by tier, and each tier says so above its own
+cards.
+
+![The run console, by tier](docs/screenshots/04-console-by-tier.png)
+
+The console behind it. The tier is recorded with each run rather than guessed from a
+name, because sorting a product graph next to a package subprocess by duration compares
+two things that are not comparable. Runs recorded before the tier existed read
+`unknown`, which is the truth about them.
+
 ## Sample input / output
 
 `log-detective` over the 1,005 lines of real logs committed in its package
