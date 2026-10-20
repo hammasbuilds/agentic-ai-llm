@@ -131,6 +131,57 @@ name, because sorting a product graph next to a package subprocess by duration c
 two things that are not comparable. Runs recorded before the tier existed read
 `unknown`, which is the truth about them.
 
+### The page, driven end to end
+
+[`docs/demo/agentic-ai-llm-demo.mp4`](docs/demo/agentic-ai-llm-demo.mp4) - 50 seconds in
+the browser: the three tiers, then a package, an app and a product run for real. The
+screenshots below are frames of that run.
+
+![About, and the three tiers](docs/screenshots/05-about-and-the-three-tiers.png)
+
+All forty-three runs on one page - thirteen for the eleven packages, ten apps, twenty
+products - with what a press does spelled out for each tier before any of them is
+pressed.
+
+![log-detective](docs/screenshots/06-package-log-detective.png)
+
+A package: `python -m detective.cli cost data` in a subprocess over the 1,005 lines of
+real logs committed beside it, exit 0, and the output is whatever the subprocess wrote.
+
+![review-bot](docs/screenshots/07-package-review-bot.png)
+
+`review-bot scan src` over this repository's own source, with the findings that survived
+an attempt to disprove them.
+
+![release-captain](docs/screenshots/08-package-release-captain.png)
+
+`release-captain gate` on this repository's own git history.
+
+![False accepts](docs/screenshots/09-app-false-accepts.png)
+
+An app: imported into this process and asked for its page - no broker, no database, no
+model. How often a generated test passes code that is wrong.
+
+![Kill rate](docs/screenshots/10-app-kill-rate.png)
+
+How many mutants a suite actually kills, which is a different question from whether it
+runs.
+
+![Revenue Desk](docs/screenshots/11-product-revenue-desk.png)
+
+A product: one press submits real work, drains the queue and approves it, with the
+model's part played back from the product's own script - a real run, not a recording.
+Topics, intake, the drain, the gate and the result keys.
+
+![Watchtower](docs/screenshots/12-product-watchtower.png)
+
+The same path through a second product, to show the tier is the shape and not one
+hand-built page.
+
+![Dark](docs/screenshots/13-dark.png)
+
+The same page in the dark theme.
+
 ## Sample input / output
 
 `log-detective` over the 1,005 lines of real logs committed in its package
