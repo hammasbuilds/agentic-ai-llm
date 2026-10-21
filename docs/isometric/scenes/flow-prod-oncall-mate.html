@@ -149,21 +149,21 @@
 </g>
 <text class="slabname n7" x="1126.0" y="406.0">output</text>
 <g class="token"><polygon class="tk-top" points="0,-11 13,-4 0,3 -13,-4"/><polygon class="tk-left" points="-13,-4 0,3 0,14 -13,7"/><polygon class="tk-right" points="13,-4 0,3 0,14 13,7"/></g>
-<g class="caption c1"><text class="cap-step" x="96" y="566">01</text><text class="cap-name" x="150" y="566">blueprint</text><text class="cap-note" x="150" y="596">seven nodes, and the order they may run in</text></g>
-<g class="caption c2"><text class="cap-step" x="96" y="566">02</text><text class="cap-name" x="150" y="566">submit</text><text class="cap-note" x="150" y="596">real work handed to the queue</text></g>
-<g class="caption c3"><text class="cap-step" x="96" y="566">03</text><text class="cap-name" x="150" y="566">drain</text><text class="cap-note" x="150" y="596">the queue worked off in this process</text></g>
+<g class="caption c1"><text class="cap-step" x="96" y="566">01</text><text class="cap-name" x="150" y="566">blueprint</text><text class="cap-note" x="150" y="596">seven nodes, and the order they are allowed to run in</text></g>
+<g class="caption c2"><text class="cap-step" x="96" y="566">02</text><text class="cap-name" x="150" y="566">submit</text><text class="cap-note" x="150" y="596">real work handed to the queue, and accepted or refused</text></g>
+<g class="caption c3"><text class="cap-step" x="96" y="566">03</text><text class="cap-name" x="150" y="566">drain</text><text class="cap-note" x="150" y="596">the queue worked off in this process, node by node</text></g>
 <g class="caption c4"><text class="cap-step" x="96" y="566">04</text><text class="cap-name" x="150" y="566">model</text><text class="cap-note" x="150" y="596">the model&#x27;s part played from the product&#x27;s own script</text></g>
 <g class="caption c5"><text class="cap-step" x="96" y="566">05</text><text class="cap-name" x="150" y="566">gate</text><text class="cap-note" x="150" y="596">approval - nothing is written before it passes</text></g>
-<g class="caption c6"><text class="cap-step" x="96" y="566">06</text><text class="cap-name" x="150" y="566">emit</text><text class="cap-note" x="150" y="596">the keys the run actually produced</text></g>
-<g class="card in"><rect x="96" y="152" width="320" height="124" rx="10"/><text class="card-label" x="114" y="180">INPUT</text><text class="card-line" x="114" y="210">python</text><text class="card-line" x="114" y="236">products/scripts/capture.py</text><text class="card-line" x="114" y="262"># the 06_oncall-mate row…</text></g>
-<g class="card out"><rect x="864" y="538" width="320" height="124" rx="10"/><text class="card-label" x="882" y="566">OUTPUT</text><text class="card-line" x="882" y="596">exit 0</text><text class="card-line" x="882" y="622">submitted, drained,</text><text class="card-line" x="882" y="648">approved — in that order</text></g>
+<g class="caption c6"><text class="cap-step" x="96" y="566">06</text><text class="cap-name" x="150" y="566">emit</text><text class="cap-note" x="150" y="596">the keys this run actually produced</text></g>
+<g class="card in"><rect x="96" y="152" width="320" height="124" rx="10"/><text class="card-label" x="114" y="180">INPUT</text><text class="card-line" x="114" y="210">python products/scripts/</text><text class="card-line" x="114" y="236">capture.py</text><text class="card-line" x="114" y="262">row: 06_oncall-mate</text></g>
+<g class="card out"><rect x="864" y="538" width="320" height="150" rx="10"/><text class="card-label" x="882" y="566">OUTPUT</text><text class="card-line" x="882" y="596">exit 0</text><text class="card-line" x="882" y="622">topics : ops.intake,</text><text class="card-line" x="882" y="648">ops.tasks, ops.events,</text><text class="card-line" x="882" y="674">ops.approvals, ops.dlq</text></g>
 <line class="tie" x1="376" y1="276" x2="442.0" y2="264.0"/>
 <line class="tie" x1="1152.0" y1="476.0" x2="904" y2="538"/>
 <rect class="bar-bg" x="96" y="684" width="740" height="3" rx="1.5"/>
 <rect class="bar" x="96" y="684" width="740" height="3" rx="1.5"/>
   <!-- The title block is painted last so nothing in the scene can cross it. -->
   <text class="title" x="96" y="78">Oncall Mate</text><text class="subtitle" x="96" y="112">one press, one real agent run</text><text class="repo" x="1184" y="78">agentic-ai-llm</text>
-  <text class="footer" x="96" y="672">products/06_oncall-mate</text>
+  <text class="footer" x="1184" y="106" text-anchor="end">products/06_oncall-mate · submitted, drained, approved</text>
 </svg>
 </div>
 <style>

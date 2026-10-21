@@ -141,20 +141,20 @@
 </g>
 <text class="slabname n6" x="1126.0" y="406.0">output</text>
 <g class="token"><polygon class="tk-top" points="0,-11 13,-4 0,3 -13,-4"/><polygon class="tk-left" points="-13,-4 0,3 0,14 -13,7"/><polygon class="tk-right" points="13,-4 0,3 0,14 13,7"/></g>
-<g class="caption c1"><text class="cap-step" x="96" y="566">01</text><text class="cap-name" x="150" y="566">import</text><text class="cap-note" x="150" y="596">the FastAPI app, into this process - no port, no server</text></g>
+<g class="caption c1"><text class="cap-step" x="96" y="566">01</text><text class="cap-name" x="150" y="566">import</text><text class="cap-note" x="150" y="596">the FastAPI app, imported into this process - no port, no</text><text class="cap-note" x="150" y="622">server</text></g>
 <g class="caption c2"><text class="cap-step" x="96" y="566">02</text><text class="cap-name" x="150" y="566">request</text><text class="cap-note" x="150" y="596">its own page asked for over an in-process transport</text></g>
-<g class="caption c3"><text class="cap-step" x="96" y="566">03</text><text class="cap-name" x="150" y="566">measure</text><text class="cap-note" x="150" y="596">the question the app exists to answer</text></g>
+<g class="caption c3"><text class="cap-step" x="96" y="566">03</text><text class="cap-name" x="150" y="566">measure</text><text class="cap-note" x="150" y="596">Which prompt shape holds up, and which only looks better.</text></g>
 <g class="caption c4"><text class="cap-step" x="96" y="566">04</text><text class="cap-name" x="150" y="566">render</text><text class="cap-note" x="150" y="596">the app&#x27;s own template, not a summary of it</text></g>
-<g class="caption c5"><text class="cap-step" x="96" y="566">05</text><text class="cap-name" x="150" y="566">status</text><text class="cap-note" x="150" y="596">200, or the status it actually returned</text></g>
-<g class="card in"><rect x="96" y="152" width="320" height="124" rx="10"/><text class="card-label" x="114" y="180">INPUT</text><text class="card-line" x="114" y="210">python scripts/run_app.py</text><text class="card-line" x="114" y="236">08_prompt_shapes # then GET</text><text class="card-line" x="114" y="262">/…</text></g>
-<g class="card out"><rect x="864" y="538" width="320" height="150" rx="10"/><text class="card-label" x="882" y="566">OUTPUT</text><text class="card-line" x="882" y="596">200 OK</text><text class="card-line" x="882" y="622">Which prompt shape holds</text><text class="card-line" x="882" y="648">up, and which only looks</text><text class="card-line" x="882" y="674">better.</text></g>
+<g class="caption c5"><text class="cap-step" x="96" y="566">05</text><text class="cap-name" x="150" y="566">status</text><text class="cap-note" x="150" y="596">the status it really returned, and the size of the page</text></g>
+<g class="card in"><rect x="96" y="152" width="320" height="124" rx="10"/><text class="card-label" x="114" y="180">INPUT</text><text class="card-line" x="114" y="210">python scripts/run_app.py</text><text class="card-line" x="114" y="236">08_prompt_shapes</text><text class="card-line" x="114" y="262">then GET /</text></g>
+<g class="card out"><rect x="864" y="538" width="320" height="150" rx="10"/><text class="card-label" x="882" y="566">OUTPUT</text><text class="card-line" x="882" y="596">GET / -&gt; HTTP 200, 13,018</text><text class="card-line" x="882" y="622">characters</text><text class="card-line" x="882" y="648">page title: Prompt Shapes</text><text class="card-line" x="882" y="674">12 route(s): /, /about,</text></g>
 <line class="tie" x1="376" y1="276" x2="442.0" y2="264.0"/>
 <line class="tie" x1="1152.0" y1="476.0" x2="904" y2="538"/>
 <rect class="bar-bg" x="96" y="684" width="740" height="3" rx="1.5"/>
 <rect class="bar" x="96" y="684" width="740" height="3" rx="1.5"/>
   <!-- The title block is painted last so nothing in the scene can cross it. -->
   <text class="title" x="96" y="78">Prompt shapes</text><text class="subtitle" x="96" y="112">a measurement, run in this process</text><text class="repo" x="1184" y="78">agentic-ai-llm</text>
-  <text class="footer" x="96" y="672">apps/08_prompt_shapes</text>
+  <text class="footer" x="1184" y="106" text-anchor="end">apps/08_prompt_shapes · no broker, no database, no model</text>
 </svg>
 </div>
 <style>
