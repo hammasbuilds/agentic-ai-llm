@@ -182,43 +182,6 @@ hand-built page.
 
 The same page in the dark theme.
 
-### How it works, in motion
-
-All forty-three runs, twice over. A **flow** shows what a press on that card actually does and what it
-printed when it was run - the output cards carry real output, not a description of it. An **architecture**
-view shows that piece's own modules at their real sizes: each package with the modules it is made of, each
-app with its one module and its template, and each product with the five or six modules it does not share
-with the other nineteen, standing on the runtime they all do share. Each is one self-contained HTML file
-with a poster and a clip.
-
-All 86 are in [`docs/isometric/`](docs/isometric/) — [start at the index](docs/isometric/index.html). 43
-architecture, 43 flow.
-
-![agentic-ai-llm](docs/isometric/scenes/arch-agentic.gif)
-*The repository in four layers: the data committed beside the code, the eleven packages that read it, the
-ten apps that measure something, and the twenty products that submit real work and drain a queue to produce
-it.* · [open the animation](docs/isometric/scenes/arch-agentic.html) ·
-[mp4](docs/isometric/scenes/arch-agentic.mp4)
-
-![the product platform](docs/isometric/scenes/arch-agentic-platform.png)
-*The runtime underneath all twenty products: ports and adapters at the edge, the blueprint and the queue,
-admission, authority and the gate - and only then does anything leave the process.* · [open the
-animation](docs/isometric/scenes/arch-agentic-platform.html) ·
-[mp4](docs/isometric/scenes/arch-agentic-platform.mp4)
-
-![Revenue Desk](docs/isometric/scenes/arch-prod-revenue-desk.png)
-*One product's own architecture: `churn`, `domain` and `agents` are its and no other product's; admission,
-authority, the gate and the graph interpreter above them are shared by all twenty.* · [open the
-animation](docs/isometric/scenes/arch-prod-revenue-desk.html) ·
-[mp4](docs/isometric/scenes/arch-prod-revenue-desk.mp4)
-
-![Revenue Desk](docs/isometric/scenes/flow-prod-revenue-desk.png)
-*One product, press to result: blueprint, submit, drain, the model's part played from the product's own
-script, the approval gate, and the keys the run produced.* · [open the
-animation](docs/isometric/scenes/flow-prod-revenue-desk.html) ·
-[mp4](docs/isometric/scenes/flow-prod-revenue-desk.mp4)
-
-
 ## Sample input / output
 
 `log-detective` over the 1,005 lines of real logs committed in its package
@@ -276,10 +239,8 @@ repository listing is kept in the denominator and scored as a miss, so the denom
   reference.
 - **Describing the reference code and reimplementing from that beats MBPP's own description by 32.5 points.** That is a leak, not better documentation, and 32.5 is an upper bound on it: app 10's description-only baseline is the one place here that does not hand the model one of MBPP's own asserts, which is why app 04 reports the same 14B at 76.0% on the task description where app 10 reports 48.0%. A `direct_with_test` arm sits between them; the share of the 32.5 due to the assert rather than the leak is measured when it runs.
 
-Root suite: **1,445 tests collected** by `pytest --collect-only`, run with no model, no Kafka
-and no Redis - 87 of them are the isometric animations added above, which
-`test_no_template_loads_anything_off_this_machine` checks for an off-machine load like any
-other page here; `scripts/test_all.py --fresh` runs every suite in the monorepo. Its
+Root suite: **1,358 tests collected** by `pytest --collect-only`, run with no model, no Kafka
+and no Redis; `scripts/test_all.py --fresh` runs every suite in the monorepo. Its
 `--write-counts` mode sets `AAL_COUNTING_SWEEP`, which skips the **47** tests that read the
 count fixture it is writing, so its line for this suite shows 47 more skips than a plain run.
 
